@@ -34,13 +34,35 @@ export async function initDatabase(): Promise<ReturnType<typeof drizzle> | null>
         );
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category_id INTEGER NOT NULL REFERENCES categories(id),
+            type TEXT NOT NULL DEFAULT 'expense',
+            category_id INTEGER REFERENCES categories(id),
             account_id INTEGER NOT NULL REFERENCES accounts(id),
+            to_account_id INTEGER REFERENCES accounts(id),
             note TEXT,
+            description TEXT,
             amount REAL NOT NULL,
             date INTEGER NOT NULL
         );
     `);
+
+    // Migrate existing transactions table if needed (add new columns)
+    try {
+        await expoDb.execAsync(`
+            ALTER TABLE transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'expense';
+        `);
+    } catch (e) { /* Column already exists, ignore */ }
+
+    try {
+        await expoDb.execAsync(`
+            ALTER TABLE transactions ADD COLUMN to_account_id INTEGER REFERENCES accounts(id);
+        `);
+    } catch (e) { /* Column already exists, ignore */ }
+
+    try {
+        await expoDb.execAsync(`
+            ALTER TABLE transactions ADD COLUMN description TEXT;
+        `);
+    } catch (e) { /* Column already exists, ignore */ }
 
     dbInstance = drizzle(expoDb, { schema });
     return dbInstance;

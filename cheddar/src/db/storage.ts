@@ -47,9 +47,12 @@ export async function getTransactions(): Promise<Transaction[]> {
 }
 
 export async function addTransaction(tx: {
-    categoryId: number;
+    type: 'income' | 'expense' | 'transfer';
+    categoryId?: number | null;
     accountId: number;
-    note: string | null;
+    toAccountId?: number | null;
+    note?: string | null;
+    description?: string | null;
     amount: number;
     date: Date;
 }): Promise<Transaction> {
@@ -57,7 +60,16 @@ export async function addTransaction(tx: {
         throw new Error('Database not available on web platform');
     }
     const db = getDb();
-    const result = await db.insert(transactions).values(tx).returning();
+    const result = await db.insert(transactions).values({
+        type: tx.type,
+        categoryId: tx.categoryId ?? null,
+        accountId: tx.accountId,
+        toAccountId: tx.toAccountId ?? null,
+        note: tx.note ?? null,
+        description: tx.description ?? null,
+        amount: tx.amount,
+        date: tx.date,
+    }).returning();
     return result[0];
 }
 
@@ -116,41 +128,4 @@ async function seedDefaults(): Promise<void> {
 
     // Insert accounts
     await db.insert(accounts).values(defaultAccounts);
-
-    // Get inserted data for reference
-    const allCategories = await db.select().from(categories);
-    const allAccounts = await db.select().from(accounts);
-
-    // Generate mock transactions for current month
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-    const expenseCategories = allCategories.filter(c => c.type === 'expense');
-    const incomeCategories = allCategories.filter(c => c.type === 'income');
-    const notes = ['Coffee', 'Groceries', 'Metro ticket', 'Netflix', 'Utilities', 'Lunch', 'Gym', 'Ice cream', 'Parking', 'Medicine'];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-        const numTransactions = Math.floor(Math.random() * 3) + 1;
-
-        for (let i = 0; i < numTransactions; i++) {
-            const isExpense = Math.random() > 0.2;
-            const category = isExpense
-                ? expenseCategories[Math.floor(Math.random() * expenseCategories.length)]
-                : incomeCategories[Math.floor(Math.random() * incomeCategories.length)];
-            const account = allAccounts[Math.floor(Math.random() * allAccounts.length)];
-
-            const baseAmount = isExpense ? Math.random() * 50 + 5 : Math.random() * 500 + 100;
-            const amount = isExpense ? -parseFloat(baseAmount.toFixed(2)) : parseFloat(baseAmount.toFixed(2));
-
-            await db.insert(transactions).values({
-                categoryId: category.id,
-                accountId: account.id,
-                note: isExpense ? notes[Math.floor(Math.random() * notes.length)] : 'Payment',
-                amount,
-                date: new Date(currentYear, currentMonth, day, Math.floor(Math.random() * 12) + 8),
-            });
-        }
-    }
 }

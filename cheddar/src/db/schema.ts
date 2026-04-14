@@ -16,11 +16,14 @@ export const accounts = sqliteTable('accounts', {
 
 export const transactions = sqliteTable('transactions', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    categoryId: integer('category_id').notNull().references(() => categories.id),
+    type: text('type', { enum: ['income', 'expense', 'transfer'] }).notNull().default('expense'),
+    categoryId: integer('category_id').references(() => categories.id), // nullable for transfers
     accountId: integer('account_id').notNull().references(() => accounts.id),
+    toAccountId: integer('to_account_id').references(() => accounts.id), // for transfers
     note: text('note'),
-    amount: real('amount').notNull(), // positive for income, negative for expense
-    date: integer('date', { mode: 'timestamp' }).notNull(), // Unix timestamp
+    description: text('description'),
+    amount: real('amount').notNull(),
+    date: integer('date', { mode: 'timestamp' }).notNull(),
 });
 
 export type Category = typeof categories.$inferSelect;

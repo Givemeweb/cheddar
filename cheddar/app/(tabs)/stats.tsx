@@ -39,8 +39,9 @@ export default function StatsScreen() {
 
         const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
 
-        // Filter by income or expense
+        // Filter by income or expense (exclude transfers which have no category)
         const filteredTransactions = allTransactions.filter((tx) => {
+          if (!tx.categoryId) return false;
           const cat = categoryMap.get(tx.categoryId);
           return cat?.type === activeTab;
         });
@@ -48,6 +49,7 @@ export default function StatsScreen() {
         // Calculate totals per category
         const categoryTotals = new Map<number, number>();
         filteredTransactions.forEach((tx) => {
+          if (!tx.categoryId) return;
           const current = categoryTotals.get(tx.categoryId) || 0;
           categoryTotals.set(tx.categoryId, current + Math.abs(tx.amount));
         });

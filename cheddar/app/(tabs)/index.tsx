@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -17,6 +18,7 @@ import {
   GroupedTransactions,
   TransactionWithDetails,
 } from "../../src/components/TransactionItem";
+import { FAB } from "../../src/components/FAB";
 
 function formatDateForGroup(date: Date): string {
   const day = date.getDate();
@@ -45,21 +47,26 @@ export default function TransactionsScreen() {
 
       const txWithDetails: TransactionWithDetails[] = allTransactions.map(
         (tx) => {
-          const category = categoryMap.get(tx.categoryId)!;
+          const category = tx.categoryId ? categoryMap.get(tx.categoryId) : null;
           const account = accountMap.get(tx.accountId)!;
+          const toAccount = tx.toAccountId ? accountMap.get(tx.toAccountId) : null;
           return {
             id: tx.id,
+            type: tx.type || 'expense',
             categoryId: tx.categoryId,
             accountId: tx.accountId,
+            toAccountId: tx.toAccountId,
             note: tx.note,
+            description: tx.description,
             amount: tx.amount,
             date: new Date(tx.date),
-            category: {
+            category: category ? {
               name: category.name,
               icon: category.icon,
               type: category.type as "income" | "expense",
-            },
+            } : null,
             account: { name: account.name, type: account.type },
+            toAccount: toAccount ? { name: toAccount.name, type: toAccount.type } : null,
           };
         },
       );
@@ -82,11 +89,11 @@ export default function TransactionsScreen() {
           (a, b) => b.date.getTime() - a.date.getTime(),
         );
         const totalIncome = sortedTxs
-          .filter((t) => t.amount > 0)
+          .filter((t) => t.type === 'income')
           .reduce((sum, t) => sum + t.amount, 0);
         const totalExpense = Math.abs(
           sortedTxs
-            .filter((t) => t.amount < 0)
+            .filter((t) => t.type === 'expense')
             .reduce((sum, t) => sum + t.amount, 0),
         );
 
@@ -96,6 +103,7 @@ export default function TransactionsScreen() {
           transactions: sortedTxs,
           totalIncome,
           totalExpense,
+          totalTransfer: 0,
         });
       });
 
@@ -110,9 +118,12 @@ export default function TransactionsScreen() {
     }
   }
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetchTransactions();
+    }, [])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -148,6 +159,7 @@ export default function TransactionsScreen() {
           </View>
         }
       />
+      <FAB />
     </SafeAreaView>
   );
 }

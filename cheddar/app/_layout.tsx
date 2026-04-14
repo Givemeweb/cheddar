@@ -10,6 +10,13 @@ export default function RootLayout() {
       <View className="flex-1 bg-cheddar-light">
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="add-transaction"
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
         </Stack>
         <StatusBar style="auto" />
       </View>
