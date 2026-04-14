@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PieChart from "../../src/components/PieChart";
-import { getCategories, getTransactions } from "../../src/db/storage";
+import { getCategories, getTransactions, Category } from "../../src/db/storage";
 
 type CategoryStat = {
-  id: number;
+  id: string;
   name: string;
   icon: string;
   total: number;
@@ -47,7 +47,7 @@ export default function StatsScreen() {
         });
 
         // Calculate totals per category
-        const categoryTotals = new Map<number, number>();
+        const categoryTotals = new Map<string, number>();
         filteredTransactions.forEach((tx) => {
           if (!tx.categoryId) return;
           const current = categoryTotals.get(tx.categoryId) || 0;
@@ -130,7 +130,7 @@ export default function StatsScreen() {
                 <View className="h-64">
                   <PieChart
                     data={categoryStats.map((stat) => ({
-                      key: stat.id.toString(),
+                      key: stat.id,
                       value: stat.total,
                       color: stat.color,
                     }))}

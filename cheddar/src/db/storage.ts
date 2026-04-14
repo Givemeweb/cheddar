@@ -1,131 +1,181 @@
-import { getDb, isDatabaseReady, categories, accounts, transactions } from './index';
-import { eq, desc } from 'drizzle-orm';
-import type { Category, Account, Transaction } from './schema';
+import { getStore, saveStore, generateId, isDatabaseReady } from './tinybase';
 
-// Re-export types
-export type { Category, Account, Transaction };
+// Types - IDs are strings for TinyBase
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  type: 'income' | 'expense';
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  type: 'checking' | 'savings' | 'credit' | 'cash' | 'investment';
+  balance: number;
+}
+
+export interface Transaction {
+  id: string;
+  type: 'income' | 'expense' | 'transfer';
+  categoryId: string | null;
+  accountId: string;
+  toAccountId: string | null;
+  note: string | null;
+  description: string | null;
+  amount: number;
+  date: Date;
+}
 
 // Categories
 export async function getCategories(): Promise<Category[]> {
-    if (!isDatabaseReady()) return [];
-    const db = getDb();
-    return await db.select().from(categories);
+  if (!isDatabaseReady()) return [];
+  const store = getStore();
+  const categories = store.getTable('categories');
+  if (!categories) return [];
+
+  return Object.entries(categories).map(([id, data]) => ({
+    id,
+    name: data.name as string,
+    icon: data.icon as string,
+    type: data.type as 'income' | 'expense',
+  }));
 }
 
-export async function getCategoryById(id: number): Promise<Category | undefined> {
-    if (!isDatabaseReady()) return undefined;
-    const db = getDb();
-    const result = await db.select().from(categories).where(eq(categories.id, id));
-    return result[0];
+export async function getCategoryById(id: string): Promise<Category | undefined> {
+  if (!isDatabaseReady()) return undefined;
+  const store = getStore();
+  const row = store.getRow('categories', id);
+  if (!row) return undefined;
+
+  return {
+    id,
+    name: row.name as string,
+    icon: row.icon as string,
+    type: row.type as 'income' | 'expense',
+  };
 }
 
 // Accounts
 export async function getAccounts(): Promise<Account[]> {
-    if (!isDatabaseReady()) return [];
-    const db = getDb();
-    return await db.select().from(accounts);
+  if (!isDatabaseReady()) return [];
+  const store = getStore();
+  const accounts = store.getTable('accounts');
+  if (!accounts) return [];
+
+  return Object.entries(accounts).map(([id, data]) => ({
+    id,
+    name: data.name as string,
+    type: data.type as Account['type'],
+    balance: data.balance as number,
+  }));
 }
 
-export async function getAccountById(id: number): Promise<Account | undefined> {
-    if (!isDatabaseReady()) return undefined;
-    const db = getDb();
-    const result = await db.select().from(accounts).where(eq(accounts.id, id));
-    return result[0];
+export async function getAccountById(id: string): Promise<Account | undefined> {
+  if (!isDatabaseReady()) return undefined;
+  const store = getStore();
+  const row = store.getRow('accounts', id);
+  if (!row) return undefined;
+
+  return {
+    id,
+    name: row.name as string,
+    type: row.type as Account['type'],
+    balance: row.balance as number,
+  };
 }
 
-export async function updateAccountBalance(id: number, balance: number): Promise<void> {
-    if (!isDatabaseReady()) return;
-    const db = getDb();
-    await db.update(accounts).set({ balance }).where(eq(accounts.id, id));
+export async function updateAccountBalance(id: string, balance: number): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  store.setCell('accounts', id, 'balance', balance);
+  await saveStore();
 }
 
 // Transactions
 export async function getTransactions(): Promise<Transaction[]> {
-    if (!isDatabaseReady()) return [];
-    const db = getDb();
-    return await db.select().from(transactions).orderBy(desc(transactions.date));
+  if (!isDatabaseReady()) return [];
+  const store = getStore();
+  const transactions = store.getTable('transactions');
+  if (!transactions) return [];
+
+  return Object.entries(transactions)
+    .map(([id, data]) => ({
+      id,
+      type: data.type as 'income' | 'expense' | 'transfer',
+      categoryId: data.categoryId as string | null,
+      accountId: data.accountId as string,
+      toAccountId: data.toAccountId as string | null,
+      note: data.note as string | null,
+      description: data.description as string | null,
+      amount: data.amount as number,
+      date: new Date(data.date as number),
+    }))
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 export async function addTransaction(tx: {
-    type: 'income' | 'expense' | 'transfer';
-    categoryId?: number | null;
-    accountId: number;
-    toAccountId?: number | null;
-    note?: string | null;
-    description?: string | null;
-    amount: number;
-    date: Date;
+  type: 'income' | 'expense' | 'transfer';
+  categoryId?: string | null;
+  accountId: string;
+  toAccountId?: string | null;
+  note?: string | null;
+  description?: string | null;
+  amount: number;
+  date: Date;
 }): Promise<Transaction> {
-    if (!isDatabaseReady()) {
-        throw new Error('Database not available on web platform');
-    }
-    const db = getDb();
-    const result = await db.insert(transactions).values({
-        type: tx.type,
-        categoryId: tx.categoryId ?? null,
-        accountId: tx.accountId,
-        toAccountId: tx.toAccountId ?? null,
-        note: tx.note ?? null,
-        description: tx.description ?? null,
-        amount: tx.amount,
-        date: tx.date,
-    }).returning();
-    return result[0];
+  if (!isDatabaseReady()) {
+    throw new Error('Database not initialized');
+  }
+  const store = getStore();
+  const id = generateId();
+
+  store.setRow('transactions', id, {
+    type: tx.type,
+    categoryId: tx.categoryId ?? null,
+    accountId: tx.accountId,
+    toAccountId: tx.toAccountId ?? null,
+    note: tx.note ?? null,
+    description: tx.description ?? null,
+    amount: tx.amount,
+    date: tx.date.getTime(),
+  });
+
+  await saveStore();
+
+  return {
+    id,
+    type: tx.type,
+    categoryId: tx.categoryId ?? null,
+    accountId: tx.accountId,
+    toAccountId: tx.toAccountId ?? null,
+    note: tx.note ?? null,
+    description: tx.description ?? null,
+    amount: tx.amount,
+    date: tx.date,
+  };
 }
 
-export async function deleteTransaction(id: number): Promise<void> {
-    if (!isDatabaseReady()) return;
-    const db = getDb();
-    await db.delete(transactions).where(eq(transactions.id, id));
+export async function deleteTransaction(id: string): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  store.delRow('transactions', id);
+  await saveStore();
 }
 
 // Database initialization
 export async function initializeDatabase(): Promise<void> {
-    if (!isDatabaseReady()) return;
-    const db = getDb();
-    const existingCategories = await db.select().from(categories);
-    if (existingCategories.length > 0) return;
-
-    // Seed default data
-    await seedDefaults();
+  // Database is initialized in initDatabase() in tinybase.ts
+  // This function is kept for API compatibility
+  if (!isDatabaseReady()) {
+    const { initDatabase } = await import('./tinybase');
+    await initDatabase();
+  }
 }
 
 export async function clearAllData(): Promise<void> {
-    if (!isDatabaseReady()) return;
-    const db = getDb();
-    await db.delete(transactions);
-    await db.delete(categories);
-    await db.delete(accounts);
-}
-
-// Default data
-const defaultCategories = [
-    // Expense categories
-    { name: 'Food', icon: '🍽️', type: 'expense' as const },
-    { name: 'Transport', icon: '🚗', type: 'expense' as const },
-    { name: 'Shopping', icon: '🛒', type: 'expense' as const },
-    { name: 'Entertainment', icon: '🎬', type: 'expense' as const },
-    { name: 'Bills', icon: '📄', type: 'expense' as const },
-    { name: 'Health', icon: '💊', type: 'expense' as const },
-    // Income categories
-    { name: 'Salary', icon: '💼', type: 'income' as const },
-    { name: 'Freelance', icon: '💻', type: 'income' as const },
-    { name: 'Investments', icon: '📈', type: 'income' as const },
-    { name: 'Gift', icon: '🎁', type: 'income' as const },
-];
-
-const defaultAccounts = [
-    { name: 'Checking', type: 'checking' as const, balance: 2500.00 },
-    { name: 'Savings', type: 'savings' as const, balance: 10000.00 },
-    { name: 'Credit Card', type: 'credit' as const, balance: -450.00 },
-];
-
-async function seedDefaults(): Promise<void> {
-    if (!isDatabaseReady()) return;
-    const db = getDb();
-    // Insert categories
-    await db.insert(categories).values(defaultCategories);
-
-    // Insert accounts
-    await db.insert(accounts).values(defaultAccounts);
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  store.delTables();
+  await saveStore();
 }

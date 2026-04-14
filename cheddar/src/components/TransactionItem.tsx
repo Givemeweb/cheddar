@@ -1,11 +1,11 @@
 import { View, Text, Pressable } from "react-native";
 
 export type TransactionWithDetails = {
-  id: number;
+  id: string;
   type: 'income' | 'expense' | 'transfer';
-  categoryId: number | null;
-  accountId: number;
-  toAccountId?: number | null;
+  categoryId: string | null;
+  accountId: string;
+  toAccountId?: string | null;
   note: string | null;
   description?: string | null;
   amount: number;

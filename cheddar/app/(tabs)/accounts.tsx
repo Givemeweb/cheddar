@@ -7,14 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getAccounts } from "../../src/db/storage";
-
-type Account = {
-  id: number;
-  name: string;
-  type: "checking" | "savings" | "credit" | "cash" | "investment";
-  balance: number;
-};
+import { getAccounts, Account } from "../../src/db/storage";
 
 const accountIcons: Record<string, string> = {
   checking: "💳",
@@ -33,7 +26,7 @@ export default function AccountsScreen() {
     async function fetchAccounts() {
       try {
         const allAccounts = await getAccounts();
-        setAccountsList(allAccounts as Account[]);
+        setAccountsList(allAccounts);
       } catch (error) {
         console.error("Error fetching accounts:", error);
       } finally {
@@ -116,7 +109,7 @@ export default function AccountsScreen() {
       {/* Accounts List */}
       <FlatList
         data={accountsList}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         contentContainerClassName="px-4"
         renderItem={({ item }) => (
           <View className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm">

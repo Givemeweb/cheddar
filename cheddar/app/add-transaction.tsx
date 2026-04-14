@@ -21,10 +21,10 @@ export default function AddTransactionScreen() {
     const [type, setType] = useState<TransactionType>('expense');
     const [date, setDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-    const [fromAccountId, setFromAccountId] = useState<number | null>(null);
-    const [toAccountId, setToAccountId] = useState<number | null>(null);
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+    const [fromAccountId, setFromAccountId] = useState<string | null>(null);
+    const [toAccountId, setToAccountId] = useState<string | null>(null);
     const [amount, setAmount] = useState('');
     const [note, setNote] = useState('');
     const [description, setDescription] = useState('');
@@ -103,13 +103,13 @@ export default function AddTransactionScreen() {
         router.back();
     };
 
-    const getAccountName = (id: number | null) => {
+    const getAccountName = (id: string | null) => {
         if (!id) return 'Select account';
         const acc = accounts.find(a => a.id === id);
         return acc ? acc.name : 'Select account';
     };
 
-    const getCategoryName = (id: number | null) => {
+    const getCategoryName = (id: string | null) => {
         if (!id) return 'Select category';
         const cat = categories.find(c => c.id === id);
         return cat ? `${cat.icon} ${cat.name}` : 'Select category';
