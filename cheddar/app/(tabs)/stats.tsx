@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { PieChart } from "react-native-svg-charts";
+import PieChart from "../../src/components/PieChart";
 import { getCategories, getTransactions } from "../../src/db/storage";
 
 type CategoryStat = {
@@ -127,13 +127,12 @@ export default function StatsScreen() {
               <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
                 <View className="h-64">
                   <PieChart
-                    data={categoryStats.map((stat, index) => ({
+                    data={categoryStats.map((stat) => ({
                       key: stat.id.toString(),
                       value: stat.total,
-                      svg: { fill: stat.color },
+                      color: stat.color,
                     }))}
-                    innerRadius="20%"
-                    padAngle={0.02}
+                    innerRadius={20}
                   />
                 </View>
                 <Text className="text-center text-2xl font-bold text-cheddar-dark mt-2">
