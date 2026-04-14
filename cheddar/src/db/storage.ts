@@ -1,122 +1,132 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Category, Account, Transaction } from './schema';
+import { db, categories, accounts, transactions } from './index';
+import { eq, desc } from 'drizzle-orm';
+import type { Category, Account, Transaction } from './schema';
 
-const CATEGORIES_KEY = 'cheddar_categories';
-const ACCOUNTS_KEY = 'cheddar_accounts';
-const TRANSACTIONS_KEY = 'cheddar_transactions';
+// Re-export types
+export type { Category, Account, Transaction };
 
-// Default data
-const defaultCategories: Omit<Category, 'id'>[] = [
-    // Expense categories
-    { name: 'Food', icon: '🍽️', type: 'expense' },
-    { name: 'Transport', icon: '🚗', type: 'expense' },
-    { name: 'Shopping', icon: '🛒', type: 'expense' },
-    { name: 'Entertainment', icon: '🎬', type: 'expense' },
-    { name: 'Bills', icon: '📄', type: 'expense' },
-    { name: 'Health', icon: '💊', type: 'expense' },
-    // Income categories
-    { name: 'Salary', icon: '💼', type: 'income' },
-    { name: 'Freelance', icon: '💻', type: 'income' },
-    { name: 'Investments', icon: '📈', type: 'income' },
-    { name: 'Gift', icon: '🎁', type: 'income' },
-];
-
-const defaultAccounts: Omit<Account, 'id'>[] = [
-    { name: 'Checking', type: 'checking', balance: 2500.00 },
-    { name: 'Savings', type: 'savings', balance: 10000.00 },
-    { name: 'Credit Card', type: 'credit', balance: -450.00 },
-];
-
-// Storage functions
+// Categories
 export async function getCategories(): Promise<Category[]> {
-    try {
-        const data = await AsyncStorage.getItem(CATEGORIES_KEY);
-        if (data) return JSON.parse(data);
-
-        // Seed default categories
-        const categories: Category[] = defaultCategories.map((cat, i) => ({
-            id: i + 1,
-            ...cat,
-        }));
-        await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-        return categories;
-    } catch (e) {
-        console.error('Error getting categories:', e);
-        return [];
-    }
+    return await db.select().from(categories);
 }
 
+export async function getCategoryById(id: number): Promise<Category | undefined> {
+    const result = await db.select().from(categories).where(eq(categories.id, id));
+    return result[0];
+}
+
+// Accounts
 export async function getAccounts(): Promise<Account[]> {
-    try {
-        const data = await AsyncStorage.getItem(ACCOUNTS_KEY);
-        if (data) return JSON.parse(data);
-
-        // Seed default accounts
-        const accounts: Account[] = defaultAccounts.map((acc, i) => ({
-            id: i + 1,
-            ...acc,
-        }));
-        await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-        return accounts;
-    } catch (e) {
-        console.error('Error getting accounts:', e);
-        return [];
-    }
+    return await db.select().from(accounts);
 }
 
+export async function getAccountById(id: number): Promise<Account | undefined> {
+    const result = await db.select().from(accounts).where(eq(accounts.id, id));
+    return result[0];
+}
+
+export async function updateAccountBalance(id: number, balance: number): Promise<void> {
+    await db.update(accounts).set({ balance }).where(eq(accounts.id, id));
+}
+
+// Transactions
 export async function getTransactions(): Promise<Transaction[]> {
-    try {
-        const data = await AsyncStorage.getItem(TRANSACTIONS_KEY);
-        if (data) return JSON.parse(data);
+    return await db.select().from(transactions).orderBy(desc(transactions.date));
+}
 
-        // Seed mock transactions for current month
-        const categories = await getCategories();
-        const accounts = await getAccounts();
+export async function addTransaction(tx: {
+    categoryId: number;
+    accountId: number;
+    note: string | null;
+    amount: number;
+    date: Date;
+}): Promise<Transaction> {
+    const result = await db.insert(transactions).values(tx).returning();
+    return result[0];
+}
 
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+export async function deleteTransaction(id: number): Promise<void> {
+    await db.delete(transactions).where(eq(transactions.id, id));
+}
 
-        const expenseCategories = categories.filter(c => c.type === 'expense');
-        const incomeCategories = categories.filter(c => c.type === 'income');
-        const notes = ['Coffee', 'Groceries', 'Metro ticket', 'Netflix', 'Utilities', 'Lunch', 'Gym', 'Ice cream', 'Parking', 'Medicine'];
+// Database initialization
+export async function initializeDatabase(): Promise<void> {
+    const existingCategories = await db.select().from(categories);
+    if (existingCategories.length > 0) return;
 
-        const transactions: Transaction[] = [];
-        let id = 1;
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const numTransactions = Math.floor(Math.random() * 3) + 1;
-
-            for (let i = 0; i < numTransactions; i++) {
-                const isExpense = Math.random() > 0.2;
-                const category = isExpense
-                    ? expenseCategories[Math.floor(Math.random() * expenseCategories.length)]
-                    : incomeCategories[Math.floor(Math.random() * incomeCategories.length)];
-                const account = accounts[Math.floor(Math.random() * accounts.length)];
-
-                const baseAmount = isExpense ? Math.random() * 50 + 5 : Math.random() * 500 + 100;
-                const amount = isExpense ? -parseFloat(baseAmount.toFixed(2)) : parseFloat(baseAmount.toFixed(2));
-
-                transactions.push({
-                    id: id++,
-                    categoryId: category.id,
-                    accountId: account.id,
-                    note: isExpense ? notes[Math.floor(Math.random() * notes.length)] : 'Payment',
-                    amount,
-                    date: new Date(currentYear, currentMonth, day, Math.floor(Math.random() * 12) + 8),
-                });
-            }
-        }
-
-        await AsyncStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(transactions));
-        return transactions;
-    } catch (e) {
-        console.error('Error getting transactions:', e);
-        return [];
-    }
+    // Seed default data
+    await seedDefaults();
 }
 
 export async function clearAllData(): Promise<void> {
-    await AsyncStorage.multiRemove([CATEGORIES_KEY, ACCOUNTS_KEY, TRANSACTIONS_KEY]);
+    await db.delete(transactions);
+    await db.delete(categories);
+    await db.delete(accounts);
+}
+
+// Default data
+const defaultCategories = [
+    // Expense categories
+    { name: 'Food', icon: '🍽️', type: 'expense' as const },
+    { name: 'Transport', icon: '🚗', type: 'expense' as const },
+    { name: 'Shopping', icon: '🛒', type: 'expense' as const },
+    { name: 'Entertainment', icon: '🎬', type: 'expense' as const },
+    { name: 'Bills', icon: '📄', type: 'expense' as const },
+    { name: 'Health', icon: '💊', type: 'expense' as const },
+    // Income categories
+    { name: 'Salary', icon: '💼', type: 'income' as const },
+    { name: 'Freelance', icon: '💻', type: 'income' as const },
+    { name: 'Investments', icon: '📈', type: 'income' as const },
+    { name: 'Gift', icon: '🎁', type: 'income' as const },
+];
+
+const defaultAccounts = [
+    { name: 'Checking', type: 'checking' as const, balance: 2500.00 },
+    { name: 'Savings', type: 'savings' as const, balance: 10000.00 },
+    { name: 'Credit Card', type: 'credit' as const, balance: -450.00 },
+];
+
+async function seedDefaults(): Promise<void> {
+    // Insert categories
+    await db.insert(categories).values(defaultCategories);
+
+    // Insert accounts
+    await db.insert(accounts).values(defaultAccounts);
+
+    // Get inserted data for reference
+    const allCategories = await db.select().from(categories);
+    const allAccounts = await db.select().from(accounts);
+
+    // Generate mock transactions for current month
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    const expenseCategories = allCategories.filter(c => c.type === 'expense');
+    const incomeCategories = allCategories.filter(c => c.type === 'income');
+    const notes = ['Coffee', 'Groceries', 'Metro ticket', 'Netflix', 'Utilities', 'Lunch', 'Gym', 'Ice cream', 'Parking', 'Medicine'];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const numTransactions = Math.floor(Math.random() * 3) + 1;
+
+        for (let i = 0; i < numTransactions; i++) {
+            const isExpense = Math.random() > 0.2;
+            const category = isExpense
+                ? expenseCategories[Math.floor(Math.random() * expenseCategories.length)]
+                : incomeCategories[Math.floor(Math.random() * incomeCategories.length)];
+            const account = allAccounts[Math.floor(Math.random() * allAccounts.length)];
+
+            const baseAmount = isExpense ? Math.random() * 50 + 5 : Math.random() * 500 + 100;
+            const amount = isExpense ? -parseFloat(baseAmount.toFixed(2)) : parseFloat(baseAmount.toFixed(2));
+
+            await db.insert(transactions).values({
+                categoryId: category.id,
+                accountId: account.id,
+                note: isExpense ? notes[Math.floor(Math.random() * notes.length)] : 'Payment',
+                amount,
+                date: new Date(currentYear, currentMonth, day, Math.floor(Math.random() * 12) + 8),
+            });
+        }
+    }
 }

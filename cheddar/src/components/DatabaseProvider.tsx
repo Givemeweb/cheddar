@@ -6,7 +6,7 @@ import {
   ReactNode,
 } from "react";
 import { View, ActivityIndicator, Text } from "react-native";
-import { getCategories, getAccounts, getTransactions } from "../db/storage";
+import { initializeDatabase } from "../db/storage";
 
 type DatabaseContextType = {
   isReady: boolean;
@@ -29,10 +29,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   useEffect(() => {
     async function initDatabase() {
       try {
-        // Initialize storage (seeds data if needed)
-        await getCategories();
-        await getAccounts();
-        await getTransactions();
+        await initializeDatabase();
         setIsReady(true);
       } catch (err) {
         console.error("Database initialization error:", err);
