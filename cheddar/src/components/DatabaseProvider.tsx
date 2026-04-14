@@ -6,6 +6,7 @@ import {
   ReactNode,
 } from "react";
 import { View, ActivityIndicator, Text } from "react-native";
+import { initDatabase } from "../db/index";
 import { initializeDatabase } from "../db/storage";
 
 type DatabaseContextType = {
@@ -27,23 +28,29 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function initDatabase() {
+    async function setupDatabase() {
       try {
+        console.log("Starting database initialization...");
+        // Initialize the database connection first
+        await initDatabase();
+        console.log("Database connection established");
+        // Then seed data if needed
         await initializeDatabase();
+        console.log("Database seeded");
         setIsReady(true);
       } catch (err) {
         console.error("Database initialization error:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setError(err instanceof Error ? err.message : String(err));
       }
     }
 
-    initDatabase();
+    setupDatabase();
   }, []);
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center bg-cheddar-light">
-        <Text className="text-cheddar-expense text-lg">
+      <View className="flex-1 items-center justify-center bg-cheddar-light p-4">
+        <Text className="text-cheddar-expense text-lg text-center">
           Database error: {error}
         </Text>
       </View>
