@@ -1,0 +1,38 @@
+import { View, Text } from "react-native";
+import { GroupedTransactions, TransactionItem } from "./TransactionItem";
+
+interface TransactionGroupProps {
+  group: GroupedTransactions;
+}
+
+function formatCurrencyShort(amount: number): string {
+  return `€${amount.toFixed(2)}`;
+}
+
+export function TransactionGroup({ group }: TransactionGroupProps) {
+  return (
+    <View className="mb-2">
+      {/* Group Header */}
+      <View className="flex-row items-center px-4 py-3 bg-gray-50">
+        <View className="flex-1">
+          <Text className="font-semibold text-cheddar-dark">
+            {group.dateLabel}
+          </Text>
+        </View>
+        <View className="flex-row">
+          <Text className="text-cheddar-income mr-4">
+            {formatCurrencyShort(group.totalIncome)}
+          </Text>
+          <Text className="text-cheddar-expense">
+            {formatCurrencyShort(group.totalExpense)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Transaction Items */}
+      {group.transactions.map((transaction) => (
+        <TransactionItem key={transaction.id} transaction={transaction} />
+      ))}
+    </View>
+  );
+}
