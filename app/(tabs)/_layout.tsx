@@ -12,7 +12,7 @@ function TabIcon({
   focused: boolean;
 }) {
   return (
-    <View className="items-center justify-center pt-2 pb-1">
+    <View className="items-center justify-center pt-2 pb-3">
       <Icon size={24} color={focused ? "#FFB800" : "#6B7280"} />
       {label && (
         <Text
@@ -34,7 +34,7 @@ export default function TabsLayout() {
           backgroundColor: "#FFFFFF",
           borderTopWidth: 1,
           borderTopColor: "#E5E7EB",
-          height: 70,
+          height: 80,
           paddingBottom: 12,
           paddingTop: 8,
         },
@@ -44,28 +44,36 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Transactions",
-          tabBarIcon: ({ focused }) => <TabIcon icon={Receipt} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon={Receipt} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: "Stats",
-          tabBarIcon: ({ focused }) => <TabIcon icon={BarChart3} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon={BarChart3} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="accounts"
         options={{
           title: "Accounts",
-          tabBarIcon: ({ focused }) => <TabIcon icon={Wallet} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon={Wallet} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
           title: "More",
-          tabBarIcon: ({ focused }) => <TabIcon icon={Settings} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon={Settings} focused={focused} />
+          ),
         }}
       />
     </Tabs>
