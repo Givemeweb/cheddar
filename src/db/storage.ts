@@ -11,8 +11,9 @@ export interface Category {
 export interface Account {
   id: string;
   name: string;
-  type: 'checking' | 'savings' | 'credit' | 'cash' | 'investment';
+  description: string | null;
   balance: number;
+  order: number;
 }
 
 export interface Transaction {
@@ -63,12 +64,15 @@ export async function getAccounts(): Promise<Account[]> {
   const accounts = store.getTable('accounts');
   if (!accounts) return [];
 
-  return Object.entries(accounts).map(([id, data]) => ({
-    id,
-    name: data.name as string,
-    type: data.type as Account['type'],
-    balance: data.balance as number,
-  }));
+  return Object.entries(accounts)
+    .map(([id, data]) => ({
+      id,
+      name: data.name as string,
+      description: data.description as string | null,
+      balance: data.balance as number,
+      order: (data.order as number) ?? 0,
+    }))
+    .sort((a, b) => a.order - b.order);
 }
 
 export async function getAccountById(id: string): Promise<Account | undefined> {
@@ -80,8 +84,9 @@ export async function getAccountById(id: string): Promise<Account | undefined> {
   return {
     id,
     name: row.name as string,
-    type: row.type as Account['type'],
+    description: row.description as string | null,
     balance: row.balance as number,
+    order: (row.order as number) ?? 0,
   };
 }
 
@@ -230,5 +235,56 @@ export async function deleteCategory(id: string): Promise<void> {
   if (!isDatabaseReady()) return;
   const store = getStore();
   store.delRow('categories', id);
+  await saveStore();
+}
+
+// Account management
+export async function addAccount(account: {
+  name: string;
+  description?: string | null;
+}): Promise<Account> {
+  if (!isDatabaseReady()) {
+    throw new Error('Database not initialized');
+  }
+  const store = getStore();
+  const id = generateId();
+
+  // Get the highest order and add 1
+  const accounts = await getAccounts();
+  const maxOrder = accounts.length > 0 ? Math.max(...accounts.map(a => a.order)) : -1;
+
+  store.setRow('accounts', id, {
+    name: account.name,
+    description: account.description ?? null,
+    balance: 0,
+    order: maxOrder + 1,
+  });
+
+  await saveStore();
+
+  return {
+    id,
+    name: account.name,
+    description: account.description ?? null,
+    balance: 0,
+    order: maxOrder + 1,
+  };
+}
+
+export async function deleteAccount(id: string): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  store.delRow('accounts', id);
+  await saveStore();
+}
+
+export async function reorderAccounts(accountIds: string[]): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+
+  accountIds.forEach((id, index) => {
+    store.setCell('accounts', id, 'order', index);
+  });
+
   await saveStore();
 }

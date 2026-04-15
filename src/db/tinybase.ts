@@ -21,8 +21,9 @@ export interface Category {
 export interface Account {
   id: string;
   name: string;
-  type: 'checking' | 'savings' | 'credit' | 'cash' | 'investment';
+  description: string | null;
   balance: number;
+  order: number;
 }
 
 export interface Transaction {
@@ -40,7 +41,7 @@ export interface Transaction {
 // TinyBase schema types
 export interface TablesSchema {
   categories: { [id: string]: { name: string; icon: string; type: string } };
-  accounts: { [id: string]: { name: string; type: string; balance: number } };
+  accounts: { [id: string]: { name: string; description: string | null; balance: number; order: number } };
   transactions: {
     [id: string]: {
       type: string;
@@ -73,9 +74,9 @@ const defaultCategories: TablesSchema['categories'] = {
 };
 
 const defaultAccounts: TablesSchema['accounts'] = {
-  '1': { name: 'Checking', type: 'checking', balance: 0.0 },
-  '2': { name: 'Savings', type: 'savings', balance: 0.0 },
-  '3': { name: 'Credit Card', type: 'credit', balance: 0.0 },
+  '1': { name: 'Checking', description: null, balance: 0.0, order: 0 },
+  '2': { name: 'Savings', description: null, balance: 0.0, order: 1 },
+  '3': { name: 'Credit Card', description: null, balance: 0.0, order: 2 },
 };
 
 export async function initDatabase(): Promise<Store> {
@@ -111,9 +112,26 @@ export async function initDatabase(): Promise<Store> {
     if (firstCat && firstCat.icon.includes('🍽')) {
       // Old emoji-based icons detected, update default categories
       Object.entries(defaultCategories).forEach(([id, data]) => {
-        store.setRow('categories', id, data);
+        store!.setRow('categories', id, data);
       });
       await persister.save();
+    }
+
+    // Ensure all accounts have order field (migration)
+    const accounts = store!.getTable('accounts');
+    if (accounts) {
+      let needsSave = false;
+      let orderIndex = 0;
+      Object.entries(accounts).forEach(([id, data]) => {
+        if (data.order === undefined || data.order === null) {
+          store!.setCell('accounts', id, 'order', orderIndex);
+          needsSave = true;
+        }
+        orderIndex++;
+      });
+      if (needsSave) {
+        await persister.save();
+      }
     }
   }
 

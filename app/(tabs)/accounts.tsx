@@ -7,18 +7,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { getAccounts, Account } from "../../src/db/storage";
 
-const accountIcons: Record<string, string> = {
-  checking: "💳",
-  savings: "🏦",
-  credit: "💳",
-  cash: "💵",
-  investment: "📈",
-};
-
 export default function AccountsScreen() {
+  const router = useRouter();
   const [accountsList, setAccountsList] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -70,7 +64,7 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
-              alert("Add Account coming soon");
+              router.push("/configuration/add-account");
             }}
             className="px-4 py-3"
           >
@@ -79,7 +73,7 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
-              alert("Delete Account coming soon");
+              router.push("/configuration/delete-account");
             }}
             className="px-4 py-3"
           >
@@ -88,11 +82,11 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
-              alert("Modify Orders coming soon");
+              router.push("/configuration/reorder-accounts");
             }}
             className="px-4 py-3"
           >
-            <Text className="text-cheddar-dark">Modify Orders</Text>
+            <Text className="text-cheddar-dark">Reorder Accounts</Text>
           </Pressable>
         </View>
       )}
@@ -117,17 +111,17 @@ export default function AccountsScreen() {
         renderItem={({ item }) => (
           <View className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm">
             <View className="w-12 h-12 bg-cheddar-light rounded-full items-center justify-center mr-4">
-              <Text className="text-2xl">
-                {accountIcons[item.type] || "💰"}
-              </Text>
+              <Text className="text-2xl">💰</Text>
             </View>
             <View className="flex-1">
               <Text className="text-lg font-semibold text-cheddar-dark">
                 {item.name}
               </Text>
-              <Text className="text-sm text-cheddar-gray capitalize">
-                {item.type}
-              </Text>
+              {item.description && (
+                <Text className="text-sm text-cheddar-gray">
+                  {item.description}
+                </Text>
+              )}
             </View>
             <Text
               className={`text-lg font-semibold ${item.balance >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}

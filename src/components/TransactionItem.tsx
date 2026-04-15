@@ -50,8 +50,8 @@ export type TransactionWithDetails = {
   amount: number;
   date: Date;
   category?: { name: string; icon: string; type: "income" | "expense" } | null;
-  account: { name: string; type: string };
-  toAccount?: { name: string; type: string } | null;
+  account: { name: string; description: string | null };
+  toAccount?: { name: string; description: string | null } | null;
 };
 
 export type GroupedTransactions = {

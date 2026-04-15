@@ -65,8 +65,8 @@ export default function TransactionsScreen() {
               icon: category.icon,
               type: category.type as "income" | "expense",
             } : null,
-            account: { name: account.name, type: account.type },
-            toAccount: toAccount ? { name: toAccount.name, type: toAccount.type } : null,
+            account: { name: account.name, description: account.description },
+            toAccount: toAccount ? { name: toAccount.name, description: toAccount.description } : null,
           };
         },
       );
