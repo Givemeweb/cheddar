@@ -112,7 +112,12 @@
     "exportBackup": "Export Backup",
     "exportBackupDesc": "Export backup file from the device",
     "importBackup": "Import Backup",
-    "importBackupDesc": "Import backup file to the device"
+    "importBackupDesc": "Import backup file to the device",
+    "exportInfo": "This will create a backup of all your data including accounts, categories, and transactions. The backup file will be saved as a ZIP archive that you can store anywhere on your device.",
+    "exportButton": "Export Backup",
+    "exportSuccess": "Backup exported successfully!",
+    "exportError": "Failed to export backup.",
+    "exportFailed": "Export failed. Please try again."
   },
   "stats": {
     "title": "Stats",
