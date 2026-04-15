@@ -19,6 +19,7 @@ import {
   TransactionWithDetails,
 } from "../../src/components/TransactionItem";
 import { FAB } from "../../src/components/FAB";
+import { useTheme } from "../../src/components/ThemeProvider";
 
 function formatDateForGroup(date: Date): string {
   const day = date.getDate();
@@ -37,6 +38,7 @@ export default function TransactionsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
+  const { isDark } = useTheme();
 
   async function fetchTransactions() {
     try {
@@ -141,7 +143,7 @@ export default function TransactionsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-cheddar-light">
+      <View className={`flex-1 items-center justify-center ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <ActivityIndicator size="large" color="#FFB800" />
       </View>
     );
@@ -149,21 +151,21 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-cheddar-light"
+      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
-      <View className="flex-row px-4 py-3 bg-white border-b border-gray-200">
+      <View className={`flex-row px-4 py-3 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
         <View className="flex-1 items-center">
           <Text className="text-cheddar-income font-semibold text-lg">
             +${totalIncome.toFixed(2)}
           </Text>
-          <Text className="text-gray-500 text-sm">Income</Text>
+          <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Income</Text>
         </View>
         <View className="flex-1 items-center">
           <Text className="text-cheddar-expense font-semibold text-lg">
             -${totalExpense.toFixed(2)}
           </Text>
-          <Text className="text-gray-500 text-sm">Expenses</Text>
+          <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Expenses</Text>
         </View>
         <View className="flex-1 items-center">
           <Text
@@ -171,13 +173,13 @@ export default function TransactionsScreen() {
           >
             {total >= 0 ? "+" : ""}${total.toFixed(2)}
           </Text>
-          <Text className="text-gray-500 text-sm">Total</Text>
+          <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Total</Text>
         </View>
       </View>
       <FlatList
         data={groupedTransactions}
         keyExtractor={(item) => item.dateLabel}
-        renderItem={({ item }) => <TransactionGroup group={item} />}
+        renderItem={({ item }) => <TransactionGroup group={item} isDark={isDark} />}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -187,13 +189,13 @@ export default function TransactionsScreen() {
         }
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
-            <Text className="text-cheddar-gray text-lg">
+            <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
               No transactions yet
             </Text>
           </View>
         }
       />
-      <FAB />
+      <FAB isDark={isDark} />
     </SafeAreaView>
   );
 }

@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { getAccounts, Account } from "../../src/db/storage";
+import { useTheme } from "../../src/components/ThemeProvider";
 
 export default function AccountsScreen() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function AccountsScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
+  const { isDark } = useTheme();
 
   useFocusEffect(
     useCallback(() => {
@@ -40,7 +42,7 @@ export default function AccountsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-cheddar-light">
+      <View className={`flex-1 items-center justify-center ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <ActivityIndicator size="large" color="#FFB800" />
       </View>
     );
@@ -48,25 +50,25 @@ export default function AccountsScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-cheddar-light"
+      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
       {/* Header */}
       <View className="px-4 py-4">
         <View className="flex-row justify-between items-center">
-          <Text className="text-2xl font-bold text-cheddar-dark">Accounts</Text>
+          <Text className={`text-2xl font-bold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Accounts</Text>
           <Pressable
             onPress={() => setMenuVisible(!menuVisible)}
             className="p-2"
           >
-            <Text className="text-2xl">⋮</Text>
+            <Text className={`text-2xl ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>⋮</Text>
           </Pressable>
         </View>
       </View>
 
       {/* Kebab Menu Dropdown */}
       {menuVisible && (
-        <View className="absolute right-4 top-20 bg-white rounded-lg shadow-lg z-10 py-2">
+        <View className={`absolute right-4 top-20 rounded-lg shadow-lg z-10 py-2 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
           <Pressable
             onPress={() => {
               setMenuVisible(false);
@@ -74,7 +76,7 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className="text-cheddar-dark">Add Account</Text>
+            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Add Account</Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -83,7 +85,7 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className="text-cheddar-dark">Delete Account</Text>
+            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Delete Account</Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -92,7 +94,7 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className="text-cheddar-dark">Reorder Accounts</Text>
+            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Reorder Accounts</Text>
           </Pressable>
         </View>
       )}
@@ -117,17 +119,17 @@ export default function AccountsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push(`/configuration/edit-account?id=${item.id}`)}
-            className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm"
+            className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? 'bg-gray-800' : 'bg-white'}`}
           >
-            <View className="w-12 h-12 bg-cheddar-light rounded-full items-center justify-center mr-4">
+            <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
               <Text className="text-2xl">💰</Text>
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-semibold text-cheddar-dark">
+              <Text className={`text-lg font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                 {item.name}
               </Text>
               {item.description && (
-                <Text className="text-sm text-cheddar-gray">
+                <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
                   {item.description}
                 </Text>
               )}
@@ -141,7 +143,7 @@ export default function AccountsScreen() {
         )}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
-            <Text className="text-cheddar-gray text-lg">No accounts yet</Text>
+            <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>No accounts yet</Text>
           </View>
         }
       />

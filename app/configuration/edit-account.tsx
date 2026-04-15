@@ -10,10 +10,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getAccountById, updateAccount } from '@/src/db/storage';
+import { useTheme } from '@/src/components/ThemeProvider';
 
 export default function EditAccountScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isDark } = useTheme();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -53,19 +55,19 @@ export default function EditAccountScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-cheddar-light">
+      <View className={`flex-1 items-center justify-center ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <ActivityIndicator size="large" color="#FFB800" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cheddar-light">
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+    <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
+      <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Text className="text-cheddar-yellow text-lg font-medium">Cancel</Text>
         </TouchableOpacity>
-        <Text className="text-xl font-semibold text-cheddar-dark">
+        <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
           Edit Account
         </Text>
         <TouchableOpacity
@@ -84,29 +86,29 @@ export default function EditAccountScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
-        <View className="bg-white rounded-xl p-4 mb-4">
-          <Text className="text-sm font-medium text-gray-500 uppercase mb-2">
+        <View className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+          <Text className={`text-sm font-medium uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Name
           </Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="Account name"
-            className="text-lg text-cheddar-dark py-2 border-b border-gray-200"
-            placeholderTextColor="#9CA3AF"
+            className={`text-lg py-2 border-b ${isDark ? 'text-cheddar-light border-gray-700' : 'text-cheddar-dark border-gray-200'}`}
+            placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
           />
         </View>
 
-        <View className="bg-white rounded-xl p-4">
-          <Text className="text-sm font-medium text-gray-500 uppercase mb-2">
+        <View className={`rounded-xl p-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+          <Text className={`text-sm font-medium uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Description (optional)
           </Text>
           <TextInput
             value={description}
             onChangeText={setDescription}
             placeholder="Add a description"
-            className="text-lg text-cheddar-dark py-2 border-b border-gray-200"
-            placeholderTextColor="#9CA3AF"
+            className={`text-lg py-2 border-b ${isDark ? 'text-cheddar-light border-gray-700' : 'text-cheddar-dark border-gray-200'}`}
+            placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
             multiline
           />
         </View>

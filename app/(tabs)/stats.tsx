@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PieChart from "../../src/components/PieChart";
 import { getCategories, getTransactions } from "../../src/db/storage";
 import { renderIcon } from "../../src/components/TransactionItem";
+import { useTheme } from "../../src/components/ThemeProvider";
 
 type CategoryStat = {
   id: string;
@@ -34,6 +35,7 @@ export default function StatsScreen() {
   const [chartSize, setChartSize] = useState<{ width: number; height: number } | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
+  const { isDark } = useTheme();
 
   useEffect(() => {
     async function fetchStats() {
@@ -95,18 +97,18 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-cheddar-light"
+      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
       <View className="px-4 py-4">
         {/* Tab Buttons */}
-        <View className="flex-row bg-white rounded-xl p-1 shadow-sm">
+        <View className={`flex-row ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl p-1 shadow-sm`}>
           <Pressable
             onPress={() => setActiveTab("income")}
             className={`flex-1 py-3 rounded-lg ${activeTab === "income" ? "bg-cheddar-yellow" : ""}`}
           >
             <Text
-              className={`text-center font-semibold ${activeTab === "income" ? "text-cheddar-dark" : "text-cheddar-gray"}`}
+              className={`text-center font-semibold ${activeTab === "income" ? "text-cheddar-dark" : `${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}`}
             >
               Income
             </Text>
@@ -116,7 +118,7 @@ export default function StatsScreen() {
             className={`flex-1 py-3 rounded-lg ${activeTab === "expense" ? "bg-cheddar-yellow" : ""}`}
           >
             <Text
-              className={`text-center font-semibold ${activeTab === "expense" ? "text-cheddar-dark" : "text-cheddar-gray"}`}
+              className={`text-center font-semibold ${activeTab === "expense" ? "text-cheddar-dark" : `${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}`}
             >
               Expenses
             </Text>
@@ -133,7 +135,7 @@ export default function StatsScreen() {
           {categoryStats.length > 0 ? (
             <>
               {/* Pie Chart */}
-              <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
+              <View className={`rounded-xl p-4 shadow-sm mb-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                 <View
                   className="h-64"
                   onLayout={(event) => {
@@ -156,14 +158,14 @@ export default function StatsScreen() {
                     />
                   )}
                 </View>
-                <Text className="text-center text-2xl font-bold text-cheddar-dark mt-2">
+                <Text className={`text-center text-2xl font-bold mt-2 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                   €{total.toFixed(2)}
                 </Text>
               </View>
 
               {/* Legend */}
-              <View className="bg-white rounded-xl p-4 shadow-sm">
-                <Text className="font-semibold text-cheddar-dark mb-3">
+              <View className={`rounded-xl p-4 shadow-sm ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+                <Text className={`font-semibold mb-3 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                   Categories
                 </Text>
                 {categoryStats.map((stat) => (
@@ -173,14 +175,14 @@ export default function StatsScreen() {
                       style={{ backgroundColor: stat.color }}
                     />
                     <View className="mr-2">
-                      {renderIcon(stat.icon, 18, '#1A1A1A')}
+                      {renderIcon(stat.icon, 18, isDark ? '#F9FAFB' : '#1A1A1A')}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-cheddar-dark font-medium">
+                      <Text className={`font-medium ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                         {stat.name}
                       </Text>
                     </View>
-                    <Text className="text-cheddar-gray font-medium">
+                    <Text className={`font-medium ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
                       €{stat.total.toFixed(2)}
                     </Text>
                   </View>
@@ -189,7 +191,7 @@ export default function StatsScreen() {
             </>
           ) : (
             <View className="flex-1 items-center justify-center py-20">
-              <Text className="text-cheddar-gray text-lg">
+              <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
                 No {activeTab} transactions this month
               </Text>
             </View>

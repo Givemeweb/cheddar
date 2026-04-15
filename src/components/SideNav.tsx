@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Receipt, BarChart3, Wallet, Settings } from "lucide-react-native";
 import { usePathname, useRouter } from "expo-router";
+import { useTheme } from "./ThemeProvider";
 
 interface NavItem {
   name: string;
@@ -23,11 +24,14 @@ interface SideNavProps {
 export function SideNav({ activeTab }: SideNavProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isDark } = useTheme();
   const currentTab = activeTab ?? (pathname.replace("/", "") || "index");
 
+  const inactiveColor = isDark ? "#9CA3AF" : "#6B7280";
+
   return (
-    <View style={styles.container}>
-      <View style={styles.logoContainer}>
+    <View style={[styles.container, isDark && styles.containerDark]}>
+      <View style={[styles.logoContainer, isDark && styles.logoContainerDark]}>
         <Text style={styles.logo}>Cheddar</Text>
       </View>
       <View style={styles.navItems}>
@@ -39,14 +43,14 @@ export function SideNav({ activeTab }: SideNavProps) {
             <Pressable
               key={item.name}
               onPress={() => router.push(item.href as never)}
-              style={isActive ? styles.navItemActive : styles.navItem}
+              style={isActive ? [styles.navItemActive, isDark && styles.navItemActiveDark] : styles.navItem}
             >
-              <Icon size={22} color={isActive ? "#FFB800" : "#6B7280"} />
+              <Icon size={22} color={isActive ? "#FFB800" : inactiveColor} />
               <Text
                 style={
                   isActive
                     ? { ...styles.navItemText, color: "#FFB800", fontWeight: "600" }
-                    : { ...styles.navItemText, color: "#6B7280" }
+                    : { ...styles.navItemText, color: inactiveColor }
                 }
               >
                 {item.label}
@@ -67,11 +71,18 @@ const styles = StyleSheet.create({
     borderRightColor: "#E5E7EB",
     height: "100%",
   },
+  containerDark: {
+    backgroundColor: "#1F2937",
+    borderRightColor: "#374151",
+  },
   logoContainer: {
     paddingHorizontal: 20,
     paddingVertical: 24,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
+  },
+  logoContainerDark: {
+    borderBottomColor: "#374151",
   },
   logo: {
     fontSize: 24,
@@ -95,6 +106,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 12,
     backgroundColor: "#FEF9E7",
+  },
+  navItemActiveDark: {
+    backgroundColor: "#374151",
   },
   navItemText: {
     fontSize: 15,

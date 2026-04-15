@@ -5,7 +5,7 @@ import {
   useContext,
   ReactNode,
 } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator, Text, useColorScheme } from "react-native";
 import { initDatabase } from "../db/index";
 import { initializeDatabase } from "../db/storage";
 
@@ -26,6 +26,8 @@ interface DatabaseProviderProps {
 export function DatabaseProvider({ children }: DatabaseProviderProps) {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     async function setupDatabase() {
@@ -49,7 +51,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center bg-cheddar-light p-4">
+      <View className={`flex-1 items-center justify-center p-4 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <Text className="text-cheddar-expense text-lg text-center">
           Database error: {error}
         </Text>
@@ -59,9 +61,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
   if (!isReady) {
     return (
-      <View className="flex-1 items-center justify-center bg-cheddar-light">
+      <View className={`flex-1 items-center justify-center ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <ActivityIndicator size="large" color="#FFB800" />
-        <Text className="text-cheddar-gray mt-4">Loading database...</Text>
+        <Text className={`mt-4 ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>Loading database...</Text>
       </View>
     );
   }

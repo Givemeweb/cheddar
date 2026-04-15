@@ -6,7 +6,6 @@ import {
     TextInput,
     ScrollView,
     ActivityIndicator,
-    StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -28,6 +27,7 @@ import {
     StopCircle,
 } from 'lucide-react-native';
 import { getCategories, getAccounts, addTransaction, Category, Account } from '@/src/db/storage';
+import { useTheme } from '@/src/components/ThemeProvider';
 
 type TransactionType = 'income' | 'expense' | 'transfer';
 
@@ -57,6 +57,7 @@ const renderIcon = (iconName: string, size: number = 16, color: string = '#1A1A1
 
 export default function AddTransactionScreen() {
     const router = useRouter();
+    const { isDark } = useTheme();
     const [type, setType] = useState<TransactionType>('expense');
     const [date, setDate] = useState(new Date());
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -156,54 +157,58 @@ export default function AddTransactionScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
                 <ActivityIndicator size="large" color="#FFB800" />
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.closeButton}>
-                    <Text style={styles.closeIcon}>×</Text>
+        <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
+            <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                <Pressable onPress={() => router.back()} className="w-8 items-center justify-center">
+                    <Text className={`text-2xl ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>×</Text>
                 </Pressable>
-                <Text style={styles.title}>New Transaction</Text>
-                <View style={styles.closeButton} />
+                <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                    New Transaction
+                </Text>
+                <View className="w-8" />
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Type Selector*/}
-                <View style={styles.typeContainer}>
+            <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+                {/* Type Selector */}
+                <View className={`flex-row mb-5 rounded-xl overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
                     <Pressable
-                        style={[styles.typeButton, type === 'income' &&styles.typeActive]}
+                        className={`flex-1 py-3 items-center ${type === 'income' ? 'bg-cheddar-yellow' : ''}`}
                         onPress={() => { setType('income'); setSelectedCategoryId(null); }}
                     >
-                        <Text style={[styles.typeText, type === 'income' && styles.typeTextActive]}>
+                        <Text className={`font-medium ${type === 'income' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
                             Income
                         </Text>
                     </Pressable>
                     <Pressable
-                        style={[styles.typeButton, type === 'expense' && styles.typeActive]}
+                        className={`flex-1 py-3 items-center ${type === 'expense' ? 'bg-cheddar-yellow' : ''}`}
                         onPress={() => { setType('expense'); setSelectedCategoryId(null); }}
                     >
-                        <Text style={[styles.typeText, type === 'expense' && styles.typeTextActive]}>
+                        <Text className={`font-medium ${type === 'expense' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
                             Expense
                         </Text>
                     </Pressable>
                     <Pressable
-                        style={[styles.typeButton, type === 'transfer' && styles.typeActive]}
+                        className={`flex-1 py-3 items-center ${type === 'transfer' ? 'bg-cheddar-yellow' : ''}`}
                         onPress={() => setType('transfer')}
                     >
-                        <Text style={[styles.typeText, type === 'transfer' && styles.typeTextActive]}>
+                        <Text className={`font-medium ${type === 'transfer' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
                             Transfer
                         </Text>
                     </Pressable>
                 </View>
 
                 {/* Date Picker */}
-                <View style={styles.fieldContainer}>
-                    <Text style={styles.label}>Date</Text>
+                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Date
+                    </Text>
                     <DateTimePicker
                         value={date}
                         mode="datetime"
@@ -214,61 +219,67 @@ export default function AddTransactionScreen() {
                 {/* Account Selector for Income/Expense */}
                 {type !== 'transfer' && (
                     <>
-                        <Pressable style={styles.fieldContainer} onPress={() => setShowAccountPicker(true)}>
-                            <Text style={styles.label}>Account</Text>
-                            <Text style={styles.value}>{getAccountName(selectedAccountId)}</Text>
+                        <Pressable
+                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
+                            onPress={() => setShowAccountPicker(true)}
+                        >
+                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Account
+                            </Text>
+                            <Text className={`text-base ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                                {getAccountName(selectedAccountId)}
+                            </Text>
                         </Pressable>
                         {showAccountPicker && (
-                            <View style={styles.pickerContainer}>
+                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                                 {accounts.map(acc => (
                                     <Pressable
                                         key={acc.id}
-                                        style={[
-                                            styles.pickerItem,
-                                            selectedAccountId === acc.id && styles.pickerItemActive,
-                                        ]}
+                                        className={`p-4 border-b ${selectedAccountId === acc.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
                                         onPress={() => {
                                             setSelectedAccountId(acc.id);
                                             setShowAccountPicker(false);
                                         }}
                                     >
-                                        <Text style={styles.pickerText}>{acc.name}</Text>
+                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{acc.name}</Text>
                                     </Pressable>
                                 ))}
                             </View>
                         )}
 
-                        <Pressable style={styles.fieldContainer} onPress={() => setShowCategoryPicker(true)}>
-                            <Text style={styles.label}>Category</Text>
-                            <View style={styles.categoryValueContainer}>
+                        <Pressable
+                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
+                            onPress={() => setShowCategoryPicker(true)}
+                        >
+                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Category
+                            </Text>
+                            <View className="flex-row items-center">
                                 {getCategoryIcon(selectedCategoryId) && (
-                                    <View style={styles.categoryIconWrapper}>
+                                    <View className="mr-2">
                                         {renderIcon(getCategoryIcon(selectedCategoryId)!, 16, type === 'income' ? '#10B981' : '#EF4444')}
                                     </View>
                                 )}
-                                <Text style={styles.value}>{getCategoryLabel(selectedCategoryId)}</Text>
+                                <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                                    {getCategoryLabel(selectedCategoryId)}
+                                </Text>
                             </View>
                         </Pressable>
                         {showCategoryPicker && (
-                            <View style={styles.pickerContainer}>
+                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                                 {filteredCategories.map(cat => (
                                     <Pressable
                                         key={cat.id}
-                                        style={[
-                                            styles.pickerItem,
-                                            selectedCategoryId === cat.id && styles.pickerItemActive,
-                                        ]}
+                                        className={`p-4 border-b flex-row items-center ${selectedCategoryId === cat.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
                                         onPress={() => {
                                             setSelectedCategoryId(cat.id);
                                             setShowCategoryPicker(false);
                                         }}
                                     >
-                                        <View style={styles.pickerItemContent}>
-                                            <View style={styles.pickerIconWrapper}>
-                                                {renderIcon(cat.icon, 18, type === 'income' ? '#10B981' : '#EF4444')}
-                                            </View>
-                                            <Text style={styles.pickerText}>{cat.name}</Text>
+                                        <View className="mr-3">
+                                            {renderIcon(cat.icon, 18, type === 'income' ? '#10B981' : '#EF4444')}
                                         </View>
+                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{cat.name}</Text>
                                     </Pressable>
                                 ))}
                             </View>
@@ -279,49 +290,57 @@ export default function AddTransactionScreen() {
                 {/* Transfer Account Selectors */}
                 {type === 'transfer' && (
                     <>
-                        <Pressable style={styles.fieldContainer} onPress={() => setShowFromPicker(true)}>
-                            <Text style={styles.label}>From</Text>
-                            <Text style={styles.value}>{getAccountName(fromAccountId)}</Text>
+                        <Pressable
+                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
+                            onPress={() => setShowFromPicker(true)}
+                        >
+                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                From
+                            </Text>
+                            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                                {getAccountName(fromAccountId)}
+                            </Text>
                         </Pressable>
                         {showFromPicker && (
-                            <View style={styles.pickerContainer}>
+                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                                 {accounts.map(acc => (
                                     <Pressable
                                         key={acc.id}
-                                        style={[
-                                            styles.pickerItem,
-                                            fromAccountId === acc.id && styles.pickerItemActive,
-                                        ]}
+                                        className={`p-4 border-b ${fromAccountId === acc.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
                                         onPress={() => {
                                             setFromAccountId(acc.id);
                                             setShowFromPicker(false);
                                         }}
                                     >
-                                        <Text style={styles.pickerText}>{acc.name}</Text>
+                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{acc.name}</Text>
                                     </Pressable>
                                 ))}
                             </View>
                         )}
 
-                        <Pressable style={styles.fieldContainer} onPress={() => setShowToPicker(true)}>
-                            <Text style={styles.label}>To</Text>
-                            <Text style={styles.value}>{getAccountName(toAccountId)}</Text>
+                        <Pressable
+                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
+                            onPress={() => setShowToPicker(true)}
+                        >
+                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                To
+                            </Text>
+                            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                                {getAccountName(toAccountId)}
+                            </Text>
                         </Pressable>
                         {showToPicker && (
-                            <View style={styles.pickerContainer}>
+                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                                 {accounts.map(acc => (
                                     <Pressable
                                         key={acc.id}
-                                        style={[
-                                            styles.pickerItem,
-                                            toAccountId === acc.id && styles.pickerItemActive,
-                                        ]}
+                                        className={`p-4 border-b ${toAccountId === acc.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
                                         onPress={() => {
                                             setToAccountId(acc.id);
                                             setShowToPicker(false);
                                         }}
                                     >
-                                        <Text style={styles.pickerText}>{acc.name}</Text>
+                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{acc.name}</Text>
                                     </Pressable>
                                 ))}
                             </View>
@@ -330,189 +349,63 @@ export default function AddTransactionScreen() {
                 )}
 
                 {/* Amount */}
-                <View style={styles.fieldContainer}>
-                    <Text style={styles.label}>Amount</Text>
+                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Amount
+                    </Text>
                     <TextInput
-                        style={styles.amountInput}
+                        className={`text-2xl font-semibold py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
                         value={amount}
                         onChangeText={setAmount}
                         keyboardType="decimal-pad"
                         placeholder="0.00"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                     />
                 </View>
 
                 {/* Note */}
-                <View style={styles.fieldContainer}>
-                    <Text style={styles.label}>Note</Text>
+                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Note
+                    </Text>
                     <TextInput
-                        style={styles.textInput}
+                        className={`text-base py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
                         value={note}
                         onChangeText={setNote}
                         placeholder="Add a note"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                     />
                 </View>
 
                 {/* Description */}
-                <View style={styles.fieldContainer}>
-                    <Text style={styles.label}>Description</Text>
+                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Description
+                    </Text>
                     <TextInput
-                        style={[styles.textInput, styles.descriptionInput]}
+                        className={`text-base py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+                        style={{ minHeight: 80 }}
                         value={description}
                         onChangeText={setDescription}
                         placeholder="Add a description"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                         multiline
-                        numberOfLines={3}
                         textAlignVertical="top"
                     />
                 </View>
             </ScrollView>
 
             {/* Save Button */}
-            <View style={styles.footer}>
-                <Pressable style={styles.saveButton} onPress={handleSave}>
-                    <Text style={styles.saveButtonText}>Save Transaction</Text>
+            <View className="p-4 pb-8">
+                <Pressable
+                    className="bg-cheddar-yellow rounded-xl py-4 items-center"
+                    onPress={handleSave}
+                >
+                    <Text className="text-cheddar-dark text-base font-semibold">
+                        Save Transaction
+                    </Text>
                 </Pressable>
             </View>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    closeButton: {
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    closeIcon: {
-        fontSize: 28,
-        color: '#1A1A1A',
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1A1A1A',
-    },
-    content: {
-        flex: 1,
-        padding: 16,
-    },
-    typeContainer: {
-        flexDirection: 'row',
-        marginBottom: 20,
-        borderRadius: 12,
-        overflow: 'hidden',
-        backgroundColor: '#E5E7EB',
-    },
-    typeButton: {
-        flex: 1,
-        paddingVertical: 12,
-        alignItems: 'center',
-    },
-    typeActive: {
-        backgroundColor: '#FFB800',
-    },
-    typeText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#6B7280',
-    },
-    typeTextActive: {
-        color: '#1A1A1A',
-        fontWeight: '600',
-    },
-    fieldContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-    },
-    label: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginBottom: 4,
-        textTransform: 'uppercase',
-    },
-    value: {
-        fontSize: 16,
-        color: '#1A1A1A',
-    },
-    pickerContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        marginBottom: 12,
-        overflow: 'hidden',
-    },
-    pickerItem: {
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    pickerItemActive: {
-        backgroundColor: '#FFF8E6',
-    },
-    pickerText: {
-        fontSize: 16,
-        color: '#1A1A1A',
-    },
-    categoryValueContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    categoryIconWrapper: {
-        marginRight: 8,
-    },
-    pickerItemContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    pickerIconWrapper: {
-        marginRight: 10,
-    },
-    amountInput: {
-        fontSize: 24,
-        fontWeight: '600',
-        color: '#1A1A1A',
-        padding: 0,
-    },
-    textInput: {
-        fontSize: 16,
-        color: '#1A1A1A',
-        padding: 0,
-    },
-    descriptionInput: {
-        minHeight: 80,
-        paddingTop: 0,
-    },
-    footer: {
-        padding: 16,
-        paddingBottom: 32,
-    },
-    saveButton: {
-        backgroundColor: '#FFB800',
-        borderRadius: 12,
-        paddingVertical: 16,
-        alignItems: 'center',
-    },
-    saveButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1A1A1A',
-    },
-});

@@ -6,6 +6,7 @@ import {
   ScrollView,
   Alert,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -31,6 +32,7 @@ import {
   deleteCategory,
   Category,
 } from '@/src/db/storage';
+import { useTheme } from '@/src/components/ThemeProvider';
 
 // Map icon names to Lucide components
 const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -50,6 +52,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; color?: strin
 
 export default function IncomeCategoriesScreen() {
   const router = useRouter();
+  const { isDark } = useTheme();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -97,29 +100,29 @@ export default function IncomeCategoriesScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-cheddar-light">
-        <View className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200">
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
+        <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
             <Text className="text-cheddar-yellow text-lg font-medium">Back</Text>
           </TouchableOpacity>
-          <Text className="text-xl font-semibold text-cheddar-dark">
+          <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
             Income Categories
           </Text>
         </View>
         <View className="flex-1 items-center justify-center">
-          <Text className="text-gray-500">Loading...</Text>
+          <ActivityIndicator size="large" color="#FFB800" />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cheddar-light">
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+    <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
+      <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Text className="text-cheddar-yellow text-lg font-medium">Back</Text>
         </TouchableOpacity>
-        <Text className="text-xl font-semibold text-cheddar-dark">
+        <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
           Income Categories
         </Text>
         <TouchableOpacity
@@ -133,27 +136,24 @@ export default function IncomeCategoriesScreen() {
       <ScrollView className="flex-1 px-4 pt-4">
         {categories.length === 0 ? (
           <View className="flex-1 items-center justify-center py-12">
-            <Text className="text-gray-500 text-center">
+            <Text className={`text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               No income categories yet.{'\n'}Tap the + button to add one.
             </Text>
           </View>
         ) : (
-          <View className="bg-white rounded-xl overflow-hidden">
+          <View className={`rounded-xl overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
             {categories.map((category, index) => (
               <Pressable
                 key={category.id}
                 className={`flex-row items-center justify-between p-4 ${
-                  index > 0 ? 'border-t border-gray-100' : ''
+                  index > 0 ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-100') : ''
                 }`}
-                style={({ pressed }) => [
-                  pressed && { backgroundColor: '#F3F4F6' },
-                ]}
               >
                 <View className="flex-row items-center flex-1">
                   <View className="mr-3">
                     {renderIcon(category.icon)}
                   </View>
-                  <Text className="text-lg text-cheddar-dark">
+                  <Text className={`text-lg ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                     {category.name}
                   </Text>
                 </View>

@@ -60,6 +60,10 @@ export interface TablesSchema {
   };
 }
 
+export interface ValuesSchema {
+  theme: string;
+}
+
 let store: Store | null = null;
 let persister: ExpoSqlitePersister | IndexedDbPersister | null = null;
 
@@ -99,6 +103,12 @@ export async function initDatabase(): Promise<Store> {
 
   // Load existing data from database
   await persister.load();
+
+  // Initialize theme value if not set
+  if (store.getValue('theme') === undefined) {
+    store.setValue('theme', 'system');
+    await persister.save();
+  }
 
   // Check if we need to seed default data
   const categories = store.getTables()?.categories;

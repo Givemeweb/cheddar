@@ -3,19 +3,20 @@ import { GroupedTransactions, TransactionItem } from "./TransactionItem";
 
 interface TransactionGroupProps {
   group: GroupedTransactions;
+  isDark?: boolean;
 }
 
 function formatCurrencyShort(amount: number): string {
   return `€${amount.toFixed(2)}`;
 }
 
-export function TransactionGroup({ group }: TransactionGroupProps) {
+export function TransactionGroup({ group, isDark = false }: TransactionGroupProps) {
   return (
     <View className="mb-2">
       {/* Group Header */}
-      <View className="flex-row items-center px-4 py-3 bg-gray-50">
+      <View className={`flex-row items-center px-4 py-3 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
         <View className="flex-1">
-          <Text className="font-semibold text-cheddar-dark">
+          <Text className={`font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
             {group.dateLabel}
           </Text>
         </View>
@@ -31,7 +32,7 @@ export function TransactionGroup({ group }: TransactionGroupProps) {
 
       {/* Transaction Items */}
       {group.transactions.map((transaction) => (
-        <TransactionItem key={transaction.id} transaction={transaction} />
+        <TransactionItem key={transaction.id} transaction={transaction} isDark={isDark} />
       ))}
     </View>
   );
