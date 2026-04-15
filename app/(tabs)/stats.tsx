@@ -99,20 +99,22 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
+      className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
       <View className="px-4 py-4">
         {/* Tab Buttons */}
-        <View className={`flex-row ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl p-1 shadow-sm`}>
+        <View
+          className={`flex-row ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
+        >
           <Pressable
             onPress={() => setActiveTab("income")}
             className={`flex-1 py-3 rounded-lg ${activeTab === "income" ? "bg-cheddar-yellow" : ""}`}
           >
             <Text
-              className={`text-center font-semibold ${activeTab === "income" ? "text-cheddar-dark" : `${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}`}
+              className={`text-center font-semibold ${activeTab === "income" ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
             >
-              {t('stats.income')}
+              {t("stats.income")}
             </Text>
           </Pressable>
           <Pressable
@@ -120,9 +122,9 @@ export default function StatsScreen() {
             className={`flex-1 py-3 rounded-lg ${activeTab === "expense" ? "bg-cheddar-yellow" : ""}`}
           >
             <Text
-              className={`text-center font-semibold ${activeTab === "expense" ? "text-cheddar-dark" : `${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}`}
+              className={`text-center font-semibold ${activeTab === "expense" ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
             >
-              {t('stats.expenses')}
+              {t("stats.expenses")}
             </Text>
           </Pressable>
         </View>
@@ -137,7 +139,9 @@ export default function StatsScreen() {
           {categoryStats.length > 0 ? (
             <>
               {/* Pie Chart */}
-              <View className={`rounded-xl p-4 shadow-sm mb-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+              <View
+                className={`rounded-xl p-4 shadow-sm mb-4 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+              >
                 <View
                   className="h-64"
                   onLayout={(event) => {
@@ -160,15 +164,21 @@ export default function StatsScreen() {
                     />
                   )}
                 </View>
-                <Text className={`text-center text-2xl font-bold mt-2 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                <Text
+                  className={`text-center text-2xl font-bold mt-2 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                >
                   €{total.toFixed(2)}
                 </Text>
               </View>
 
               {/* Legend */}
-              <View className={`rounded-xl p-4 shadow-sm ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                <Text className={`font-semibold mb-3 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                  {t('stats.categories')}
+              <View
+                className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+              >
+                <Text
+                  className={`font-semibold mb-3 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                >
+                  {t("stats.categories")}
                 </Text>
                 {categoryStats.map((stat) => (
                   <View key={stat.id} className="flex-row items-center py-2">
@@ -177,14 +187,22 @@ export default function StatsScreen() {
                       style={{ backgroundColor: stat.color }}
                     />
                     <View className="mr-2">
-                      {renderIcon(stat.icon, 18, isDark ? '#F9FAFB' : '#1A1A1A')}
+                      {renderIcon(
+                        stat.icon,
+                        18,
+                        isDark ? "#F9FAFB" : "#212226",
+                      )}
                     </View>
                     <View className="flex-1">
-                      <Text className={`font-medium ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                      <Text
+                        className={`font-medium ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
                         {stat.name}
                       </Text>
                     </View>
-                    <Text className={`font-medium ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
+                    <Text
+                      className={`font-medium ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                    >
                       €{stat.total.toFixed(2)}
                     </Text>
                   </View>
@@ -193,8 +211,15 @@ export default function StatsScreen() {
             </>
           ) : (
             <View className="flex-1 items-center justify-center py-20">
-              <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
-                {t('stats.noTransactions', { tab: activeTab === 'income' ? t('stats.income').toLowerCase() : t('stats.expenses').toLowerCase() })}
+              <Text
+                className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+              >
+                {t("stats.noTransactions", {
+                  tab:
+                    activeTab === "income"
+                      ? t("stats.income").toLowerCase()
+                      : t("stats.expenses").toLowerCase(),
+                })}
               </Text>
             </View>
           )}

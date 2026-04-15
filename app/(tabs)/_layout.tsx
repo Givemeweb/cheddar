@@ -100,7 +100,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: "#FFB800",
         tabBarInactiveTintColor: isDark ? "#9CA3AF" : "#6B7280",
         tabBarStyle: {
-          backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+          backgroundColor: isDark ? "#26282D" : "#FFFFFF",
           borderTopWidth: 1,
           borderTopColor: isDark ? "#374151" : "#E5E7EB",
           height: 80,
@@ -112,7 +112,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('tabs.transactions'),
+          title: t("tabs.transactions"),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={Receipt} focused={focused} isDark={isDark} />
           ),
@@ -121,7 +121,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: t('tabs.stats'),
+          title: t("tabs.stats"),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={BarChart3} focused={focused} isDark={isDark} />
           ),
@@ -130,7 +130,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="accounts"
         options={{
-          title: t('tabs.accounts'),
+          title: t("tabs.accounts"),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={Wallet} focused={focused} isDark={isDark} />
           ),
@@ -139,7 +139,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="more"
         options={{
-          title: t('tabs.more'),
+          title: t("tabs.more"),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={Settings} focused={focused} isDark={isDark} />
           ),

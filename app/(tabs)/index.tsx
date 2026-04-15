@@ -209,7 +209,7 @@ export default function TransactionsScreen() {
     >
       {/* Month Navigation Bar */}
       <View
-        className={`flex-row items-center justify-between px-4 py-3 ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-b`}
+        className={`flex-row items-center justify-between px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
       >
         <View className="flex-row items-center">
           <Pressable
@@ -244,7 +244,7 @@ export default function TransactionsScreen() {
 
       {/* Totals Bar */}
       <View
-        className={`flex-row px-4 py-3 ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-b`}
+        className={`flex-row px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
       >
         <View className="flex-1 items-center">
           <Text className="text-cheddar-income font-semibold text-lg">

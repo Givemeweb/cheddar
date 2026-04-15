@@ -91,13 +91,13 @@ export default function DateTimePicker({
         };
 
         const webInputStyle: React.CSSProperties = {
-            fontSize: 16,
-            padding: 12,
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: 12,
-            backgroundColor: '#FFFFFF',
-            color: '#1A1A1A',
+          fontSize: 16,
+          padding: 12,
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          borderRadius: 12,
+          backgroundColor: "#FFFFFF",
+          color: "#212226",
         };
 
         const webDateInputStyle: React.CSSProperties = {
@@ -225,46 +225,46 @@ export default function DateTimePicker({
 }
 
 const styles = StyleSheet.create({
-    webContainer: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    trigger: {
-        padding: 16,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-    },
-    triggerText: {
-        fontSize: 16,
-        color: '#1A1A1A',
-    },
-    modalOverlay: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        paddingBottom: 34,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    cancelButton: {
-        fontSize: 16,
-        color: '#6B7280',
-    },
-    doneButton: {
-        fontSize: 16,
-        color: '#FFB800',
-        fontWeight: '600',
-    },
+  webContainer: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  trigger: {
+    padding: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+  },
+  triggerText: {
+    fontSize: 16,
+    color: "#212226",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: "#6B7280",
+  },
+  doneButton: {
+    fontSize: 16,
+    color: "#FFB800",
+    fontWeight: "600",
+  },
 });

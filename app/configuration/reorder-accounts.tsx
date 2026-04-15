@@ -59,29 +59,41 @@ export default function ReorderAccountsScreen() {
   };
 
   const renderItem = ({ item, index }: { item: Account; index: number }) => (
-    <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
+    <View
+      className={`flex-row items-center px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-800" : "bg-white border-gray-100"}`}
+    >
       <GripVertical size={20} color="#9CA3AF" />
-      <View className={`w-10 h-10 rounded-full items-center justify-center mx-3 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
+      <View
+        className={`w-10 h-10 rounded-full items-center justify-center mx-3 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
+      >
         <Text className="text-xl">💰</Text>
       </View>
       <View className="flex-1">
-        <Text className={`text-lg ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{item.name}</Text>
+        <Text
+          className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+        >
+          {item.name}
+        </Text>
         {item.description && (
-          <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.description}</Text>
+          <Text
+            className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
+          >
+            {item.description}
+          </Text>
         )}
       </View>
       <View className="flex-row items-center gap-2">
         <TouchableOpacity
           onPress={() => moveUp(index)}
           disabled={index === 0}
-          className={`p-2 rounded ${index === 0 ? 'opacity-30' : ''}`}
+          className={`p-2 rounded ${index === 0 ? "opacity-30" : ""}`}
         >
           <Text className="text-cheddar-yellow text-lg">↑</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => moveDown(index)}
           disabled={index === accounts.length - 1}
-          className={`p-2 rounded ${index === accounts.length - 1 ? 'opacity-30' : ''}`}
+          className={`p-2 rounded ${index === accounts.length - 1 ? "opacity-30" : ""}`}
         >
           <Text className="text-cheddar-yellow text-lg">↓</Text>
         </TouchableOpacity>
@@ -91,13 +103,21 @@ export default function ReorderAccountsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
-        <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <SafeAreaView
+        className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
+      >
+        <View
+          className={`flex-row items-center px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"}`}
+        >
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-cheddar-yellow text-lg font-medium">{t('common.cancel')}</Text>
+            <Text className="text-cheddar-yellow text-lg font-medium">
+              {t("common.cancel")}
+            </Text>
           </TouchableOpacity>
-          <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-            {t('accounts.reorderAccounts')}
+          <Text
+            className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          >
+            {t("accounts.reorderAccounts")}
           </Text>
         </View>
         <View className="flex-1 items-center justify-center">
@@ -108,24 +128,29 @@ export default function ReorderAccountsScreen() {
   }
 
   return (
-    <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
-      <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+    <SafeAreaView
+      className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
+    >
+      <View
+        className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"}`}
+      >
         <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-cheddar-yellow text-lg font-medium">{t('common.cancel')}</Text>
+          <Text className="text-cheddar-yellow text-lg font-medium">
+            {t("common.cancel")}
+          </Text>
         </TouchableOpacity>
-        <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-          {t('accounts.reorderAccounts')}
-        </Text>
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={!hasChanges}
+        <Text
+          className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
         >
+          {t("accounts.reorderAccounts")}
+        </Text>
+        <TouchableOpacity onPress={handleSave} disabled={!hasChanges}>
           <Text
             className={`text-lg font-medium ${
-              hasChanges ? 'text-cheddar-yellow' : 'text-gray-300'
+              hasChanges ? "text-cheddar-yellow" : "text-gray-300"
             }`}
           >
-            {t('common.save')}
+            {t("common.save")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -137,8 +162,10 @@ export default function ReorderAccountsScreen() {
         contentContainerStyle={{ paddingVertical: 16 }}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-12">
-            <Text className={`text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {t('accounts.noAccountsReorder')}
+            <Text
+              className={`text-center ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            >
+              {t("accounts.noAccountsReorder")}
             </Text>
           </View>
         }

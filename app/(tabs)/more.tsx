@@ -25,7 +25,7 @@ export default function MoreScreen() {
   const { isDark } = useTheme();
   const { t } = useTranslation();
 
-  const iconColor = isDark ? "#F9FAFB" : "#1A1A1A";
+  const iconColor = isDark ? "#F9FAFB" : "#212226";
 
   const menuItems: MenuItem[] = [
     {
@@ -62,7 +62,7 @@ export default function MoreScreen() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
+      className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
       <View className="flex-1 px-4 pt-4">
@@ -71,16 +71,22 @@ export default function MoreScreen() {
             key={item.route}
             className={`flex-row items-center p-4 ${
               index === 0 ? "rounded-t-xl" : ""
-            } ${
-              index === menuItems.length - 1 ? "rounded-b-xl" : ""
-            } ${
-              index > 0 && index < menuItems.length ? (isDark ? "border-t border-gray-700" : "border-t border-gray-100") : ""
-            } ${isDark ? 'bg-gray-800' : 'bg-white'}`}
+            } ${index === menuItems.length - 1 ? "rounded-b-xl" : ""} ${
+              index > 0 && index < menuItems.length
+                ? isDark
+                  ? "border-t border-gray-700"
+                  : "border-t border-gray-100"
+                : ""
+            } ${isDark ? "bg-[#26282D]" : "bg-white"}`}
             activeOpacity={0.7}
             onPress={() => router.push(item.route as never)}
           >
             <View className="mr-4">{item.icon}</View>
-            <Text className={`text-lg ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{item.label}</Text>
+            <Text
+              className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {item.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>

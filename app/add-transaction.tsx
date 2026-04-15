@@ -48,12 +48,16 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; color?: strin
     'laptop': Laptop,
 };
 
-const renderIcon = (iconName: string, size: number = 16, color: string = '#1A1A1A') => {
-    const IconComponent = iconMap[iconName];
-    if (IconComponent) {
-        return <IconComponent size={size} color={color} />;
-    }
-    return <StopCircle size={size} color={color} />;
+const renderIcon = (
+  iconName: string,
+  size: number = 16,
+  color: string = "#212226",
+) => {
+  const IconComponent = iconMap[iconName];
+  if (IconComponent) {
+    return <IconComponent size={size} color={color} />;
+  }
+  return <StopCircle size={size} color={color} />;
 };
 
 export default function AddTransactionScreen() {
@@ -166,248 +170,339 @@ export default function AddTransactionScreen() {
     }
 
     return (
-        <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
-            <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-                <Pressable onPress={() => router.back()} className="w-8 items-center justify-center">
-                    <Text className={`text-2xl ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>×</Text>
-                </Pressable>
-                <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                    {t('transactions.newTransaction')}
-                </Text>
-                <View className="w-8" />
-            </View>
+      <SafeAreaView
+        className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
+      >
+        <View
+          className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"}`}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            className="w-8 items-center justify-center"
+          >
+            <Text
+              className={`text-2xl ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              ×
+            </Text>
+          </Pressable>
+          <Text
+            className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          >
+            {t("transactions.newTransaction")}
+          </Text>
+          <View className="w-8" />
+        </View>
 
-            <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
-                {/* Type Selector */}
-                <View className={`flex-row mb-5 rounded-xl overflow-hidden ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                    <Pressable
-                        className={`flex-1 py-3 items-center ${type === 'income' ? 'bg-cheddar-yellow' : ''}`}
-                        onPress={() => { setType('income'); setSelectedCategoryId(null); }}
-                    >
-                        <Text className={`font-medium ${type === 'income' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
-                            {t('transactions.type.income')}
-                        </Text>
-                    </Pressable>
-                    <Pressable
-                        className={`flex-1 py-3 items-center ${type === 'expense' ? 'bg-cheddar-yellow' : ''}`}
-                        onPress={() => { setType('expense'); setSelectedCategoryId(null); }}
-                    >
-                        <Text className={`font-medium ${type === 'expense' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
-                            {t('transactions.type.expense')}
-                        </Text>
-                    </Pressable>
-                    <Pressable
-                        className={`flex-1 py-3 items-center ${type === 'transfer' ? 'bg-cheddar-yellow' : ''}`}
-                        onPress={() => setType('transfer')}
-                    >
-                        <Text className={`font-medium ${type === 'transfer' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
-                            {t('transactions.type.transfer')}
-                        </Text>
-                    </Pressable>
-                </View>
+        <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+          {/* Type Selector */}
+          <View
+            className={`flex-row mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-700" : "bg-gray-200"}`}
+          >
+            <Pressable
+              className={`flex-1 py-3 items-center ${type === "income" ? "bg-cheddar-yellow" : ""}`}
+              onPress={() => {
+                setType("income");
+                setSelectedCategoryId(null);
+              }}
+            >
+              <Text
+                className={`font-medium ${type === "income" ? "text-cheddar-dark" : isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+              >
+                {t("transactions.type.income")}
+              </Text>
+            </Pressable>
+            <Pressable
+              className={`flex-1 py-3 items-center ${type === "expense" ? "bg-cheddar-yellow" : ""}`}
+              onPress={() => {
+                setType("expense");
+                setSelectedCategoryId(null);
+              }}
+            >
+              <Text
+                className={`font-medium ${type === "expense" ? "text-cheddar-dark" : isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+              >
+                {t("transactions.type.expense")}
+              </Text>
+            </Pressable>
+            <Pressable
+              className={`flex-1 py-3 items-center ${type === "transfer" ? "bg-cheddar-yellow" : ""}`}
+              onPress={() => setType("transfer")}
+            >
+              <Text
+                className={`font-medium ${type === "transfer" ? "text-cheddar-dark" : isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+              >
+                {t("transactions.type.transfer")}
+              </Text>
+            </Pressable>
+          </View>
 
-                {/* Date Picker */}
-                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {t('transactions.date')}
-                    </Text>
-                    <DateTimePicker
-                        value={date}
-                        mode="datetime"
-                        onChange={(selectedDate) => setDate(selectedDate)}
-                    />
-                </View>
+          {/* Date Picker */}
+          <View
+            className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            >
+              {t("transactions.date")}
+            </Text>
+            <DateTimePicker
+              value={date}
+              mode="datetime"
+              onChange={(selectedDate) => setDate(selectedDate)}
+            />
+          </View>
 
-                {/* Account Selector for Income/Expense */}
-                {type !== 'transfer' && (
-                    <>
-                        <Pressable
-                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
-                            onPress={() => setShowAccountPicker(true)}
-                        >
-                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {t('transactions.account')}
-                            </Text>
-                            <Text className={`text-base ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                                {getAccountName(selectedAccountId)}
-                            </Text>
-                        </Pressable>
-                        {showAccountPicker && (
-                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                                {accounts.map(acc => (
-                                    <Pressable
-                                        key={acc.id}
-                                        className={`p-4 border-b ${selectedAccountId === acc.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
-                                        onPress={() => {
-                                            setSelectedAccountId(acc.id);
-                                            setShowAccountPicker(false);
-                                        }}
-                                    >
-                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{acc.name}</Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        )}
-
-                        <Pressable
-                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
-                            onPress={() => setShowCategoryPicker(true)}
-                        >
-                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {t('transactions.category')}
-                            </Text>
-                            <View className="flex-row items-center">
-                                {getCategoryIcon(selectedCategoryId) && (
-                                    <View className="mr-2">
-                                        {renderIcon(getCategoryIcon(selectedCategoryId)!, 16, type === 'income' ? '#10B981' : '#EF4444')}
-                                    </View>
-                                )}
-                                <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                                    {getCategoryLabel(selectedCategoryId)}
-                                </Text>
-                            </View>
-                        </Pressable>
-                        {showCategoryPicker && (
-                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                                {filteredCategories.map(cat => (
-                                    <Pressable
-                                        key={cat.id}
-                                        className={`p-4 border-b flex-row items-center ${selectedCategoryId === cat.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
-                                        onPress={() => {
-                                            setSelectedCategoryId(cat.id);
-                                            setShowCategoryPicker(false);
-                                        }}
-                                    >
-                                        <View className="mr-3">
-                                            {renderIcon(cat.icon, 18, type === 'income' ? '#10B981' : '#EF4444')}
-                                        </View>
-                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{cat.name}</Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        )}
-                    </>
-                )}
-
-                {/* Transfer Account Selectors */}
-                {type === 'transfer' && (
-                    <>
-                        <Pressable
-                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
-                            onPress={() => setShowFromPicker(true)}
-                        >
-                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {t('transactions.from')}
-                            </Text>
-                            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                                {getAccountName(fromAccountId)}
-                            </Text>
-                        </Pressable>
-                        {showFromPicker && (
-                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                                {accounts.map(acc => (
-                                    <Pressable
-                                        key={acc.id}
-                                        className={`p-4 border-b ${fromAccountId === acc.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
-                                        onPress={() => {
-                                            setFromAccountId(acc.id);
-                                            setShowFromPicker(false);
-                                        }}
-                                    >
-                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{acc.name}</Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        )}
-
-                        <Pressable
-                            className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}
-                            onPress={() => setShowToPicker(true)}
-                        >
-                            <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {t('transactions.to')}
-                            </Text>
-                            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                                {getAccountName(toAccountId)}
-                            </Text>
-                        </Pressable>
-                        {showToPicker && (
-                            <View className={`rounded-xl mb-3 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                                {accounts.map(acc => (
-                                    <Pressable
-                                        key={acc.id}
-                                        className={`p-4 border-b ${toAccountId === acc.id ? (isDark ? 'bg-gray-700' : 'bg-yellow-50') : ''} ${isDark ? 'border-gray-700' : 'border-gray-100'}`}
-                                        onPress={() => {
-                                            setToAccountId(acc.id);
-                                            setShowToPicker(false);
-                                        }}
-                                    >
-                                        <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{acc.name}</Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        )}
-                    </>
-                )}
-
-                {/* Amount */}
-                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {t('transactions.amount')}
-                    </Text>
-                    <TextInput
-                        className={`text-2xl font-semibold py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
-                        value={amount}
-                        onChangeText={setAmount}
-                        keyboardType="decimal-pad"
-                        placeholder="0.00"
-                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                    />
-                </View>
-
-                {/* Note */}
-                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {t('transactions.note')}
-                    </Text>
-                    <TextInput
-                        className={`text-base py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
-                        value={note}
-                        onChangeText={setNote}
-                        placeholder={t('transactions.addNote')}
-                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                    />
-                </View>
-
-                {/* Description */}
-                <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                    <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {t('transactions.description')}
-                    </Text>
-                    <TextInput
-                        className={`text-base py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
-                        style={{ minHeight: 80 }}
-                        value={description}
-                        onChangeText={setDescription}
-                        placeholder={t('transactions.addDescription')}
-                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                        multiline
-                        textAlignVertical="top"
-                    />
-                </View>
-            </ScrollView>
-
-            {/* Save Button */}
-            <View className="p-4 pb-8">
-                <Pressable
-                    className="bg-cheddar-yellow rounded-xl py-4 items-center"
-                    onPress={handleSave}
+          {/* Account Selector for Income/Expense */}
+          {type !== "transfer" && (
+            <>
+              <Pressable
+                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                onPress={() => setShowAccountPicker(true)}
+              >
+                <Text
+                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
                 >
-                    <Text className="text-cheddar-dark text-base font-semibold">
-                        {t('transactions.saveTransaction')}
-                    </Text>
-                </Pressable>
-            </View>
-        </SafeAreaView>
+                  {t("transactions.account")}
+                </Text>
+                <Text
+                  className={`text-base ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                >
+                  {getAccountName(selectedAccountId)}
+                </Text>
+              </Pressable>
+              {showAccountPicker && (
+                <View
+                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                >
+                  {accounts.map((acc) => (
+                    <Pressable
+                      key={acc.id}
+                      className={`p-4 border-b ${selectedAccountId === acc.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                      onPress={() => {
+                        setSelectedAccountId(acc.id);
+                        setShowAccountPicker(false);
+                      }}
+                    >
+                      <Text
+                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {acc.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              <Pressable
+                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                onPress={() => setShowCategoryPicker(true)}
+              >
+                <Text
+                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  {t("transactions.category")}
+                </Text>
+                <View className="flex-row items-center">
+                  {getCategoryIcon(selectedCategoryId) && (
+                    <View className="mr-2">
+                      {renderIcon(
+                        getCategoryIcon(selectedCategoryId)!,
+                        16,
+                        type === "income" ? "#10B981" : "#EF4444",
+                      )}
+                    </View>
+                  )}
+                  <Text
+                    className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                  >
+                    {getCategoryLabel(selectedCategoryId)}
+                  </Text>
+                </View>
+              </Pressable>
+              {showCategoryPicker && (
+                <View
+                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                >
+                  {filteredCategories.map((cat) => (
+                    <Pressable
+                      key={cat.id}
+                      className={`p-4 border-b flex-row items-center ${selectedCategoryId === cat.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                      onPress={() => {
+                        setSelectedCategoryId(cat.id);
+                        setShowCategoryPicker(false);
+                      }}
+                    >
+                      <View className="mr-3">
+                        {renderIcon(
+                          cat.icon,
+                          18,
+                          type === "income" ? "#10B981" : "#EF4444",
+                        )}
+                      </View>
+                      <Text
+                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {cat.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+
+          {/* Transfer Account Selectors */}
+          {type === "transfer" && (
+            <>
+              <Pressable
+                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                onPress={() => setShowFromPicker(true)}
+              >
+                <Text
+                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  {t("transactions.from")}
+                </Text>
+                <Text
+                  className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                >
+                  {getAccountName(fromAccountId)}
+                </Text>
+              </Pressable>
+              {showFromPicker && (
+                <View
+                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                >
+                  {accounts.map((acc) => (
+                    <Pressable
+                      key={acc.id}
+                      className={`p-4 border-b ${fromAccountId === acc.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                      onPress={() => {
+                        setFromAccountId(acc.id);
+                        setShowFromPicker(false);
+                      }}
+                    >
+                      <Text
+                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {acc.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              <Pressable
+                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                onPress={() => setShowToPicker(true)}
+              >
+                <Text
+                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  {t("transactions.to")}
+                </Text>
+                <Text
+                  className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                >
+                  {getAccountName(toAccountId)}
+                </Text>
+              </Pressable>
+              {showToPicker && (
+                <View
+                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                >
+                  {accounts.map((acc) => (
+                    <Pressable
+                      key={acc.id}
+                      className={`p-4 border-b ${toAccountId === acc.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                      onPress={() => {
+                        setToAccountId(acc.id);
+                        setShowToPicker(false);
+                      }}
+                    >
+                      <Text
+                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {acc.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+
+          {/* Amount */}
+          <View
+            className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            >
+              {t("transactions.amount")}
+            </Text>
+            <TextInput
+              className={`text-2xl font-semibold py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              placeholder="0.00"
+              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+            />
+          </View>
+
+          {/* Note */}
+          <View
+            className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            >
+              {t("transactions.note")}
+            </Text>
+            <TextInput
+              className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              value={note}
+              onChangeText={setNote}
+              placeholder={t("transactions.addNote")}
+              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+            />
+          </View>
+
+          {/* Description */}
+          <View
+            className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            >
+              {t("transactions.description")}
+            </Text>
+            <TextInput
+              className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              style={{ minHeight: 80 }}
+              value={description}
+              onChangeText={setDescription}
+              placeholder={t("transactions.addDescription")}
+              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+              multiline
+              textAlignVertical="top"
+            />
+          </View>
+        </ScrollView>
+
+        {/* Save Button */}
+        <View className="p-4 pb-8">
+          <Pressable
+            className="bg-cheddar-yellow rounded-xl py-4 items-center"
+            onPress={handleSave}
+          >
+            <Text className="text-cheddar-dark text-base font-semibold">
+              {t("transactions.saveTransaction")}
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
 }

@@ -41,11 +41,11 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 32,
-    color: "#1A1A1A",
+    color: "#212226",
     fontWeight: "300",
     marginTop: -2,
   },
   iconDark: {
-    color: "#1A1A1A",
+    color: "#212226",
   },
 });

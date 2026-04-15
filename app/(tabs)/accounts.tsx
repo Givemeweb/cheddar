@@ -70,7 +70,7 @@ export default function AccountsScreen() {
 
       {/* Kebab Menu Dropdown */}
       {menuVisible && (
-        <View className={`absolute right-4 top-20 rounded-lg shadow-lg z-10 py-2 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+        <View className={`absolute right-4 top-20 rounded-lg shadow-lg z-10 py-2 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
           <Pressable
             onPress={() => {
               setMenuVisible(false);
@@ -121,7 +121,7 @@ export default function AccountsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push(`/configuration/edit-account?id=${item.id}`)}
-            className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? 'bg-gray-800' : 'bg-white'}`}
+            className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
           >
             <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
               <Text className="text-2xl">💰</Text>

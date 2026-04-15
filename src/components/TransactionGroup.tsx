@@ -14,7 +14,7 @@ export function TransactionGroup({ group, isDark = false }: TransactionGroupProp
   return (
     <View className="mb-2">
       {/* Group Header */}
-      <View className={`flex-row items-center px-4 py-3 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+      <View className={`flex-row items-center px-4 py-3 ${isDark ? 'bg-[#26282D]' : 'bg-gray-50'}`}>
         <View className="flex-1">
           <Text className={`font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
             {group.dateLabel}

@@ -103,7 +103,7 @@ export default function IncomeCategoriesScreen() {
   if (loading) {
     return (
       <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
-        <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-[#26282D] border-gray-700' : 'bg-white border-gray-200'}`}>
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
             <Text className="text-cheddar-yellow text-lg font-medium">{t('common.back')}</Text>
           </TouchableOpacity>
@@ -120,7 +120,7 @@ export default function IncomeCategoriesScreen() {
 
   return (
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
-      <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-[#26282D] border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Text className="text-cheddar-yellow text-lg font-medium">{t('common.back')}</Text>
         </TouchableOpacity>
@@ -143,7 +143,7 @@ export default function IncomeCategoriesScreen() {
             </Text>
           </View>
         ) : (
-          <View className={`rounded-xl overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+          <View className={`rounded-xl overflow-hidden ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
             {categories.map((category, index) => (
               <Pressable
                 key={category.id}

@@ -32,7 +32,11 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; color?: strin
   'laptop': Laptop,
 };
 
-export const renderIcon = (iconName: string, size: number = 18, color: string = '#1A1A1A') => {
+export const renderIcon = (
+  iconName: string,
+  size: number = 18,
+  color: string = "#212226",
+) => {
   const IconComponent = iconMap[iconName];
   if (IconComponent) {
     return <IconComponent size={size} color={color} />;
@@ -81,7 +85,9 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
   const isExpense = transaction.amount < 0;
 
   return (
-    <Pressable className={`flex-row items-center py-3 px-4 border-b ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
+    <Pressable
+      className={`flex-row items-center py-3 px-4 border-b ${isDark ? "bg-[#26282D] border-gray-800" : "bg-white border-gray-100"}`}
+    >
       {/* Left side - Category and Note/Account */}
       <View className="flex-1 flex-col">
         <View className="flex-row items-center">
@@ -92,18 +98,27 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
               renderIcon(
                 transaction.category.icon,
                 18,
-                transaction.category.type === 'income' ? '#10B981' : '#EF4444'
+                transaction.category.type === "income" ? "#10B981" : "#EF4444",
               )
             ) : null}
           </View>
-          <Text className={`text-base font-medium ${isTransfer ? 'text-gray-500' : (isDark ? 'text-cheddar-light' : 'text-cheddar-dark')}`}>
-            {isTransfer ? t('transactions.type.transfer') : transaction.category?.name}
+          <Text
+            className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          >
+            {isTransfer
+              ? t("transactions.type.transfer")
+              : transaction.category?.name}
           </Text>
         </View>
         <View className="flex-row items-center mt-1">
-          <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
-            {transaction.note || t('transactions.noNote')} · {transaction.account.name}
-            {isTransfer && transaction.toAccount && ` → ${transaction.toAccount.name}`}
+          <Text
+            className={`text-sm ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+          >
+            {transaction.note || t("transactions.noNote")} ·{" "}
+            {transaction.account.name}
+            {isTransfer &&
+              transaction.toAccount &&
+              ` → ${transaction.toAccount.name}`}
           </Text>
         </View>
       </View>
@@ -113,10 +128,14 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
         {isTransfer ? (
           <>
             <View className="w-20 items-end">
-              <Text className="text-gray-400">{formatCurrency(Math.abs(transaction.amount))}</Text>
+              <Text className="text-gray-400">
+                {formatCurrency(Math.abs(transaction.amount))}
+              </Text>
             </View>
             <View className="w-20 items-end">
-              <Text className="text-gray-400">{formatCurrency(Math.abs(transaction.amount))}</Text>
+              <Text className="text-gray-400">
+                {formatCurrency(Math.abs(transaction.amount))}
+              </Text>
             </View>
           </>
         ) : (
@@ -128,7 +147,11 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
                   {formatCurrency(transaction.amount)}
                 </Text>
               ) : (
-                <Text className={`${isDark ? 'text-gray-500' : 'text-cheddar-gray'}`}>€0.00</Text>
+                <Text
+                  className={`${isDark ? "text-gray-500" : "text-cheddar-gray"}`}
+                >
+                  €0.00
+                </Text>
               )}
             </View>
             {/* Expense column */}
@@ -138,7 +161,11 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
                   {formatCurrency(transaction.amount)}
                 </Text>
               ) : (
-                <Text className={`${isDark ? 'text-gray-500' : 'text-cheddar-gray'}`}>€0.00</Text>
+                <Text
+                  className={`${isDark ? "text-gray-500" : "text-cheddar-gray"}`}
+                >
+                  €0.00
+                </Text>
               )}
             </View>
           </>

@@ -12,7 +12,7 @@ module.exports = {
       colors: {
         cheddar: {
           yellow: "#FFB800",
-          dark: "#1A1A1A",
+          dark: "#212226",
           gray: "#6B7280",
           light: "#F9FAFB",
           income: "#10B981",

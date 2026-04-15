@@ -99,7 +99,7 @@ export default function AddIncomeCategoryScreen() {
 
   return (
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
-      <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-[#26282D] border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Text className="text-cheddar-yellow text-lg font-medium">{t('common.cancel')}</Text>
         </TouchableOpacity>
@@ -122,7 +122,7 @@ export default function AddIncomeCategoryScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
-        <View className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+        <View className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
           <Text className={`text-sm font-medium uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             {t('categories.name')}
           </Text>
@@ -135,7 +135,7 @@ export default function AddIncomeCategoryScreen() {
           />
         </View>
 
-        <View className={`rounded-xl p-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+        <View className={`rounded-xl p-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
           <Text className={`text-sm font-medium uppercase mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             {t('categories.icon')}
           </Text>
