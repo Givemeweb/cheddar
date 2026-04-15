@@ -7,17 +7,19 @@ function TabIcon({
   focused,
 }: {
   icon: string;
-  label: string;
+  label?: string;
   focused: boolean;
 }) {
   return (
     <View className="items-center justify-center py-2">
       <Text className="text-2xl">{icon}</Text>
-      <Text
-        className={`text-xs mt-1 ${focused ? "text-cheddar-yellow font-semibold" : "text-cheddar-gray"}`}
-      >
-        {label}
-      </Text>
+      {label && (
+        <Text
+          className={`text-xs mt-1 ${focused ? "text-cheddar-yellow font-semibold" : "text-cheddar-gray"}`}
+        >
+          {label}
+        </Text>
+      )}
     </View>
   );
 }
@@ -40,36 +42,28 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Transactions",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="📋" label="Transactions" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="📋" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: "Stats",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="📊" label="Stats" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="📊" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="accounts"
         options={{
           title: "Accounts",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="👛" label="Accounts" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="👛" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
           title: "More",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="☰" label="More" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon icon="☰" focused={focused} />,
         }}
       />
     </Tabs>
