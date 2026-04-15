@@ -125,6 +125,17 @@ export default function TransactionsScreen() {
     fetchTransactions();
   };
 
+  // Calculate totals
+  const totalIncome = groupedTransactions.reduce(
+    (sum, group) => sum + group.totalIncome,
+    0,
+  );
+  const totalExpense = groupedTransactions.reduce(
+    (sum, group) => sum + group.totalExpense,
+    0,
+  );
+  const total = totalIncome - totalExpense;
+
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-cheddar-light">
@@ -135,6 +146,28 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cheddar-light">
+      <View className="flex-row px-4 py-3 bg-white border-b border-gray-200">
+        <View className="flex-1 items-center">
+          <Text className="text-cheddar-income font-semibold text-lg">
+            +${totalIncome.toFixed(2)}
+          </Text>
+          <Text className="text-gray-500 text-sm">Income</Text>
+        </View>
+        <View className="flex-1 items-center">
+          <Text className="text-cheddar-expense font-semibold text-lg">
+            -${totalExpense.toFixed(2)}
+          </Text>
+          <Text className="text-gray-500 text-sm">Expenses</Text>
+        </View>
+        <View className="flex-1 items-center">
+          <Text
+            className={`font-semibold text-lg ${total >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
+          >
+            {total >= 0 ? "+" : ""}${total.toFixed(2)}
+          </Text>
+          <Text className="text-gray-500 text-sm">Total</Text>
+        </View>
+      </View>
       <FlatList
         data={groupedTransactions}
         keyExtractor={(item) => item.dateLabel}
