@@ -31,7 +31,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; color?: strin
   'laptop': Laptop,
 };
 
-const renderIcon = (iconName: string, size: number = 18, color: string = '#1A1A1A') => {
+export const renderIcon = (iconName: string, size: number = 18, color: string = '#1A1A1A') => {
   const IconComponent = iconMap[iconName];
   if (IconComponent) {
     return <IconComponent size={size} color={color} />;

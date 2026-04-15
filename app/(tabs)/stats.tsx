@@ -3,6 +3,7 @@ import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PieChart from "../../src/components/PieChart";
 import { getCategories, getTransactions } from "../../src/db/storage";
+import { renderIcon } from "../../src/components/TransactionItem";
 
 type CategoryStat = {
   id: string;
@@ -166,7 +167,9 @@ export default function StatsScreen() {
                       className="w-4 h-4 rounded-full mr-3"
                       style={{ backgroundColor: stat.color }}
                     />
-                    <Text className="text-lg mr-2">{stat.icon}</Text>
+                    <View className="mr-2">
+                      {renderIcon(stat.icon, 18, '#1A1A1A')}
+                    </View>
                     <View className="flex-1">
                       <Text className="text-cheddar-dark font-medium">
                         {stat.name}
