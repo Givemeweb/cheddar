@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PieChart from "../../src/components/PieChart";
-import { getCategories, getTransactions, Category } from "../../src/db/storage";
+import { getCategories, getTransactions } from "../../src/db/storage";
 
 type CategoryStat = {
   id: string;
@@ -30,6 +30,7 @@ export default function StatsScreen() {
   const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [chartSize, setChartSize] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
@@ -127,15 +128,27 @@ export default function StatsScreen() {
             <>
               {/* Pie Chart */}
               <View className="bg-white rounded-xl p-4 shadow-sm mb-4">
-                <View className="h-64">
-                  <PieChart
-                    data={categoryStats.map((stat) => ({
-                      key: stat.id,
-                      value: stat.total,
-                      color: stat.color,
-                    }))}
-                    innerRadius={20}
-                  />
+                <View
+                  className="h-64"
+                  onLayout={(event) => {
+                    const { width, height } = event.nativeEvent.layout;
+                    if (width > 0 && height > 0) {
+                      setChartSize({ width, height });
+                    }
+                  }}
+                >
+                  {chartSize && (
+                    <PieChart
+                      data={categoryStats.map((stat) => ({
+                        key: stat.id,
+                        value: stat.total,
+                        color: stat.color,
+                      }))}
+                      innerRadius={20}
+                      width={chartSize.width}
+                      height={chartSize.height}
+                    />
+                  )}
                 </View>
                 <Text className="text-center text-2xl font-bold text-cheddar-dark mt-2">
                   €{total.toFixed(2)}

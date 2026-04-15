@@ -1,6 +1,6 @@
 'use dom';
 
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 type PieChartProps = {
   data: Array<{
@@ -9,28 +9,28 @@ type PieChartProps = {
     color: string;
   }>;
   innerRadius?: number;
+  width: number;
+  height: number;
   dom?: import('expo/dom').DOMProps;
 };
 
-export default function PieChart({ data, innerRadius = 0 }: PieChartProps) {
+export default function PieChart({ data, innerRadius = 0, width, height }: PieChartProps) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RechartsPieChart>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="key"
-          cx="50%"
-          cy="50%"
-          innerRadius={innerRadius}
-          outerRadius="80%"
-          paddingAngle={2}
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Pie>
-      </RechartsPieChart>
-    </ResponsiveContainer>
+    <RechartsPieChart width={width} height={height}>
+      <Pie
+        data={data}
+        dataKey="value"
+        nameKey="key"
+        cx="50%"
+        cy="50%"
+        innerRadius={innerRadius}
+        outerRadius="80%"
+        paddingAngle={2}
+      >
+        {data.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={entry.color} />
+        ))}
+      </Pie>
+    </RechartsPieChart>
   );
 }
