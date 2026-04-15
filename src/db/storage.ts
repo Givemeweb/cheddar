@@ -298,3 +298,51 @@ export async function reorderAccounts(accountIds: string[]): Promise<void> {
 
   await saveStore();
 }
+
+export async function updateAccount(id: string, updates: { name?: string; description?: string | null }): Promise<Account | undefined> {
+  if (!isDatabaseReady()) return undefined;
+  const store = getStore();
+
+  const currentAccount = await getAccountById(id);
+  if (!currentAccount) return undefined;
+
+  const newName = updates.name ?? currentAccount.name;
+  const newDescription = updates.description ?? currentAccount.description;
+
+  // Update account
+  store.setRow('accounts', id, {
+    name: newName,
+    description: newDescription,
+    balance: currentAccount.balance,
+    order: currentAccount.order,
+  });
+
+  // Update all transactions that reference this account
+  const transactions = store.getTable('transactions');
+  if (transactions) {
+    for (const [txId, txData] of Object.entries(transactions)) {
+      const txAccountId = txData.accountId as string;
+      const txToAccountId = txData.toAccountId as string | null;
+
+      if (txAccountId === id) {
+        // This transaction's account is being renamed
+        store.setCell('transactions', txId, 'accountName', newName);
+      }
+
+      if (txToAccountId === id) {
+        // This is a transfer where toAccount is being renamed
+        store.setCell('transactions', txId, 'toAccountName', newName);
+      }
+    }
+  }
+
+  await saveStore();
+
+  return {
+    id,
+    name: newName,
+    description: newDescription,
+    balance: currentAccount.balance,
+    order: currentAccount.order,
+  };
+}

@@ -109,7 +109,10 @@ export default function AccountsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerClassName="px-4"
         renderItem={({ item }) => (
-          <View className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm">
+          <Pressable
+            onPress={() => router.push(`/configuration/edit-account?id=${item.id}`)}
+            className="bg-white rounded-xl p-4 mb-3 flex-row items-center shadow-sm"
+          >
             <View className="w-12 h-12 bg-cheddar-light rounded-full items-center justify-center mr-4">
               <Text className="text-2xl">💰</Text>
             </View>
@@ -128,7 +131,7 @@ export default function AccountsScreen() {
             >
               €{item.balance.toFixed(2)}
             </Text>
-          </View>
+          </Pressable>
         )}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
