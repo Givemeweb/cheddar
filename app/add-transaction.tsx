@@ -5,14 +5,13 @@ import {
     Pressable,
     TextInput,
     ScrollView,
-    Platform,
     ActivityIndicator,
     StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/src/components/DateTimePicker';
 import {
     TrendingUp,
     Gift,
@@ -60,7 +59,6 @@ export default function AddTransactionScreen() {
     const router = useRouter();
     const [type, setType] = useState<TransactionType>('expense');
     const [date, setDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     const [fromAccountId, setFromAccountId] = useState<string | null>(null);
@@ -100,19 +98,6 @@ export default function AddTransactionScreen() {
     const filteredCategories = categories.filter(c =>
         type === 'income' ? c.type === 'income' : c.type === 'expense'
     );
-
-    const formatDate = (d: Date) => {
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const day = d.getDate().toString().padStart(2, '0');
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        const year = d.getFullYear();
-        const dayName = days[d.getDay()];
-        const hours = d.getHours();
-        const minutes = d.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const hour12 = hours % 12 || 12;
-        return `${day}/${month}/${year} (${dayName}) ${ hour12}:${minutes} ${ampm}`;
-    };
 
     const handleSave = async () => {
         const parsedAmount = parseFloat(amount);
@@ -217,21 +202,14 @@ export default function AddTransactionScreen() {
                 </View>
 
                 {/* Date Picker */}
-                <Pressable style={styles.fieldContainer} onPress={() => setShowDatePicker(true)}>
+                <View style={styles.fieldContainer}>
                     <Text style={styles.label}>Date</Text>
-                    <Text style={styles.value}>{formatDate(date)}</Text>
-                </Pressable>
-                {showDatePicker && (
                     <DateTimePicker
                         value={date}
                         mode="datetime"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(event, selectedDate) => {
-                            setShowDatePicker(Platform.OS === 'ios');
-                            if (selectedDate) setDate(selectedDate);
-                        }}
+                        onChange={(selectedDate) => setDate(selectedDate)}
                     />
-                )}
+                </View>
 
                 {/* Account Selector for Income/Expense */}
                 {type !== 'transfer' && (
