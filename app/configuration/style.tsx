@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Sun, Moon, Smartphone, Check } from "lucide-react-native";
 import { useTheme, ThemeMode } from "../../src/components/ThemeProvider";
+import { useTranslation } from "react-i18next";
 
 type ThemeOption = {
   mode: ThemeMode;
@@ -14,26 +15,27 @@ type ThemeOption = {
 export default function StyleScreen() {
   const router = useRouter();
   const { themeMode, setThemeMode, isDark } = useTheme();
+  const { t } = useTranslation();
 
   const iconColor = isDark ? "#F9FAFB" : "#1A1A1A";
 
   const themeOptions: ThemeOption[] = [
     {
       mode: "system",
-      label: "System",
-      description: "Follow system settings",
+      label: t('config.themeSystem'),
+      description: t('config.themeSystemDesc'),
       icon: <Smartphone size={24} color={iconColor} />,
     },
     {
       mode: "light",
-      label: "Light",
-      description: "Always use light theme",
+      label: t('config.themeLight'),
+      description: t('config.themeLightDesc'),
       icon: <Sun size={24} color="#FFB800" />,
     },
     {
       mode: "dark",
-      label: "Dark",
-      description: "Always use dark theme",
+      label: t('config.themeDark'),
+      description: t('config.themeDarkDesc'),
       icon: <Moon size={24} color="#6B7280" />,
     },
   ];
@@ -42,14 +44,14 @@ export default function StyleScreen() {
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
       <View className={`flex-row items-center px-4 py-3 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-cheddar-yellow text-lg font-medium">Back</Text>
+          <Text className="text-cheddar-yellow text-lg font-medium">{t('common.back')}</Text>
         </TouchableOpacity>
-        <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Style</Text>
+        <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('config.style')}</Text>
       </View>
 
       <View className="flex-1 px-4 pt-4">
         <Text className={`text-sm font-medium uppercase mb-2 px-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          Theme
+          {t('config.theme')}
         </Text>
         <View className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl overflow-hidden`}>
           {themeOptions.map((option, index) => {

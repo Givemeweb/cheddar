@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { DatabaseProvider } from "../src/components/DatabaseProvider";
 import { ThemeProvider, useTheme } from "../src/components/ThemeProvider";
+import "../src/i18n";
 
 function ThemedApp() {
   const { activeTheme } = useTheme();

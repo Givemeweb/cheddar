@@ -10,6 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import { getCategories, getAccounts, addTransaction, Category, Account } from '@/src/db/storage';
 import DateTimePicker from '@/src/components/DateTimePicker';
 import {
     TrendingUp,
@@ -26,7 +28,6 @@ import {
     Laptop,
     StopCircle,
 } from 'lucide-react-native';
-import { getCategories, getAccounts, addTransaction, Category, Account } from '@/src/db/storage';
 import { useTheme } from '@/src/components/ThemeProvider';
 
 type TransactionType = 'income' | 'expense' | 'transfer';
@@ -58,6 +59,7 @@ const renderIcon = (iconName: string, size: number = 16, color: string = '#1A1A1
 export default function AddTransactionScreen() {
     const router = useRouter();
     const { isDark } = useTheme();
+    const { t } = useTranslation();
     const [type, setType] = useState<TransactionType>('expense');
     const [date, setDate] = useState(new Date());
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -138,15 +140,15 @@ export default function AddTransactionScreen() {
     };
 
     const getAccountName = (id: string | null) => {
-        if (!id) return 'Select account';
+        if (!id) return t('transactions.selectAccount');
         const acc = accounts.find(a => a.id === id);
-        return acc ? acc.name : 'Select account';
+        return acc ? acc.name : t('transactions.selectAccount');
     };
 
     const getCategoryLabel = (id: string | null) => {
-        if (!id) return 'Select category';
+        if (!id) return t('transactions.selectCategory');
         const cat = categories.find(c => c.id === id);
-        return cat ? cat.name : 'Select category';
+        return cat ? cat.name : t('transactions.selectCategory');
     };
 
     const getCategoryIcon = (id: string | null) => {
@@ -170,7 +172,7 @@ export default function AddTransactionScreen() {
                     <Text className={`text-2xl ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>×</Text>
                 </Pressable>
                 <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                    New Transaction
+                    {t('transactions.newTransaction')}
                 </Text>
                 <View className="w-8" />
             </View>
@@ -183,7 +185,7 @@ export default function AddTransactionScreen() {
                         onPress={() => { setType('income'); setSelectedCategoryId(null); }}
                     >
                         <Text className={`font-medium ${type === 'income' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
-                            Income
+                            {t('transactions.type.income')}
                         </Text>
                     </Pressable>
                     <Pressable
@@ -191,7 +193,7 @@ export default function AddTransactionScreen() {
                         onPress={() => { setType('expense'); setSelectedCategoryId(null); }}
                     >
                         <Text className={`font-medium ${type === 'expense' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
-                            Expense
+                            {t('transactions.type.expense')}
                         </Text>
                     </Pressable>
                     <Pressable
@@ -199,7 +201,7 @@ export default function AddTransactionScreen() {
                         onPress={() => setType('transfer')}
                     >
                         <Text className={`font-medium ${type === 'transfer' ? 'text-cheddar-dark' : (isDark ? 'text-gray-400' : 'text-cheddar-gray')}`}>
-                            Transfer
+                            {t('transactions.type.transfer')}
                         </Text>
                     </Pressable>
                 </View>
@@ -207,7 +209,7 @@ export default function AddTransactionScreen() {
                 {/* Date Picker */}
                 <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                     <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Date
+                        {t('transactions.date')}
                     </Text>
                     <DateTimePicker
                         value={date}
@@ -224,7 +226,7 @@ export default function AddTransactionScreen() {
                             onPress={() => setShowAccountPicker(true)}
                         >
                             <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                Account
+                                {t('transactions.account')}
                             </Text>
                             <Text className={`text-base ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                                 {getAccountName(selectedAccountId)}
@@ -252,7 +254,7 @@ export default function AddTransactionScreen() {
                             onPress={() => setShowCategoryPicker(true)}
                         >
                             <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                Category
+                                {t('transactions.category')}
                             </Text>
                             <View className="flex-row items-center">
                                 {getCategoryIcon(selectedCategoryId) && (
@@ -295,7 +297,7 @@ export default function AddTransactionScreen() {
                             onPress={() => setShowFromPicker(true)}
                         >
                             <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                From
+                                {t('transactions.from')}
                             </Text>
                             <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                                 {getAccountName(fromAccountId)}
@@ -323,7 +325,7 @@ export default function AddTransactionScreen() {
                             onPress={() => setShowToPicker(true)}
                         >
                             <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                To
+                                {t('transactions.to')}
                             </Text>
                             <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                                 {getAccountName(toAccountId)}
@@ -351,7 +353,7 @@ export default function AddTransactionScreen() {
                 {/* Amount */}
                 <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                     <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Amount
+                        {t('transactions.amount')}
                     </Text>
                     <TextInput
                         className={`text-2xl font-semibold py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
@@ -366,13 +368,13 @@ export default function AddTransactionScreen() {
                 {/* Note */}
                 <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                     <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Note
+                        {t('transactions.note')}
                     </Text>
                     <TextInput
                         className={`text-base py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
                         value={note}
                         onChangeText={setNote}
-                        placeholder="Add a note"
+                        placeholder={t('transactions.addNote')}
                         placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                     />
                 </View>
@@ -380,14 +382,14 @@ export default function AddTransactionScreen() {
                 {/* Description */}
                 <View className={`rounded-xl p-4 mb-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                     <Text className={`text-xs font-medium uppercase mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Description
+                        {t('transactions.description')}
                     </Text>
                     <TextInput
                         className={`text-base py-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
                         style={{ minHeight: 80 }}
                         value={description}
                         onChangeText={setDescription}
-                        placeholder="Add a description"
+                        placeholder={t('transactions.addDescription')}
                         placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                         multiline
                         textAlignVertical="top"
@@ -402,7 +404,7 @@ export default function AddTransactionScreen() {
                     onPress={handleSave}
                 >
                     <Text className="text-cheddar-dark text-base font-semibold">
-                        Save Transaction
+                        {t('transactions.saveTransaction')}
                     </Text>
                 </Pressable>
             </View>

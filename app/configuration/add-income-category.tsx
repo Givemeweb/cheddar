@@ -26,6 +26,7 @@ import {
 } from 'lucide-react-native';
 import { addCategory } from '@/src/db/storage';
 import { useTheme } from '@/src/components/ThemeProvider';
+import { useTranslation } from 'react-i18next';
 
 type IconOption = {
   name: string;
@@ -51,6 +52,7 @@ const iconOptions: IconOption[] = [
 export default function AddIncomeCategoryScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('trending-up');
   const [saving, setSaving] = useState(false);
@@ -99,10 +101,10 @@ export default function AddIncomeCategoryScreen() {
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
       <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-cheddar-yellow text-lg font-medium">Cancel</Text>
+          <Text className="text-cheddar-yellow text-lg font-medium">{t('common.cancel')}</Text>
         </TouchableOpacity>
         <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-          Add Income Category
+          {t('categories.addIncomeCategory')}
         </Text>
         <TouchableOpacity
           onPress={handleSave}
@@ -114,7 +116,7 @@ export default function AddIncomeCategoryScreen() {
               name.trim() && !saving ? 'text-cheddar-yellow' : 'text-gray-300'
             }`}
           >
-            Save
+            {t('common.save')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -122,12 +124,12 @@ export default function AddIncomeCategoryScreen() {
       <ScrollView className="flex-1 px-4 pt-4">
         <View className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
           <Text className={`text-sm font-medium uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Name
+            {t('categories.name')}
           </Text>
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Category name"
+            placeholder={t('categories.categoryName')}
             className={`text-lg py-2 border-b ${isDark ? 'text-cheddar-light border-gray-700' : 'text-cheddar-dark border-gray-200'}`}
             placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
           />
@@ -135,7 +137,7 @@ export default function AddIncomeCategoryScreen() {
 
         <View className={`rounded-xl p-4 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
           <Text className={`text-sm font-medium uppercase mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Icon
+            {t('categories.icon')}
           </Text>
           <View className="flex-row flex-wrap">
             {iconOptions.map(renderIconOption)}

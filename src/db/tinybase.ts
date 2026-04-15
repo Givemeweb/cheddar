@@ -9,6 +9,7 @@ import {
   createIndexedDbPersister,
   IndexedDbPersister,
 } from 'tinybase/persisters/persister-indexed-db';
+import i18n from '../i18n';
 
 // Types for our data
 export interface Category {
@@ -68,24 +69,24 @@ let store: Store | null = null;
 let persister: ExpoSqlitePersister | IndexedDbPersister | null = null;
 
 // Default seed data
-const defaultCategories: TablesSchema['categories'] = {
-  '1': { name: 'Food', icon: 'utensils', type: 'expense' },
-  '2': { name: 'Transport', icon: 'car', type: 'expense' },
-  '3': { name: 'Shopping', icon: 'shopping-cart', type: 'expense' },
-  '4': { name: 'Entertainment', icon: 'film', type: 'expense' },
-  '5': { name: 'Bills', icon: 'receipt', type: 'expense' },
-  '6': { name: 'Health', icon: 'heart-pulse', type: 'expense' },
-  '7': { name: 'Salary', icon: 'briefcase', type: 'income' },
-  '8': { name: 'Freelance', icon: 'laptop', type: 'income' },
-  '9': { name: 'Investments', icon: 'trending-up', type: 'income' },
-  '10': { name: 'Gift', icon: 'gift', type: 'income' },
-};
+const getDefaultCategories = (): TablesSchema['categories'] => ({
+  '1': { name: i18n.t('defaultData.categories.food'), icon: 'utensils', type: 'expense' },
+  '2': { name: i18n.t('defaultData.categories.transport'), icon: 'car', type: 'expense' },
+  '3': { name: i18n.t('defaultData.categories.shopping'), icon: 'shopping-cart', type: 'expense' },
+  '4': { name: i18n.t('defaultData.categories.entertainment'), icon: 'film', type: 'expense' },
+  '5': { name: i18n.t('defaultData.categories.bills'), icon: 'receipt', type: 'expense' },
+  '6': { name: i18n.t('defaultData.categories.health'), icon: 'heart-pulse', type: 'expense' },
+  '7': { name: i18n.t('defaultData.categories.salary'), icon: 'briefcase', type: 'income' },
+  '8': { name: i18n.t('defaultData.categories.freelance'), icon: 'laptop', type: 'income' },
+  '9': { name: i18n.t('defaultData.categories.investments'), icon: 'trending-up', type: 'income' },
+  '10': { name: i18n.t('defaultData.categories.gift'), icon: 'gift', type: 'income' },
+});
 
-const defaultAccounts: TablesSchema['accounts'] = {
-  '1': { name: 'Checking', description: null, balance: 0.0, order: 0 },
-  '2': { name: 'Savings', description: null, balance: 0.0, order: 1 },
-  '3': { name: 'Credit Card', description: null, balance: 0.0, order: 2 },
-};
+const getDefaultAccounts = (): TablesSchema['accounts'] => ({
+  '1': { name: i18n.t('defaultData.accounts.checking'), description: null, balance: 0.0, order: 0 },
+  '2': { name: i18n.t('defaultData.accounts.savings'), description: null, balance: 0.0, order: 1 },
+  '3': { name: i18n.t('defaultData.accounts.creditCard'), description: null, balance: 0.0, order: 2 },
+});
 
 export async function initDatabase(): Promise<Store> {
   if (store) return store;
@@ -115,8 +116,8 @@ export async function initDatabase(): Promise<Store> {
   if (!categories || Object.keys(categories).length === 0) {
     // Seed default data
     store.setTables({
-      categories: defaultCategories,
-      accounts: defaultAccounts,
+      categories: getDefaultCategories(),
+      accounts: getDefaultAccounts(),
       transactions: {},
     });
     await persister.save();
@@ -125,7 +126,7 @@ export async function initDatabase(): Promise<Store> {
     const firstCat = Object.values(categories)[0] as { icon: string } | undefined;
     if (firstCat && firstCat.icon.includes('🍽')) {
       // Old emoji-based icons detected, update default categories
-      Object.entries(defaultCategories).forEach(([id, data]) => {
+      Object.entries(getDefaultCategories()).forEach(([id, data]) => {
         store!.setRow('categories', id, data);
       });
       await persister.save();

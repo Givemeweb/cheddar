@@ -33,6 +33,7 @@ import {
   Category,
 } from '@/src/db/storage';
 import { useTheme } from '@/src/components/ThemeProvider';
+import { useTranslation } from 'react-i18next';
 
 // Map icon names to Lucide components
 const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -53,6 +54,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; color?: strin
 export default function IncomeCategoriesScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,15 +73,15 @@ export default function IncomeCategoriesScreen() {
 
   const handleDelete = (category: Category) => {
     Alert.alert(
-      'Delete Category',
-      `Are you sure you want to delete "${category.name}"?\n\nExisting transactions with this category will not be affected.`,
+      t('categories.deleteConfirmTitle'),
+      t('categories.deleteConfirmMessage', { name: category.name }),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             await deleteCategory(category.id);
@@ -103,10 +105,10 @@ export default function IncomeCategoriesScreen() {
       <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-cheddar-yellow text-lg font-medium">Back</Text>
+            <Text className="text-cheddar-yellow text-lg font-medium">{t('common.back')}</Text>
           </TouchableOpacity>
           <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-            Income Categories
+            {t('categories.incomeCategories')}
           </Text>
         </View>
         <View className="flex-1 items-center justify-center">
@@ -120,10 +122,10 @@ export default function IncomeCategoriesScreen() {
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
       <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-cheddar-yellow text-lg font-medium">Back</Text>
+          <Text className="text-cheddar-yellow text-lg font-medium">{t('common.back')}</Text>
         </TouchableOpacity>
         <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-          Income Categories
+          {t('categories.incomeCategories')}
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/configuration/add-income-category' as never)}
@@ -137,7 +139,7 @@ export default function IncomeCategoriesScreen() {
         {categories.length === 0 ? (
           <View className="flex-1 items-center justify-center py-12">
             <Text className={`text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              No income categories yet.{'\n'}Tap the + button to add one.
+              {t('categories.noIncomeCategories')}
             </Text>
           </View>
         ) : (

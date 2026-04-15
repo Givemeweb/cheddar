@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Receipt, BarChart3, Wallet, Settings } from "lucide-react-native";
 import { usePathname, useRouter } from "expo-router";
 import { useTheme } from "./ThemeProvider";
+import { useTranslation } from "react-i18next";
 
 interface NavItem {
   name: string;
@@ -25,17 +26,24 @@ export function SideNav({ activeTab }: SideNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const currentTab = activeTab ?? (pathname.replace("/", "") || "index");
 
   const inactiveColor = isDark ? "#9CA3AF" : "#6B7280";
 
+  // Get localized labels
+  const localizedNavItems = NAV_ITEMS.map(item => ({
+    ...item,
+    label: t(`tabs.${item.name}`),
+  }));
+
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
       <View style={[styles.logoContainer, isDark && styles.logoContainerDark]}>
-        <Text style={styles.logo}>Cheddar</Text>
+        <Text style={styles.logo}>{t('app.name')}</Text>
       </View>
       <View style={styles.navItems}>
-        {NAV_ITEMS.map((item) => {
+        {localizedNavItems.map((item) => {
           const isActive = currentTab === item.name;
           const Icon = item.icon;
 

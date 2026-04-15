@@ -12,10 +12,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getAccounts, reorderAccounts, Account } from '@/src/db/storage';
 import { GripVertical } from 'lucide-react-native';
 import { useTheme } from '@/src/components/ThemeProvider';
+import { useTranslation } from 'react-i18next';
 
 export default function ReorderAccountsScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
@@ -92,10 +94,10 @@ export default function ReorderAccountsScreen() {
       <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-cheddar-yellow text-lg font-medium">Cancel</Text>
+            <Text className="text-cheddar-yellow text-lg font-medium">{t('common.cancel')}</Text>
           </TouchableOpacity>
           <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-            Reorder Accounts
+            {t('accounts.reorderAccounts')}
           </Text>
         </View>
         <View className="flex-1 items-center justify-center">
@@ -109,10 +111,10 @@ export default function ReorderAccountsScreen() {
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
       <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-cheddar-yellow text-lg font-medium">Cancel</Text>
+          <Text className="text-cheddar-yellow text-lg font-medium">{t('common.cancel')}</Text>
         </TouchableOpacity>
         <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-          Reorder Accounts
+          {t('accounts.reorderAccounts')}
         </Text>
         <TouchableOpacity
           onPress={handleSave}
@@ -123,7 +125,7 @@ export default function ReorderAccountsScreen() {
               hasChanges ? 'text-cheddar-yellow' : 'text-gray-300'
             }`}
           >
-            Save
+            {t('common.save')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -136,7 +138,7 @@ export default function ReorderAccountsScreen() {
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-12">
             <Text className={`text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              No accounts to reorder.
+              {t('accounts.noAccountsReorder')}
             </Text>
           </View>
         }

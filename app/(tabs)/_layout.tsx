@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import { View, Text, useWindowDimensions, StyleSheet } from "react-native";
 import { Receipt, BarChart3, Wallet, Settings } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { SideNav } from "../../src/components/SideNav";
 import { useTheme } from "../../src/components/ThemeProvider";
 
@@ -34,6 +35,7 @@ function TabIcon({
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const isLargeScreen = width >= 768;
 
   // On large screens, we use side navigation instead of tabs
@@ -51,7 +53,7 @@ export default function TabsLayout() {
             <Tabs.Screen
               name="index"
               options={{
-                title: "Transactions",
+                title: t('tabs.transactions'),
                 tabBarIcon: ({ focused }) => (
                   <TabIcon icon={Receipt} focused={focused} isDark={isDark} />
                 ),
@@ -60,7 +62,7 @@ export default function TabsLayout() {
             <Tabs.Screen
               name="stats"
               options={{
-                title: "Stats",
+                title: t('tabs.stats'),
                 tabBarIcon: ({ focused }) => (
                   <TabIcon icon={BarChart3} focused={focused} isDark={isDark} />
                 ),
@@ -69,7 +71,7 @@ export default function TabsLayout() {
             <Tabs.Screen
               name="accounts"
               options={{
-                title: "Accounts",
+                title: t('tabs.accounts'),
                 tabBarIcon: ({ focused }) => (
                   <TabIcon icon={Wallet} focused={focused} isDark={isDark} />
                 ),
@@ -78,7 +80,7 @@ export default function TabsLayout() {
             <Tabs.Screen
               name="more"
               options={{
-                title: "More",
+                title: t('tabs.more'),
                 tabBarIcon: ({ focused }) => (
                   <TabIcon icon={Settings} focused={focused} isDark={isDark} />
                 ),
@@ -110,7 +112,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Transactions",
+          title: t('tabs.transactions'),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={Receipt} focused={focused} isDark={isDark} />
           ),
@@ -119,7 +121,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: "Stats",
+          title: t('tabs.stats'),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={BarChart3} focused={focused} isDark={isDark} />
           ),
@@ -128,7 +130,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="accounts"
         options={{
-          title: "Accounts",
+          title: t('tabs.accounts'),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={Wallet} focused={focused} isDark={isDark} />
           ),
@@ -137,7 +139,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="more"
         options={{
-          title: "More",
+          title: t('tabs.more'),
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={Settings} focused={focused} isDark={isDark} />
           ),

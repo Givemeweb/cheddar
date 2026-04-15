@@ -1,0 +1,143 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "back": "Back",
+    "add": "Add"
+  },
+  "tabs": {
+    "index": "Transactions",
+    "transactions": "Transactions",
+    "stats": "Stats",
+    "accounts": "Accounts",
+    "more": "More"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "income": "Income",
+    "expenses": "Expenses",
+    "total": "Total",
+    "noTransactions": "No transactions yet",
+    "newTransaction": "New Transaction",
+    "date": "Date",
+    "account": "Account",
+    "category": "Category",
+    "from": "From",
+    "to": "To",
+    "amount": "Amount",
+    "note": "Note",
+    "description": "Description",
+    "addNote": "Add a note",
+    "addDescription": "Add a description",
+    "selectAccount": "Select account",
+    "selectCategory": "Select category",
+    "saveTransaction": "Save Transaction",
+    "type": {
+      "income": "Income",
+      "expense": "Expense",
+      "transfer": "Transfer"
+    },
+    "noNote": "No note"
+  },
+  "accounts": {
+    "title": "Accounts",
+    "addAccount": "Add Account",
+    "deleteAccount": "Delete Account",
+    "reorderAccounts": "Reorder Accounts",
+    "totalAssets": "Total Assets",
+    "noAccounts": "No accounts yet",
+    "name": "Name",
+    "accountName": "Account name",
+    "descriptionOptional": "Description (optional)",
+    "addDescriptionPlaceholder": "Add a description",
+    "editAccount": "Edit Account",
+    "deleteConfirmTitle": "Delete Account",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?\n\nExisting transactions with this account will not be affected. They will still be visible in your transaction history.",
+    "deleteWebConfirm": "Are you sure you want to delete \"{{name}}\"?\n\nExisting transactions with this account will not be affected.",
+    "noAccountsDelete": "No accounts to delete.",
+    "noAccountsReorder": "No accounts to reorder.",
+    "deleteInfo": "Transactions associated with deleted accounts will remain in your history."
+  },
+  "categories": {
+    "incomeCategories": "Income Categories",
+    "expenseCategories": "Expense Categories",
+    "addIncomeCategory": "Add Income Category",
+    "addExpenseCategory": "Add Expense Category",
+    "name": "Name",
+    "icon": "Icon",
+    "categoryName": "Category name",
+    "deleteConfirmTitle": "Delete Category",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?\n\nExisting transactions with this category will not be affected.",
+    "noIncomeCategories": "No income categories yet.\nTap the + button to add one.",
+    "noExpenseCategories": "No expense categories yet.\nTap the + button to add one."
+  },
+  "config": {
+    "title": "Configuration",
+    "category": "Category",
+    "incomeCategories": "Income Categories",
+    "expenseCategories": "Expense Categories",
+    "configuration": "Configuration",
+    "mainCurrency": "Main Currency",
+    "other": "Other",
+    "passcode": "Passcode",
+    "alarmSettings": "Alarm Settings",
+    "style": "Style",
+    "theme": "Theme",
+    "themeSystem": "System",
+    "themeSystemDesc": "Follow system settings",
+    "themeLight": "Light",
+    "themeLightDesc": "Always use light theme",
+    "themeDark": "Dark",
+    "themeDarkDesc": "Always use dark theme"
+  },
+  "more": {
+    "title": "More",
+    "configuration": "Configuration",
+    "accounts": "Accounts",
+    "passcode": "Passcode",
+    "backup": "Backup",
+    "feedback": "Feedback",
+    "recommend": "Recommend"
+  },
+  "stats": {
+    "title": "Stats",
+    "income": "Income",
+    "expenses": "Expenses",
+    "categories": "Categories",
+    "noTransactions": "No {{tab}} transactions this month"
+  },
+  "days": {
+    "short": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    }
+  },
+  "defaultData": {
+    "categories": {
+      "food": "Food",
+      "transport": "Transport",
+      "shopping": "Shopping",
+      "entertainment": "Entertainment",
+      "bills": "Bills",
+      "health": "Health",
+      "salary": "Salary",
+      "freelance": "Freelance",
+      "investments": "Investments",
+      "gift": "Gift"
+    },
+    "accounts": {
+      "checking": "Checking",
+      "savings": "Savings",
+      "creditCard": "Credit Card"
+    }
+  },
+  "app": {
+    "name": "Cheddar"
+  }
+}

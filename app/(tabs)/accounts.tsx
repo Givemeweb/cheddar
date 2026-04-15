@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -21,6 +22,7 @@ export default function AccountsScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark } = useTheme();
+  const { t } = useTranslation();
 
   useFocusEffect(
     useCallback(() => {
@@ -56,7 +58,7 @@ export default function AccountsScreen() {
       {/* Header */}
       <View className="px-4 py-4">
         <View className="flex-row justify-between items-center">
-          <Text className={`text-2xl font-bold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Accounts</Text>
+          <Text className={`text-2xl font-bold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.title')}</Text>
           <Pressable
             onPress={() => setMenuVisible(!menuVisible)}
             className="p-2"
@@ -76,7 +78,7 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Add Account</Text>
+            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.addAccount')}</Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -85,7 +87,7 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Delete Account</Text>
+            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.deleteAccount')}</Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -94,7 +96,7 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>Reorder Accounts</Text>
+            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.reorderAccounts')}</Text>
           </Pressable>
         </View>
       )}
@@ -103,7 +105,7 @@ export default function AccountsScreen() {
       <View className="px-4 mb-4">
         <View className="bg-cheddar-yellow rounded-xl p-6 shadow-sm">
           <Text className="text-cheddar-dark text-sm font-medium">
-            Total Assets
+            {t('accounts.totalAssets')}
           </Text>
           <Text className="text-cheddar-dark text-3xl font-bold mt-1">
             €{totalAssets.toFixed(2)}
@@ -143,7 +145,7 @@ export default function AccountsScreen() {
         )}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
-            <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>No accounts yet</Text>
+            <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>{t('accounts.noAccounts')}</Text>
           </View>
         }
       />

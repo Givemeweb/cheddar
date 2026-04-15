@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   Settings,
   Wallet,
@@ -22,37 +23,38 @@ export default function MoreScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark } = useTheme();
+  const { t } = useTranslation();
 
   const iconColor = isDark ? "#F9FAFB" : "#1A1A1A";
 
   const menuItems: MenuItem[] = [
     {
-      label: "Configuration",
+      label: t('more.configuration'),
       icon: <Settings size={24} color={iconColor} />,
       route: "/configuration",
     },
     {
-      label: "Accounts",
+      label: t('more.accounts'),
       icon: <Wallet size={24} color={iconColor} />,
       route: "/accounts",
     },
     {
-      label: "Passcode",
+      label: t('more.passcode'),
       icon: <Lock size={24} color={iconColor} />,
       route: "/passcode",
     },
     {
-      label: "Backup",
+      label: t('more.backup'),
       icon: <Cloud size={24} color={iconColor} />,
       route: "/backup",
     },
     {
-      label: "Feedback",
+      label: t('more.feedback'),
       icon: <MessageCircle size={24} color={iconColor} />,
       route: "/feedback",
     },
     {
-      label: "Recommend",
+      label: t('more.recommend'),
       icon: <Star size={24} color={iconColor} />,
       route: "/recommend",
     },

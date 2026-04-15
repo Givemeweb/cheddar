@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import PieChart from "../../src/components/PieChart";
 import { getCategories, getTransactions } from "../../src/db/storage";
 import { renderIcon } from "../../src/components/TransactionItem";
@@ -36,6 +37,7 @@ export default function StatsScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark } = useTheme();
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function fetchStats() {
@@ -110,7 +112,7 @@ export default function StatsScreen() {
             <Text
               className={`text-center font-semibold ${activeTab === "income" ? "text-cheddar-dark" : `${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}`}
             >
-              Income
+              {t('stats.income')}
             </Text>
           </Pressable>
           <Pressable
@@ -120,7 +122,7 @@ export default function StatsScreen() {
             <Text
               className={`text-center font-semibold ${activeTab === "expense" ? "text-cheddar-dark" : `${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}`}
             >
-              Expenses
+              {t('stats.expenses')}
             </Text>
           </Pressable>
         </View>
@@ -166,7 +168,7 @@ export default function StatsScreen() {
               {/* Legend */}
               <View className={`rounded-xl p-4 shadow-sm ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                 <Text className={`font-semibold mb-3 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                  Categories
+                  {t('stats.categories')}
                 </Text>
                 {categoryStats.map((stat) => (
                   <View key={stat.id} className="flex-row items-center py-2">
@@ -192,7 +194,7 @@ export default function StatsScreen() {
           ) : (
             <View className="flex-1 items-center justify-center py-20">
               <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
-                No {activeTab} transactions this month
+                {t('stats.noTransactions', { tab: activeTab === 'income' ? t('stats.income').toLowerCase() : t('stats.expenses').toLowerCase() })}
               </Text>
             </View>
           )}

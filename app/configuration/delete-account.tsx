@@ -13,10 +13,12 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { getAccounts, deleteAccount, Account } from '@/src/db/storage';
 import { useTheme } from '@/src/components/ThemeProvider';
+import { useTranslation } from 'react-i18next';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,22 +48,22 @@ export default function DeleteAccountScreen() {
     if (Platform.OS === 'web') {
       // Use browser confirm on web
       const confirmed = window.confirm(
-        `Are you sure you want to delete "${account.name}"?\n\nExisting transactions with this account will not be affected.`
+        t('accounts.deleteWebConfirm', { name: account.name })
       );
       if (confirmed) {
         performDelete(account);
       }
     } else {
       Alert.alert(
-        'Delete Account',
-        `Are you sure you want to delete "${account.name}"?\n\nExisting transactions with this account will not be affected. They will still be visible in your transaction history.`,
+        t('accounts.deleteConfirmTitle'),
+        t('accounts.deleteConfirmMessage', { name: account.name }),
         [
           {
-            text: 'Cancel',
+            text: t('common.cancel'),
             style: 'cancel',
           },
           {
-            text: 'Delete',
+            text: t('common.delete'),
             style: 'destructive',
             onPress: () => performDelete(account),
           },
@@ -75,10 +77,10 @@ export default function DeleteAccountScreen() {
       <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
         <View className={`flex-row items-center px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-cheddar-yellow text-lg font-medium">Back</Text>
+            <Text className="text-cheddar-yellow text-lg font-medium">{t('common.back')}</Text>
           </TouchableOpacity>
           <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-            Delete Account
+            {t('accounts.deleteAccount')}
           </Text>
         </View>
         <View className="flex-1 items-center justify-center">
@@ -92,10 +94,10 @@ export default function DeleteAccountScreen() {
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
       <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-cheddar-yellow text-lg font-medium">Back</Text>
+          <Text className="text-cheddar-yellow text-lg font-medium">{t('common.back')}</Text>
         </TouchableOpacity>
         <Text className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-          Delete Account
+          {t('accounts.deleteAccount')}
         </Text>
         <View className="w-10" />
       </View>
@@ -104,7 +106,7 @@ export default function DeleteAccountScreen() {
         {accounts.length === 0 ? (
           <View className="flex-1 items-center justify-center py-12">
             <Text className={`text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              No accounts to delete.
+              {t('accounts.noAccountsDelete')}
             </Text>
           </View>
         ) : (
@@ -136,7 +138,7 @@ export default function DeleteAccountScreen() {
                   activeOpacity={0.7}
                   className={`px-4 py-2 rounded-lg ${isDark ? 'bg-red-900/30' : 'bg-red-50'}`}
                 >
-                  <Text className="text-red-500 font-medium">Delete</Text>
+                  <Text className="text-red-500 font-medium">{t('common.delete')}</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -144,7 +146,7 @@ export default function DeleteAccountScreen() {
         )}
 
         <Text className={`text-sm text-center mt-4 px-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          Transactions associated with deleted accounts will remain in your history.
+          {t('accounts.deleteInfo')}
         </Text>
       </ScrollView>
     </SafeAreaView>

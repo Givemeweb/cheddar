@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import {
   getCategories,
   getTransactions,
@@ -23,9 +24,9 @@ import {
 import { FAB } from "../../src/components/FAB";
 import { useTheme } from "../../src/components/ThemeProvider";
 
-function formatDateForGroup(date: Date): string {
+function formatDateForGroup(date: Date, t: (key: string) => string): string {
   const day = date.getDate();
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const days = [t('days.short.sun'), t('days.short.mon'), t('days.short.tue'), t('days.short.wed'), t('days.short.thu'), t('days.short.fri'), t('days.short.sat')];
   const dayName = days[date.getDay()];
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
@@ -42,6 +43,7 @@ export default function TransactionsScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark } = useTheme();
+  const { t } = useTranslation();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
     month: "short",
@@ -150,7 +152,7 @@ export default function TransactionsScreen() {
 
         result.push({
           date,
-          dateLabel: formatDateForGroup(date),
+          dateLabel: formatDateForGroup(date, t),
           transactions: sortedTxs,
           totalIncome,
           totalExpense,
@@ -251,7 +253,7 @@ export default function TransactionsScreen() {
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
           >
-            Income
+            {t('transactions.income')}
           </Text>
         </View>
         <View className="flex-1 items-center">
@@ -261,7 +263,7 @@ export default function TransactionsScreen() {
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
           >
-            Expenses
+            {t('transactions.expenses')}
           </Text>
         </View>
         <View className="flex-1 items-center">
@@ -273,7 +275,7 @@ export default function TransactionsScreen() {
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
           >
-            Total
+            {t('transactions.total')}
           </Text>
         </View>
       </View>
@@ -295,7 +297,7 @@ export default function TransactionsScreen() {
             <Text
               className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
             >
-              No transactions yet
+              {t('transactions.noTransactions')}
             </Text>
           </View>
         }

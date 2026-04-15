@@ -14,6 +14,7 @@ import {
   Laptop,
   ArrowRightLeft,
 } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 // Map icon names to Lucide components
 const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -75,6 +76,7 @@ export function formatCurrency(amount: number): string {
 }
 
 export function TransactionItem({ transaction, isDark = false }: TransactionItemProps) {
+  const { t } = useTranslation();
   const isTransfer = transaction.type === 'transfer';
   const isExpense = transaction.amount < 0;
 
@@ -95,12 +97,12 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
             ) : null}
           </View>
           <Text className={`text-base font-medium ${isTransfer ? 'text-gray-500' : (isDark ? 'text-cheddar-light' : 'text-cheddar-dark')}`}>
-            {isTransfer ? 'Transfer' : transaction.category?.name}
+            {isTransfer ? t('transactions.type.transfer') : transaction.category?.name}
           </Text>
         </View>
         <View className="flex-row items-center mt-1">
           <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
-            {transaction.note || "No note"} · {transaction.account.name}
+            {transaction.note || t('transactions.noNote')} · {transaction.account.name}
             {isTransfer && transaction.toAccount && ` → ${transaction.toAccount.name}`}
           </Text>
         </View>
