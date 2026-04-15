@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
@@ -51,9 +51,14 @@ const menuItems: MenuItem[] = [
 
 export default function MoreScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width >= 768;
 
   return (
-    <SafeAreaView className="flex-1 bg-cheddar-light">
+    <SafeAreaView
+      className="flex-1 bg-cheddar-light"
+      edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
+    >
       <View className="flex-1 px-4 pt-4">
         {menuItems.map((item, index) => (
           <TouchableOpacity

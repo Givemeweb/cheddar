@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PieChart from "../../src/components/PieChart";
 import { getCategories, getTransactions } from "../../src/db/storage";
@@ -32,6 +32,8 @@ export default function StatsScreen() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [chartSize, setChartSize] = useState<{ width: number; height: number } | null>(null);
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width >= 768;
 
   useEffect(() => {
     async function fetchStats() {
@@ -92,7 +94,10 @@ export default function StatsScreen() {
   }, [activeTab]);
 
   return (
-    <SafeAreaView className="flex-1 bg-cheddar-light">
+    <SafeAreaView
+      className="flex-1 bg-cheddar-light"
+      edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
+    >
       <View className="px-4 py-4">
         {/* Tab Buttons */}
         <View className="flex-row bg-white rounded-xl p-1 shadow-sm">

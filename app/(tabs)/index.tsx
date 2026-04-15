@@ -6,6 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -34,6 +35,8 @@ export default function TransactionsScreen() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width >= 768;
 
   async function fetchTransactions() {
     try {
@@ -145,7 +148,10 @@ export default function TransactionsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cheddar-light">
+    <SafeAreaView
+      className="flex-1 bg-cheddar-light"
+      edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
+    >
       <View className="flex-row px-4 py-3 bg-white border-b border-gray-200">
         <View className="flex-1 items-center">
           <Text className="text-cheddar-income font-semibold text-lg">

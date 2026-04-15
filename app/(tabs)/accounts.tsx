@@ -5,6 +5,7 @@ import {
   FlatList,
   Pressable,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -16,6 +17,8 @@ export default function AccountsScreen() {
   const [accountsList, setAccountsList] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width >= 768;
 
   useFocusEffect(
     useCallback(() => {
@@ -44,7 +47,10 @@ export default function AccountsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cheddar-light">
+    <SafeAreaView
+      className="flex-1 bg-cheddar-light"
+      edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
+    >
       {/* Header */}
       <View className="px-4 py-4">
         <View className="flex-row justify-between items-center">
