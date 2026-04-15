@@ -4,7 +4,7 @@ import {
   createExpoSqlitePersister,
   ExpoSqlitePersister,
 } from 'tinybase/persisters/persister-expo-sqlite';
-import { openDatabaseSync, SQLiteDatabase } from 'expo-sqlite';
+import { openDatabaseSync } from 'expo-sqlite';
 import {
   createIndexedDbPersister,
   IndexedDbPersister,
@@ -73,9 +73,9 @@ const defaultCategories: TablesSchema['categories'] = {
 };
 
 const defaultAccounts: TablesSchema['accounts'] = {
-  '1': { name: 'Checking', type: 'checking', balance: 2500.0 },
-  '2': { name: 'Savings', type: 'savings', balance: 10000.0 },
-  '3': { name: 'Credit Card', type: 'credit', balance: -450.0 },
+  '1': { name: 'Checking', type: 'checking', balance: 0.0 },
+  '2': { name: 'Savings', type: 'savings', balance: 0.0 },
+  '3': { name: 'Credit Card', type: 'credit', balance: 0.0 },
 };
 
 export async function initDatabase(): Promise<Store> {
