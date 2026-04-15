@@ -117,7 +117,14 @@
     "exportButton": "Export Backup",
     "exportSuccess": "Backup exported successfully!",
     "exportError": "Failed to export backup.",
-    "exportFailed": "Export failed. Please try again."
+    "exportFailed": "Export failed. Please try again.",
+    "importInfo": "Select a backup ZIP file to restore your data. This will replace all existing data with the data from the backup file.",
+    "importButton": "Select Backup File",
+    "importSuccess": "Backup imported successfully!",
+    "importError": "Failed to import backup.",
+    "importFailed": "Import failed. Please try again.",
+    "importSummary": "{{categories}} categories, {{accounts}} accounts, {{transactions}} transactions restored.",
+    "importWarning": "Warning: Importing a backup will replace all your current data. Make sure to export your current data first if you want to keep it."
   },
   "stats": {
     "title": "Stats",

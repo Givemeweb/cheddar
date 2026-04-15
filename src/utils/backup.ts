@@ -124,3 +124,57 @@ export async function validateBackupFile(backupData: unknown): Promise<BackupDat
 
   return data as unknown as BackupData;
 }
+
+export interface ImportResult {
+  categories: number;
+  accounts: number;
+  transactions: number;
+  importDate: string;
+}
+
+export async function importDatabaseFromZip(zipBase64: string): Promise<ImportResult> {
+  try {
+    const store = getStore();
+    const persister = await getPersister();
+
+    if (!store || !persister) {
+      throw new Error('Database not initialized');
+    }
+
+    // Load the ZIP file
+    const zip = new JSZip();
+    const zipContent = await zip.loadAsync(zipBase64, { base64: true });
+
+    // Find and extract the backup.json file
+    const backupFile = zipContent.file('backup.json');
+    if (!backupFile) {
+      throw new Error('Invalid backup file: missing backup.json');
+    }
+
+    const backupJson = await backupFile.async('string');
+    const backupData = JSON.parse(backupJson);
+
+    // Validate the backup data
+    const validatedData = await validateBackupFile(backupData);
+
+    // Clear existing data and set new data
+    store.setTables({
+      categories: validatedData.data.categories,
+      accounts: validatedData.data.accounts,
+      transactions: validatedData.data.transactions,
+    });
+
+    // Persist changes
+    await persister.save();
+
+    return {
+      categories: Object.keys(validatedData.data.categories).length,
+      accounts: Object.keys(validatedData.data.accounts).length,
+      transactions: Object.keys(validatedData.data.transactions).length,
+      importDate: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Import failed:', error);
+    throw error;
+  }
+}
