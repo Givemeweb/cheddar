@@ -179,3 +179,43 @@ export async function clearAllData(): Promise<void> {
   store.delTables();
   await saveStore();
 }
+
+// Category management
+export async function getCategoriesByType(type: 'income' | 'expense'): Promise<Category[]> {
+  const categories = await getCategories();
+  return categories.filter(c => c.type === type);
+}
+
+export async function addCategory(category: {
+  name: string;
+  icon: string;
+  type: 'income' | 'expense';
+}): Promise<Category> {
+  if (!isDatabaseReady()) {
+    throw new Error('Database not initialized');
+  }
+  const store = getStore();
+  const id = generateId();
+
+  store.setRow('categories', id, {
+    name: category.name,
+    icon: category.icon,
+    type: category.type,
+  });
+
+  await saveStore();
+
+  return {
+    id,
+    name: category.name,
+    icon: category.icon,
+    type: category.type,
+  };
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  store.delRow('categories', id);
+  await saveStore();
+}
