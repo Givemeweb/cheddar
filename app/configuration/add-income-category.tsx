@@ -15,6 +15,13 @@ import {
   Briefcase,
   Wallet,
   PiggyBank,
+  Utensils,
+  Car,
+  ShoppingCart,
+  Film,
+  Receipt,
+  HeartPulse,
+  Laptop,
   LucideIcon,
 } from 'lucide-react-native';
 import { addCategory } from '@/src/db/storage';
@@ -24,12 +31,20 @@ type IconOption = {
   icon: LucideIcon;
 };
 
+// All available icons for categories
 const iconOptions: IconOption[] = [
   { name: 'trending-up', icon: TrendingUp },
   { name: 'gift', icon: Gift },
   { name: 'briefcase', icon: Briefcase },
   { name: 'wallet', icon: Wallet },
   { name: 'piggy-bank', icon: PiggyBank },
+  { name: 'utensils', icon: Utensils },
+  { name: 'car', icon: Car },
+  { name: 'shopping-cart', icon: ShoppingCart },
+  { name: 'film', icon: Film },
+  { name: 'receipt', icon: Receipt },
+  { name: 'heart-pulse', icon: HeartPulse },
+  { name: 'laptop', icon: Laptop },
 ];
 
 export default function AddIncomeCategoryScreen() {

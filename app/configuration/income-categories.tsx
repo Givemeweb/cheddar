@@ -10,20 +10,42 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { Plus, StopCircle, LucideIcon } from 'lucide-react-native';
+import {
+  Plus,
+  StopCircle,
+  TrendingUp,
+  Gift,
+  Briefcase,
+  Wallet,
+  PiggyBank,
+  Utensils,
+  Car,
+  ShoppingCart,
+  Film,
+  Receipt,
+  HeartPulse,
+  Laptop,
+} from 'lucide-react-native';
 import {
   getCategoriesByType,
   deleteCategory,
   Category,
 } from '@/src/db/storage';
 
-// Available icons for categories
-const categoryIcons: Record<string, LucideIcon> = {
-  'trending-up': require('lucide-react-native').TrendingUp,
-  'gift': require('lucide-react-native').Gift,
-  'briefcase': require('lucide-react-native').Briefcase,
-  'wallet': require('lucide-react-native').Wallet,
-  'piggy-bank': require('lucide-react-native').PiggyBank,
+// Map icon names to Lucide components
+const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
+  'trending-up': TrendingUp,
+  'gift': Gift,
+  'briefcase': Briefcase,
+  'wallet': Wallet,
+  'piggy-bank': PiggyBank,
+  'utensils': Utensils,
+  'car': Car,
+  'shopping-cart': ShoppingCart,
+  'film': Film,
+  'receipt': Receipt,
+  'heart-pulse': HeartPulse,
+  'laptop': Laptop,
 };
 
 export default function IncomeCategoriesScreen() {
@@ -65,12 +87,12 @@ export default function IncomeCategoriesScreen() {
     );
   };
 
-  const renderIcon = (iconName: string) => {
-    const IconComponent = categoryIcons[iconName];
+  const renderIcon = (iconName: string, color: string = "#10B981") => {
+    const IconComponent = iconMap[iconName];
     if (IconComponent) {
-      return <IconComponent size={22} color="#10B981" />;
+      return <IconComponent size={22} color={color} />;
     }
-    return <StopCircle size={22} color="#10B981" />;
+    return <StopCircle size={22} color={color} />;
   };
 
   if (loading) {

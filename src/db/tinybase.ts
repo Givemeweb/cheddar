@@ -60,16 +60,16 @@ let persister: ExpoSqlitePersister | IndexedDbPersister | null = null;
 
 // Default seed data
 const defaultCategories: TablesSchema['categories'] = {
-  '1': { name: 'Food', icon: '🍽️', type: 'expense' },
-  '2': { name: 'Transport', icon: '🚗', type: 'expense' },
-  '3': { name: 'Shopping', icon: '🛒', type: 'expense' },
-  '4': { name: 'Entertainment', icon: '🎬', type: 'expense' },
-  '5': { name: 'Bills', icon: '📄', type: 'expense' },
-  '6': { name: 'Health', icon: '💊', type: 'expense' },
-  '7': { name: 'Salary', icon: '💼', type: 'income' },
-  '8': { name: 'Freelance', icon: '💻', type: 'income' },
-  '9': { name: 'Investments', icon: '📈', type: 'income' },
-  '10': { name: 'Gift', icon: '🎁', type: 'income' },
+  '1': { name: 'Food', icon: 'utensils', type: 'expense' },
+  '2': { name: 'Transport', icon: 'car', type: 'expense' },
+  '3': { name: 'Shopping', icon: 'shopping-cart', type: 'expense' },
+  '4': { name: 'Entertainment', icon: 'film', type: 'expense' },
+  '5': { name: 'Bills', icon: 'receipt', type: 'expense' },
+  '6': { name: 'Health', icon: 'heart-pulse', type: 'expense' },
+  '7': { name: 'Salary', icon: 'briefcase', type: 'income' },
+  '8': { name: 'Freelance', icon: 'laptop', type: 'income' },
+  '9': { name: 'Investments', icon: 'trending-up', type: 'income' },
+  '10': { name: 'Gift', icon: 'gift', type: 'income' },
 };
 
 const defaultAccounts: TablesSchema['accounts'] = {
@@ -105,6 +105,16 @@ export async function initDatabase(): Promise<Store> {
       transactions: {},
     });
     await persister.save();
+  } else {
+    // Update default categories with new icons (check if using old emoji icons)
+    const firstCat = Object.values(categories)[0] as { icon: string } | undefined;
+    if (firstCat && firstCat.icon.includes('🍽')) {
+      // Old emoji-based icons detected, update default categories
+      Object.entries(defaultCategories).forEach(([id, data]) => {
+        store.setRow('categories', id, data);
+      });
+      await persister.save();
+    }
   }
 
   return store;

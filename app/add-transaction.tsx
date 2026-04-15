@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -11,10 +11,50 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import {
+    TrendingUp,
+    Gift,
+    Briefcase,
+    Wallet,
+    PiggyBank,
+    Utensils,
+    Car,
+    ShoppingCart,
+    Film,
+    Receipt,
+    HeartPulse,
+    Laptop,
+    StopCircle,
+} from 'lucide-react-native';
 import { getCategories, getAccounts, addTransaction, Category, Account } from '@/src/db/storage';
 
 type TransactionType = 'income' | 'expense' | 'transfer';
+
+// Map icon names to Lucide components
+const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
+    'trending-up': TrendingUp,
+    'gift': Gift,
+    'briefcase': Briefcase,
+    'wallet': Wallet,
+    'piggy-bank': PiggyBank,
+    'utensils': Utensils,
+    'car': Car,
+    'shopping-cart': ShoppingCart,
+    'film': Film,
+    'receipt': Receipt,
+    'heart-pulse': HeartPulse,
+    'laptop': Laptop,
+};
+
+const renderIcon = (iconName: string, size: number = 16, color: string = '#1A1A1A') => {
+    const IconComponent = iconMap[iconName];
+    if (IconComponent) {
+        return <IconComponent size={size} color={color} />;
+    }
+    return <StopCircle size={size} color={color} />;
+};
 
 export default function AddTransactionScreen() {
     const router = useRouter();
@@ -36,9 +76,11 @@ export default function AddTransactionScreen() {
     const [showFromPicker, setShowFromPicker] = useState(false);
     const [showToPicker, setShowToPicker] = useState(false);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+        }, [])
+    );
 
     const loadData = async () => {
         const cats = await getCategories();
@@ -109,10 +151,16 @@ export default function AddTransactionScreen() {
         return acc ? acc.name : 'Select account';
     };
 
-    const getCategoryName = (id: string | null) => {
+    const getCategoryLabel = (id: string | null) => {
         if (!id) return 'Select category';
         const cat = categories.find(c => c.id === id);
-        return cat ? `${cat.icon} ${cat.name}` : 'Select category';
+        return cat ? cat.name : 'Select category';
+    };
+
+    const getCategoryIcon = (id: string | null) => {
+        if (!id) return null;
+        const cat = categories.find(c => c.id === id);
+        return cat ? cat.icon : null;
     };
 
     if (loading) {
@@ -208,7 +256,14 @@ export default function AddTransactionScreen() {
 
                         <Pressable style={styles.fieldContainer} onPress={() => setShowCategoryPicker(true)}>
                             <Text style={styles.label}>Category</Text>
-                            <Text style={styles.value}>{getCategoryName(selectedCategoryId)}</Text>
+                            <View style={styles.categoryValueContainer}>
+                                {getCategoryIcon(selectedCategoryId) && (
+                                    <View style={styles.categoryIconWrapper}>
+                                        {renderIcon(getCategoryIcon(selectedCategoryId)!, 16, type === 'income' ? '#10B981' : '#EF4444')}
+                                    </View>
+                                )}
+                                <Text style={styles.value}>{getCategoryLabel(selectedCategoryId)}</Text>
+                            </View>
                         </Pressable>
                         {showCategoryPicker && (
                             <View style={styles.pickerContainer}>
@@ -224,7 +279,12 @@ export default function AddTransactionScreen() {
                                             setShowCategoryPicker(false);
                                         }}
                                     >
-                                        <Text style={styles.pickerText}>{cat.icon} {cat.name}</Text>
+                                        <View style={styles.pickerItemContent}>
+                                            <View style={styles.pickerIconWrapper}>
+                                                {renderIcon(cat.icon, 18, type === 'income' ? '#10B981' : '#EF4444')}
+                                            </View>
+                                            <Text style={styles.pickerText}>{cat.name}</Text>
+                                        </View>
                                     </Pressable>
                                 ))}
                             </View>
@@ -426,6 +486,20 @@ const styles = StyleSheet.create({
     pickerText: {
         fontSize: 16,
         color: '#1A1A1A',
+    },
+    categoryValueContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    categoryIconWrapper: {
+        marginRight: 8,
+    },
+    pickerItemContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    pickerIconWrapper: {
+        marginRight: 10,
     },
     amountInput: {
         fontSize: 24,
