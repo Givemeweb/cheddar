@@ -141,6 +141,19 @@ export async function addTransaction(tx: {
     date: tx.date.getTime(),
   });
 
+  // Update account balance(s)
+  if (tx.type === 'transfer' && tx.toAccountId) {
+    // Transfer: debit from account, credit to toAccountId
+    const fromBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
+    const toBalance = store.getCell('accounts', tx.toAccountId, 'balance') as number ?? 0;
+    store.setCell('accounts', tx.accountId, 'balance', fromBalance + tx.amount); // amount is negative
+    store.setCell('accounts', tx.toAccountId, 'balance', toBalance - tx.amount); // positive equivalent
+  } else {
+    // Income or expense: update the account balance
+    const currentBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
+    store.setCell('accounts', tx.accountId, 'balance', currentBalance + tx.amount);
+  }
+
   await saveStore();
 
   return {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { getAccounts, Account } from "../../src/db/storage";
 
 const accountIcons: Record<string, string> = {
@@ -22,19 +23,21 @@ export default function AccountsScreen() {
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
 
-  useEffect(() => {
-    async function fetchAccounts() {
-      try {
-        const allAccounts = await getAccounts();
-        setAccountsList(allAccounts);
-      } catch (error) {
-        console.error("Error fetching accounts:", error);
-      } finally {
-        setLoading(false);
+  useFocusEffect(
+    useCallback(() => {
+      async function fetchAccounts() {
+        try {
+          const allAccounts = await getAccounts();
+          setAccountsList(allAccounts);
+        } catch (error) {
+          console.error("Error fetching accounts:", error);
+        } finally {
+          setLoading(false);
+        }
       }
-    }
-    fetchAccounts();
-  }, []);
+      fetchAccounts();
+    }, [])
+  );
 
   const totalAssets = accountsList.reduce((sum, acc) => sum + acc.balance, 0);
 
