@@ -100,6 +100,20 @@
     "feedback": "Feedback",
     "recommend": "Recommend"
   },
+  "backup": {
+    "title": "Backup",
+    "onDevice": "Backup/Restore on Device",
+    "onDeviceDesc": "Store backups locally on your device",
+    "deviceInfo": "Your backup data is kept in the '/Download' folder on your device only.",
+    "dataBackup": "Data Backup",
+    "dataBackupDesc": "Export backup file from the device",
+    "dataRecovery": "Data Recovery",
+    "dataRecoveryDesc": "Import backup file to the device",
+    "exportBackup": "Export Backup",
+    "exportBackupDesc": "Export backup file from the device",
+    "importBackup": "Import Backup",
+    "importBackupDesc": "Import backup file to the device"
+  },
   "stats": {
     "title": "Stats",
     "income": "Income",
