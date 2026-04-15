@@ -7,8 +7,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   useWindowDimensions,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react-native";
 import {
   getCategories,
   getTransactions,
@@ -36,9 +38,31 @@ export default function TransactionsScreen() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark } = useTheme();
+
+  const monthYear = currentDate.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+
+  const goToPreviousMonth = () => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
 
   async function fetchTransactions() {
     try {
@@ -47,12 +71,35 @@ export default function TransactionsScreen() {
 
       const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
 
-      const txWithDetails: TransactionWithDetails[] = allTransactions.map(
+      // Filter transactions by selected month
+      const startOfMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1,
+      );
+      const endOfMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
+
+      const filteredTransactions = allTransactions.filter((tx) => {
+        const txDate = new Date(tx.date);
+        return txDate >= startOfMonth && txDate <= endOfMonth;
+      });
+
+      const txWithDetails: TransactionWithDetails[] = filteredTransactions.map(
         (tx) => {
-          const category = tx.categoryId ? categoryMap.get(tx.categoryId) : null;
+          const category = tx.categoryId
+            ? categoryMap.get(tx.categoryId)
+            : null;
           return {
             id: tx.id,
-            type: tx.type || 'expense',
+            type: tx.type || "expense",
             categoryId: tx.categoryId,
             accountId: tx.accountId,
             toAccountId: tx.toAccountId,
@@ -60,13 +107,17 @@ export default function TransactionsScreen() {
             description: tx.description,
             amount: tx.amount,
             date: new Date(tx.date),
-            category: category ? {
-              name: category.name,
-              icon: category.icon,
-              type: category.type as "income" | "expense",
-            } : null,
+            category: category
+              ? {
+                  name: category.name,
+                  icon: category.icon,
+                  type: category.type as "income" | "expense",
+                }
+              : null,
             account: { name: tx.accountName, description: null },
-            toAccount: tx.toAccountName ? { name: tx.toAccountName, description: null } : null,
+            toAccount: tx.toAccountName
+              ? { name: tx.toAccountName, description: null }
+              : null,
           };
         },
       );
@@ -89,11 +140,11 @@ export default function TransactionsScreen() {
           (a, b) => b.date.getTime() - a.date.getTime(),
         );
         const totalIncome = sortedTxs
-          .filter((t) => t.type === 'income')
+          .filter((t) => t.type === "income")
           .reduce((sum, t) => sum + t.amount, 0);
         const totalExpense = Math.abs(
           sortedTxs
-            .filter((t) => t.type === 'expense')
+            .filter((t) => t.type === "expense")
             .reduce((sum, t) => sum + t.amount, 0),
         );
 
@@ -122,7 +173,7 @@ export default function TransactionsScreen() {
     useCallback(() => {
       setLoading(true);
       fetchTransactions();
-    }, [])
+    }, [currentDate]),
   );
 
   const onRefresh = () => {
@@ -151,21 +202,67 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
+      className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
-      <View className={`flex-row px-4 py-3 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
+      {/* Month Navigation Bar */}
+      <View
+        className={`flex-row items-center justify-between px-4 py-3 ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-b`}
+      >
+        <View className="flex-row items-center">
+          <Pressable
+            onPress={goToPreviousMonth}
+            className="p-2"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ChevronLeft size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
+          </Pressable>
+          <Text
+            className={`text-lg font-semibold ${isDark ? "text-white" : "text-cheddar-dark"}`}
+          >
+            {monthYear}
+          </Text>
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={goToNextMonth}
+              className="p-2"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronRight size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            </Pressable>
+          </View>
+        </View>
+        <Pressable
+          className="p-2 ml-1"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Search size={22} color={isDark ? "#9CA3AF" : "#6B7280"} />
+        </Pressable>
+      </View>
+
+      {/* Totals Bar */}
+      <View
+        className={`flex-row px-4 py-3 ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-b`}
+      >
         <View className="flex-1 items-center">
           <Text className="text-cheddar-income font-semibold text-lg">
             +${totalIncome.toFixed(2)}
           </Text>
-          <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Income</Text>
+          <Text
+            className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
+          >
+            Income
+          </Text>
         </View>
         <View className="flex-1 items-center">
           <Text className="text-cheddar-expense font-semibold text-lg">
             -${totalExpense.toFixed(2)}
           </Text>
-          <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Expenses</Text>
+          <Text
+            className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
+          >
+            Expenses
+          </Text>
         </View>
         <View className="flex-1 items-center">
           <Text
@@ -173,13 +270,19 @@ export default function TransactionsScreen() {
           >
             {total >= 0 ? "+" : ""}${total.toFixed(2)}
           </Text>
-          <Text className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Total</Text>
+          <Text
+            className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
+          >
+            Total
+          </Text>
         </View>
       </View>
       <FlatList
         data={groupedTransactions}
         keyExtractor={(item) => item.dateLabel}
-        renderItem={({ item }) => <TransactionGroup group={item} isDark={isDark} />}
+        renderItem={({ item }) => (
+          <TransactionGroup group={item} isDark={isDark} />
+        )}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -189,7 +292,9 @@ export default function TransactionsScreen() {
         }
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
-            <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
+            <Text
+              className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+            >
               No transactions yet
             </Text>
           </View>
