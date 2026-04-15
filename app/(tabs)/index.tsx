@@ -10,7 +10,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   getCategories,
-  getAccounts,
   getTransactions,
 } from "../../src/db/storage";
 import { TransactionGroup } from "../../src/components/TransactionGroup";
@@ -39,17 +38,13 @@ export default function TransactionsScreen() {
   async function fetchTransactions() {
     try {
       const allCategories = await getCategories();
-      const allAccounts = await getAccounts();
       const allTransactions = await getTransactions();
 
       const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
-      const accountMap = new Map(allAccounts.map((a) => [a.id, a]));
 
       const txWithDetails: TransactionWithDetails[] = allTransactions.map(
         (tx) => {
           const category = tx.categoryId ? categoryMap.get(tx.categoryId) : null;
-          const account = accountMap.get(tx.accountId)!;
-          const toAccount = tx.toAccountId ? accountMap.get(tx.toAccountId) : null;
           return {
             id: tx.id,
             type: tx.type || 'expense',
@@ -65,8 +60,8 @@ export default function TransactionsScreen() {
               icon: category.icon,
               type: category.type as "income" | "expense",
             } : null,
-            account: { name: account.name, description: account.description },
-            toAccount: toAccount ? { name: toAccount.name, description: toAccount.description } : null,
+            account: { name: tx.accountName, description: null },
+            toAccount: tx.toAccountName ? { name: tx.toAccountName, description: null } : null,
           };
         },
       );

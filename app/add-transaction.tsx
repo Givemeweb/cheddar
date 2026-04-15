@@ -120,10 +120,14 @@ export default function AddTransactionScreen() {
 
         if (type === 'transfer') {
             if (!fromAccountId || !toAccountId) return;
+            const fromAccount = accounts.find(a => a.id === fromAccountId);
+            const toAccount = accounts.find(a => a.id === toAccountId);
             await addTransaction({
                 type: 'transfer',
                 accountId: fromAccountId,
+                accountName: fromAccount?.name || '',
                 toAccountId,
+                toAccountName: toAccount?.name || '',
                 note: note || null,
                 description: description || null,
                 amount: -Math.abs(parsedAmount),
@@ -131,10 +135,12 @@ export default function AddTransactionScreen() {
             });
         } else {
             if (!selectedAccountId || !selectedCategoryId) return;
+            const account = accounts.find(a => a.id === selectedAccountId);
             await addTransaction({
                 type,
                 categoryId: selectedCategoryId,
                 accountId: selectedAccountId,
+                accountName: account?.name || '',
                 note: note || null,
                 description: description || null,
                 amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),

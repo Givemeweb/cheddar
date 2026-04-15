@@ -31,7 +31,9 @@ export interface Transaction {
   type: 'income' | 'expense' | 'transfer';
   categoryId: string | null;
   accountId: string;
+  accountName: string;
   toAccountId: string | null;
+  toAccountName: string | null;
   note: string | null;
   description: string | null;
   amount: number;
@@ -47,7 +49,9 @@ export interface TablesSchema {
       type: string;
       categoryId: string | null;
       accountId: string;
+      accountName: string;
       toAccountId: string | null;
+      toAccountName: string | null;
       note: string | null;
       description: string | null;
       amount: number;
@@ -128,6 +132,34 @@ export async function initDatabase(): Promise<Store> {
           needsSave = true;
         }
         orderIndex++;
+      });
+      if (needsSave) {
+        await persister.save();
+      }
+    }
+
+    // Ensure all transactions have accountName and toAccountName (migration)
+    const transactions = store!.getTable('transactions');
+    if (transactions) {
+      let needsSave = false;
+      Object.entries(transactions).forEach(([id, data]) => {
+        if (data.accountName === undefined || data.accountName === null) {
+          // Find account name from accountId
+          const accountId = data.accountId as string;
+          const account = accounts?.[accountId];
+          if (account) {
+            store!.setCell('transactions', id, 'accountName', account.name as string);
+            needsSave = true;
+          }
+        }
+        if (data.toAccountId && (data.toAccountName === undefined || data.toAccountName === null)) {
+          const toAccountId = data.toAccountId as string;
+          const toAccount = accounts?.[toAccountId];
+          if (toAccount) {
+            store!.setCell('transactions', id, 'toAccountName', toAccount.name as string);
+            needsSave = true;
+          }
+        }
       });
       if (needsSave) {
         await persister.save();

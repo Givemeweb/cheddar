@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Pressable,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -30,25 +30,41 @@ export default function DeleteAccountScreen() {
     }, [loadAccounts])
   );
 
+  const performDelete = async (account: Account) => {
+    try {
+      await deleteAccount(account.id);
+      setAccounts(prev => prev.filter(a => a.id !== account.id));
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+    }
+  };
+
   const handleDelete = (account: Account) => {
-    Alert.alert(
-      'Delete Account',
-      `Are you sure you want to delete "${account.name}"?\n\nExisting transactions with this account will not be affected. They will still be visible in your transaction history.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteAccount(account.id);
-            setAccounts(prev => prev.filter(a => a.id !== account.id));
+    if (Platform.OS === 'web') {
+      // Use browser confirm on web
+      const confirmed = window.confirm(
+        `Are you sure you want to delete "${account.name}"?\n\nExisting transactions with this account will not be affected.`
+      );
+      if (confirmed) {
+        performDelete(account);
+      }
+    } else {
+      Alert.alert(
+        'Delete Account',
+        `Are you sure you want to delete "${account.name}"?\n\nExisting transactions with this account will not be affected. They will still be visible in your transaction history.`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        },
-      ]
-    );
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => performDelete(account),
+          },
+        ]
+      );
+    }
   };
 
   if (loading) {
@@ -91,14 +107,11 @@ export default function DeleteAccountScreen() {
         ) : (
           <View className="bg-white rounded-xl overflow-hidden">
             {accounts.map((account, index) => (
-              <Pressable
+              <View
                 key={account.id}
                 className={`flex-row items-center justify-between p-4 ${
                   index > 0 ? 'border-t border-gray-100' : ''
                 }`}
-                style={({ pressed }) => [
-                  pressed && { backgroundColor: '#F3F4F6' },
-                ]}
               >
                 <View className="flex-row items-center flex-1">
                   <View className="w-10 h-10 bg-cheddar-light rounded-full items-center justify-center mr-3">
@@ -117,12 +130,12 @@ export default function DeleteAccountScreen() {
                 </View>
                 <TouchableOpacity
                   onPress={() => handleDelete(account)}
-                  className="p-2"
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                  className="bg-red-50 px-4 py-2 rounded-lg"
                 >
                   <Text className="text-red-500 font-medium">Delete</Text>
                 </TouchableOpacity>
-              </Pressable>
+              </View>
             ))}
           </View>
         )}

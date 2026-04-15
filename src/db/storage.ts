@@ -21,7 +21,9 @@ export interface Transaction {
   type: 'income' | 'expense' | 'transfer';
   categoryId: string | null;
   accountId: string;
+  accountName: string;
   toAccountId: string | null;
+  toAccountName: string | null;
   note: string | null;
   description: string | null;
   amount: number;
@@ -110,7 +112,9 @@ export async function getTransactions(): Promise<Transaction[]> {
       type: data.type as 'income' | 'expense' | 'transfer',
       categoryId: data.categoryId as string | null,
       accountId: data.accountId as string,
+      accountName: data.accountName as string,
       toAccountId: data.toAccountId as string | null,
+      toAccountName: data.toAccountName as string | null,
       note: data.note as string | null,
       description: data.description as string | null,
       amount: data.amount as number,
@@ -123,7 +127,9 @@ export async function addTransaction(tx: {
   type: 'income' | 'expense' | 'transfer';
   categoryId?: string | null;
   accountId: string;
+  accountName: string;
   toAccountId?: string | null;
+  toAccountName?: string | null;
   note?: string | null;
   description?: string | null;
   amount: number;
@@ -139,7 +145,9 @@ export async function addTransaction(tx: {
     type: tx.type,
     categoryId: tx.categoryId ?? null,
     accountId: tx.accountId,
+    accountName: tx.accountName,
     toAccountId: tx.toAccountId ?? null,
+    toAccountName: tx.toAccountName ?? null,
     note: tx.note ?? null,
     description: tx.description ?? null,
     amount: tx.amount,
@@ -166,7 +174,9 @@ export async function addTransaction(tx: {
     type: tx.type,
     categoryId: tx.categoryId ?? null,
     accountId: tx.accountId,
+    accountName: tx.accountName,
     toAccountId: tx.toAccountId ?? null,
+    toAccountName: tx.toAccountName ?? null,
     note: tx.note ?? null,
     description: tx.description ?? null,
     amount: tx.amount,
