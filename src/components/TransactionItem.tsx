@@ -1,4 +1,43 @@
 import { View, Text, Pressable } from "react-native";
+import {
+  TrendingUp,
+  Gift,
+  Briefcase,
+  Wallet,
+  PiggyBank,
+  Utensils,
+  Car,
+  ShoppingCart,
+  Film,
+  Receipt,
+  HeartPulse,
+  Laptop,
+  ArrowRightLeft,
+} from 'lucide-react-native';
+
+// Map icon names to Lucide components
+const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
+  'trending-up': TrendingUp,
+  'gift': Gift,
+  'briefcase': Briefcase,
+  'wallet': Wallet,
+  'piggy-bank': PiggyBank,
+  'utensils': Utensils,
+  'car': Car,
+  'shopping-cart': ShoppingCart,
+  'film': Film,
+  'receipt': Receipt,
+  'heart-pulse': HeartPulse,
+  'laptop': Laptop,
+};
+
+const renderIcon = (iconName: string, size: number = 18, color: string = '#1A1A1A') => {
+  const IconComponent = iconMap[iconName];
+  if (IconComponent) {
+    return <IconComponent size={size} color={color} />;
+  }
+  return null;
+};
 
 export type TransactionWithDetails = {
   id: string;
@@ -43,9 +82,17 @@ export function TransactionItem({ transaction }: TransactionItemProps) {
       {/* Left side - Category and Note/Account */}
       <View className="flex-1 flex-col">
         <View className="flex-row items-center">
-          <Text className="text-lg mr-2">
-            {isTransfer ? '↔️' : transaction.category?.icon}
-          </Text>
+          <View className="mr-2">
+            {isTransfer ? (
+              <ArrowRightLeft size={18} color="#6B7280" />
+            ) : transaction.category?.icon ? (
+              renderIcon(
+                transaction.category.icon,
+                18,
+                transaction.category.type === 'income' ? '#10B981' : '#EF4444'
+              )
+            ) : null}
+          </View>
           <Text className={`text-base font-medium ${isTransfer ? 'text-gray-500' : 'text-cheddar-dark'}`}>
             {isTransfer ? 'Transfer' : transaction.category?.name}
           </Text>
