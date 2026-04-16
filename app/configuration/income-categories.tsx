@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Platform,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
@@ -13,7 +14,8 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Plus,
-  StopCircle,
+  Trash2,
+  Circle,
   TrendingUp,
   Gift,
   Briefcase,
@@ -72,24 +74,34 @@ export default function IncomeCategoriesScreen() {
   );
 
   const handleDelete = (category: Category) => {
-    Alert.alert(
-      t('categories.deleteConfirmTitle'),
-      t('categories.deleteConfirmMessage', { name: category.name }),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            await deleteCategory(category.id);
-            setCategories(prev => prev.filter(c => c.id !== category.id));
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        t('categories.deleteConfirmMessage', { name: category.name })
+      );
+      if (confirmed) {
+        deleteCategory(category.id);
+        setCategories(prev => prev.filter(c => c.id !== category.id));
+      }
+    } else {
+      Alert.alert(
+        t('categories.deleteConfirmTitle'),
+        t('categories.deleteConfirmMessage', { name: category.name }),
+        [
+          {
+            text: t('common.cancel'),
+            style: 'cancel',
           },
-        },
-      ]
-    );
+          {
+            text: t('common.delete'),
+            style: 'destructive',
+            onPress: async () => {
+              await deleteCategory(category.id);
+              setCategories(prev => prev.filter(c => c.id !== category.id));
+            },
+          },
+        ]
+      );
+    }
   };
 
   const renderIcon = (iconName: string, color: string = "#10B981") => {
@@ -98,7 +110,7 @@ export default function IncomeCategoriesScreen() {
     if (IconComponent) {
       return <IconComponent size={22} color={color} />;
     }
-    return <StopCircle size={22} color={color} />;
+    return <Circle size={22} color={color} />;
   };
 
   if (loading) {
@@ -146,29 +158,35 @@ export default function IncomeCategoriesScreen() {
         ) : (
           <View className={`rounded-xl overflow-hidden ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
             {categories.map((category, index) => (
-              <Pressable
+              <View
                 key={category.id}
-                onPress={() => router.push(`/configuration/edit-category?id=${category.id}` as never)}
                 className={`flex-row items-center justify-between p-4 ${
                   index > 0 ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-100') : ''
                 }`}
               >
-                <View className="flex-row items-center flex-1">
+                <Pressable
+                  onPress={() => router.push(`/configuration/edit-category?id=${category.id}` as never)}
+                  className="flex-row items-center flex-1"
+                >
                   <View className="mr-3">
                     {renderIcon(category.icon)}
                   </View>
                   <Text className={`text-lg ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                     {category.name}
                   </Text>
-                </View>
+                </Pressable>
                 <TouchableOpacity
-                  onPress={() => handleDelete(category)}
+                  onPress={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDelete(category);
+                  }}
                   className="p-2"
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <StopCircle size={22} color="#EF4444" />
+                  <Trash2 size={22} color="#EF4444" />
                 </TouchableOpacity>
-              </Pressable>
+              </View>
             ))}
           </View>
         )}

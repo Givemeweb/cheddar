@@ -248,34 +248,34 @@ export default function TransactionsScreen() {
       >
         <View className="flex-1 items-center">
           <Text className="text-cheddar-income font-semibold text-lg">
-            +${totalIncome.toFixed(2)}
+            €{totalIncome.toFixed(2)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
           >
-            {t('transactions.income')}
+            {t("transactions.income")}
           </Text>
         </View>
         <View className="flex-1 items-center">
           <Text className="text-cheddar-expense font-semibold text-lg">
-            -${totalExpense.toFixed(2)}
+            €{totalExpense.toFixed(2)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
           >
-            {t('transactions.expenses')}
+            {t("transactions.expenses")}
           </Text>
         </View>
         <View className="flex-1 items-center">
           <Text
             className={`font-semibold text-lg ${total >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
           >
-            {total >= 0 ? "+" : ""}${total.toFixed(2)}
+            €{total.toFixed(2)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
           >
-            {t('transactions.total')}
+            {t("transactions.total")}
           </Text>
         </View>
       </View>
@@ -297,7 +297,7 @@ export default function TransactionsScreen() {
             <Text
               className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
             >
-              {t('transactions.noTransactions')}
+              {t("transactions.noTransactions")}
             </Text>
           </View>
         }
