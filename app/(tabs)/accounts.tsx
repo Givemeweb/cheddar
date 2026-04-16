@@ -41,7 +41,7 @@ export default function AccountsScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, showIcons } = useTheme();
+  const { isDark, showIcons, currencySymbol } = useTheme();
   const { t } = useTranslation();
 
   useFocusEffect(
@@ -72,25 +72,35 @@ export default function AccountsScreen() {
 
   return (
     <SafeAreaView
-      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
+      className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
       {/* Header */}
       <View className="px-4 py-4">
         <View className="flex-row justify-between items-center">
-          <Text className={`text-2xl font-bold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.title')}</Text>
+          <Text
+            className={`text-2xl font-bold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          >
+            {t("accounts.title")}
+          </Text>
           <Pressable
             onPress={() => setMenuVisible(!menuVisible)}
             className="p-2"
           >
-            <Text className={`text-2xl ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>⋮</Text>
+            <Text
+              className={`text-2xl ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              ⋮
+            </Text>
           </Pressable>
         </View>
       </View>
 
       {/* Kebab Menu Dropdown */}
       {menuVisible && (
-        <View className={`absolute right-4 top-20 rounded-lg shadow-lg z-10 py-2 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
+        <View
+          className={`absolute right-4 top-20 rounded-lg shadow-lg z-10 py-2 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+        >
           <Pressable
             onPress={() => {
               setMenuVisible(false);
@@ -98,7 +108,11 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.addAccount')}</Text>
+            <Text
+              className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("accounts.addAccount")}
+            </Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -107,7 +121,11 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.deleteAccount')}</Text>
+            <Text
+              className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("accounts.deleteAccount")}
+            </Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -116,7 +134,11 @@ export default function AccountsScreen() {
             }}
             className="px-4 py-3"
           >
-            <Text className={`${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>{t('accounts.reorderAccounts')}</Text>
+            <Text
+              className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("accounts.reorderAccounts")}
+            </Text>
           </Pressable>
         </View>
       )}
@@ -125,10 +147,10 @@ export default function AccountsScreen() {
       <View className="px-4 mb-4">
         <View className="bg-cheddar-yellow rounded-xl p-6 shadow-sm">
           <Text className="text-cheddar-dark text-sm font-medium">
-            {t('accounts.totalAssets')}
+            {t("accounts.totalAssets")}
           </Text>
           <Text className="text-cheddar-dark text-3xl font-bold mt-1">
-            €{totalAssets.toFixed(2)}
+            {currencySymbol} {totalAssets.toFixed(2)}
           </Text>
         </View>
       </View>
@@ -139,38 +161,55 @@ export default function AccountsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerClassName="px-4"
         renderItem={({ item }) => {
-            const IconComponent = showIcons ? iconMap[item.icon || 'wallet'] : null;
-            return (
-              <Pressable
-                onPress={() => router.push(`/configuration/edit-account?id=${item.id}`)}
-                className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
-              >
-                {IconComponent && (
-                  <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
-                    <IconComponent size={24} color={isDark ? "#F9FAFB" : "#212226"} />
-                  </View>
-                )}
-                <View className="flex-1">
-                  <Text className={`text-lg font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                    {item.name}
-                  </Text>
-                  {item.description && (
-                    <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
-                      {item.description}
-                    </Text>
-                  )}
-                </View>
-                <Text
-                  className={`text-lg font-semibold ${item.balance >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
+          const IconComponent = showIcons
+            ? iconMap[item.icon || "wallet"]
+            : null;
+          return (
+            <Pressable
+              onPress={() =>
+                router.push(`/configuration/edit-account?id=${item.id}`)
+              }
+              className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+            >
+              {IconComponent && (
+                <View
+                  className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
                 >
-                  €{item.balance.toFixed(2)}
+                  <IconComponent
+                    size={24}
+                    color={isDark ? "#F9FAFB" : "#212226"}
+                  />
+                </View>
+              )}
+              <View className="flex-1">
+                <Text
+                  className={`text-lg font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                >
+                  {item.name}
                 </Text>
-              </Pressable>
-            );
-          }}
+                {item.description && (
+                  <Text
+                    className={`text-sm ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                  >
+                    {item.description}
+                  </Text>
+                )}
+              </View>
+              <Text
+                className={`text-lg font-semibold ${item.balance >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
+              >
+                {currencySymbol} {item.balance.toFixed(2)}
+              </Text>
+            </Pressable>
+          );
+        }}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
-            <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>{t('accounts.noAccounts')}</Text>
+            <Text
+              className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+            >
+              {t("accounts.noAccounts")}
+            </Text>
           </View>
         }
       />

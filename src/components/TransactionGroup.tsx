@@ -1,16 +1,19 @@
 import { View, Text } from "react-native";
 import { GroupedTransactions, TransactionItem } from "./TransactionItem";
+import { useTheme } from "./ThemeProvider";
 
 interface TransactionGroupProps {
   group: GroupedTransactions;
   isDark?: boolean;
 }
 
-function formatCurrencyShort(amount: number): string {
-  return `€ ${amount.toFixed(2)}`;
+function formatCurrencyShort(amount: number, currency: string): string {
+  return `${currency} ${amount.toFixed(2)}`;
 }
 
 export function TransactionGroup({ group, isDark = false }: TransactionGroupProps) {
+  const { currencySymbol } = useTheme();
+
   return (
     <View className="mb-2">
       {/* Group Header */}
@@ -26,10 +29,10 @@ export function TransactionGroup({ group, isDark = false }: TransactionGroupProp
         </View>
         <View className="flex-row gap-6">
           <Text className="text-cheddar-income mr-4">
-            {formatCurrencyShort(group.totalIncome)}
+            {formatCurrencyShort(group.totalIncome, currencySymbol)}
           </Text>
           <Text className="text-cheddar-expense">
-            {formatCurrencyShort(group.totalExpense)}
+            {formatCurrencyShort(group.totalExpense, currencySymbol)}
           </Text>
         </View>
       </View>

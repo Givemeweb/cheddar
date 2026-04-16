@@ -41,7 +41,7 @@ export default function TransactionsScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark } = useTheme();
+  const { isDark, currencySymbol } = useTheme();
   const { t } = useTranslation();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
@@ -241,7 +241,7 @@ export default function TransactionsScreen() {
       >
         <View className="flex-1 items-center">
           <Text className="text-cheddar-income font-semibold text-lg">
-            €{totalIncome.toFixed(2)}
+            {currencySymbol} {totalIncome.toFixed(2)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
@@ -251,7 +251,7 @@ export default function TransactionsScreen() {
         </View>
         <View className="flex-1 items-center">
           <Text className="text-cheddar-expense font-semibold text-lg">
-            €{totalExpense.toFixed(2)}
+            {currencySymbol} {totalExpense.toFixed(2)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
@@ -263,7 +263,7 @@ export default function TransactionsScreen() {
           <Text
             className={`font-semibold text-lg ${total >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
           >
-            €{total.toFixed(2)}
+            {currencySymbol} {total.toFixed(2)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}

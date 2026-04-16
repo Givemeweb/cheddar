@@ -77,15 +77,15 @@ interface TransactionItemProps {
   isDark?: boolean;
 }
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, currency: string = '€'): string {
   const absAmount = Math.abs(amount);
-  const formatted = `€ ${absAmount.toFixed(2)}`;
+  const formatted = `${currency} ${absAmount.toFixed(2)}`;
   return formatted;
 }
 
 export function TransactionItem({ transaction, isDark = false }: TransactionItemProps) {
   const { t } = useTranslation();
-  const { showIcons } = useTheme();
+  const { showIcons, currencySymbol } = useTheme();
   const router = useRouter();
   const isTransfer = transaction.type === 'transfer';
   const isExpense = transaction.amount < 0;
@@ -150,12 +150,12 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
           <>
             <View className="flex-1 items-end">
               <Text className="text-gray-400">
-                {formatCurrency(Math.abs(transaction.amount))}
+                {formatCurrency(Math.abs(transaction.amount), currencySymbol)}
               </Text>
             </View>
             <View className="flex-1 items-end">
               <Text className="text-gray-400">
-                {formatCurrency(Math.abs(transaction.amount))}
+                {formatCurrency(Math.abs(transaction.amount), currencySymbol)}
               </Text>
             </View>
           </>
@@ -166,7 +166,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
               <Text
                 className={`${isExpense ? "text-cheddar-expense" : "text-cheddar-income"} font-medium`}
               >
-                {formatCurrency(transaction.amount)}
+                {formatCurrency(transaction.amount, currencySymbol)}
               </Text>
             </View>
           </>

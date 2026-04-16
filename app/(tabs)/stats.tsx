@@ -36,7 +36,7 @@ export default function StatsScreen() {
   const [chartSize, setChartSize] = useState<{ width: number; height: number } | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, showIcons } = useTheme();
+  const { isDark, showIcons, currencySymbol } = useTheme();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -167,7 +167,7 @@ export default function StatsScreen() {
                 <Text
                   className={`text-center text-2xl font-bold mt-2 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
                 >
-                  €{total.toFixed(2)}
+                  {currencySymbol} {total.toFixed(2)}
                 </Text>
               </View>
 
@@ -204,7 +204,7 @@ export default function StatsScreen() {
                     <Text
                       className={`font-medium ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
                     >
-                      €{stat.total.toFixed(2)}
+                      {currencySymbol} {stat.total.toFixed(2)}
                     </Text>
                   </View>
                 ))}

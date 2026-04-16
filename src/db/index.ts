@@ -28,3 +28,12 @@ export {
 } from './storage';
 
 export { getShowIcons, setShowIcons } from './icons';
+
+export {
+  getMainCurrencyCode,
+  setMainCurrencyCode,
+  getCurrencySymbol,
+  CURRENCIES,
+  DEFAULT_CURRENCY_CODE,
+  DEFAULT_CURRENCY_SYMBOL,
+} from './currency';
