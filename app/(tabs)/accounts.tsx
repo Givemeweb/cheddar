@@ -145,13 +145,11 @@ export default function AccountsScreen() {
                 onPress={() => router.push(`/configuration/edit-account?id=${item.id}`)}
                 className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
               >
-                <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
-                  {IconComponent ? (
+                {IconComponent && (
+                  <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
                     <IconComponent size={24} color={isDark ? "#F9FAFB" : "#212226"} />
-                  ) : (
-                    <Text className="text-2xl">💰</Text>
-                  )}
-                </View>
+                  </View>
+                )}
                 <View className="flex-1">
                   <Text className={`text-lg font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                     {item.name}
