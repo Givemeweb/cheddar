@@ -23,15 +23,6 @@ import {
 import { FAB } from "../../src/components/FAB";
 import { useTheme } from "../../src/components/ThemeProvider";
 
-function formatDateForGroup(date: Date, t: (key: string) => string): string {
-  const day = date.getDate();
-  const days = [t('days.short.sun'), t('days.short.mon'), t('days.short.tue'), t('days.short.wed'), t('days.short.thu'), t('days.short.fri'), t('days.short.sat')];
-  const dayName = days[date.getDay()];
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day} (${dayName}) ${month}.${year}`;
-}
-
 export default function TransactionsScreen() {
   const [groupedTransactions, setGroupedTransactions] = useState<
     GroupedTransactions[]
@@ -145,7 +136,7 @@ export default function TransactionsScreen() {
 
         result.push({
           date,
-          dateLabel: formatDateForGroup(date, t),
+          dateLabel: "",
           transactions: sortedTxs,
           totalIncome,
           totalExpense,
