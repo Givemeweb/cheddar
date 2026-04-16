@@ -36,7 +36,7 @@ export default function StatsScreen() {
   const [chartSize, setChartSize] = useState<{ width: number; height: number } | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark } = useTheme();
+  const { isDark, showIcons } = useTheme();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -191,6 +191,7 @@ export default function StatsScreen() {
                         stat.icon,
                         18,
                         isDark ? "#F9FAFB" : "#212226",
+                        showIcons,
                       )}
                     </View>
                     <View className="flex-1">

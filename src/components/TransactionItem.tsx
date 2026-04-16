@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from './ThemeProvider';
 
 // Map icon names to Lucide components
 const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -36,7 +37,9 @@ export const renderIcon = (
   iconName: string,
   size: number = 18,
   color: string = "#212226",
+  showIcons: boolean = true,
 ) => {
+  if (!showIcons) return null;
   const IconComponent = iconMap[iconName];
   if (IconComponent) {
     return <IconComponent size={size} color={color} />;
@@ -81,6 +84,7 @@ export function formatCurrency(amount: number): string {
 
 export function TransactionItem({ transaction, isDark = false }: TransactionItemProps) {
   const { t } = useTranslation();
+  const { showIcons } = useTheme();
   const isTransfer = transaction.type === 'transfer';
   const isExpense = transaction.amount < 0;
 
@@ -91,17 +95,20 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
       {/* Left side - Category and Note/Account */}
       <View className="flex-1 flex-col">
         <View className="flex-row items-center">
-          <View className="mr-2">
-            {isTransfer ? (
-              <ArrowRightLeft size={18} color="#6B7280" />
-            ) : transaction.category?.icon ? (
-              renderIcon(
-                transaction.category.icon,
-                18,
-                transaction.category.type === "income" ? "#10B981" : "#EF4444",
-              )
-            ) : null}
-          </View>
+          {showIcons && (
+            <View className="mr-2">
+              {isTransfer ? (
+                <ArrowRightLeft size={18} color="#6B7280" />
+              ) : transaction.category?.icon ? (
+                renderIcon(
+                  transaction.category.icon,
+                  18,
+                  transaction.category.type === "income" ? "#10B981" : "#EF4444",
+                  showIcons,
+                )
+              ) : null}
+            </View>
+          )}
           <Text
             className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
           >

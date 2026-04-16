@@ -63,6 +63,7 @@ export interface TablesSchema {
 
 export interface ValuesSchema {
   theme: string;
+  showIcons: string;
 }
 
 let store: Store | null = null;
@@ -108,6 +109,12 @@ export async function initDatabase(): Promise<Store> {
   // Initialize theme value if not set
   if (store.getValue('theme') === undefined) {
     store.setValue('theme', 'system');
+    await persister.save();
+  }
+
+  // Initialize showIcons value if not set (default: false - icons disabled)
+  if (store.getValue('showIcons') === undefined) {
+    store.setValue('showIcons', 'false');
     await persister.save();
   }
 

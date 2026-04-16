@@ -52,7 +52,9 @@ const renderIcon = (
   iconName: string,
   size: number = 16,
   color: string = "#212226",
+  showIcons: boolean = true,
 ) => {
+  if (!showIcons) return null;
   const IconComponent = iconMap[iconName];
   if (IconComponent) {
     return <IconComponent size={size} color={color} />;
@@ -62,7 +64,7 @@ const renderIcon = (
 
 export default function AddTransactionScreen() {
     const router = useRouter();
-    const { isDark } = useTheme();
+    const { isDark, showIcons } = useTheme();
     const { t } = useTranslation();
     const [type, setType] = useState<TransactionType>('expense');
     const [date, setDate] = useState(new Date());
@@ -304,12 +306,13 @@ export default function AddTransactionScreen() {
                   {t("transactions.category")}
                 </Text>
                 <View className="flex-row items-center">
-                  {getCategoryIcon(selectedCategoryId) && (
+                  {getCategoryIcon(selectedCategoryId) && showIcons && (
                     <View className="mr-2">
                       {renderIcon(
                         getCategoryIcon(selectedCategoryId)!,
                         16,
                         type === "income" ? "#10B981" : "#EF4444",
+                        showIcons,
                       )}
                     </View>
                   )}
@@ -333,13 +336,16 @@ export default function AddTransactionScreen() {
                         setShowCategoryPicker(false);
                       }}
                     >
-                      <View className="mr-3">
-                        {renderIcon(
-                          cat.icon,
-                          18,
-                          type === "income" ? "#10B981" : "#EF4444",
-                        )}
-                      </View>
+                      {showIcons && (
+                        <View className="mr-3">
+                          {renderIcon(
+                            cat.icon,
+                            18,
+                            type === "income" ? "#10B981" : "#EF4444",
+                            showIcons,
+                          )}
+                        </View>
+                      )}
                       <Text
                         className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
                       >

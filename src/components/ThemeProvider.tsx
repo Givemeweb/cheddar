@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { useColorScheme } from 'react-native';
 import { getTheme, setTheme, ThemeMode } from '../db/theme';
+import { getShowIcons, setShowIcons } from '../db/icons';
 import { useDatabase } from './DatabaseProvider';
 
 export type { ThemeMode } from '../db/theme';
@@ -17,14 +18,18 @@ interface ThemeContextType {
   themeMode: ThemeMode;
   activeTheme: ActiveTheme;
   isDark: boolean;
+  showIcons: boolean;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
+  setShowIconsState: (show: boolean) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   themeMode: 'system',
   activeTheme: 'light',
   isDark: false,
+  showIcons: false,
   setThemeMode: async () => {},
+  setShowIconsState: async () => {},
 });
 
 export function useTheme() {
@@ -38,17 +43,20 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const { isReady } = useDatabase();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [showIcons, setShowIconsState] = useState<boolean>(false);
   const systemColorScheme = useColorScheme();
 
-  // Load saved theme on mount
+  // Load saved theme and icons setting on mount
   useEffect(() => {
     if (!isReady) return;
 
-    async function loadTheme() {
+    async function loadSettings() {
       const savedTheme = await getTheme();
+      const savedShowIcons = await getShowIcons();
       setThemeModeState(savedTheme);
+      setShowIconsState(savedShowIcons);
     }
-    loadTheme();
+    loadSettings();
   }, [isReady]);
 
   const activeTheme: ActiveTheme =
@@ -63,13 +71,20 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     await setTheme(mode);
   };
 
+  const handleSetShowIcons = async (show: boolean) => {
+    setShowIconsState(show);
+    await setShowIcons(show);
+  };
+
   return (
     <ThemeContext.Provider
       value={{
         themeMode,
         activeTheme,
         isDark,
+        showIcons,
         setThemeMode: handleSetThemeMode,
+        setShowIconsState: handleSetShowIcons,
       }}
     >
       {children}

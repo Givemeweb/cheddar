@@ -89,7 +89,10 @@
     "themeLight": "Light",
     "themeLightDesc": "Always use light theme",
     "themeDark": "Dark",
-    "themeDarkDesc": "Always use dark theme"
+    "themeDarkDesc": "Always use dark theme",
+    "display": "Display",
+    "showIcons": "Show Icons",
+    "showIconsDesc": "Display category icons in transactions"
   },
   "more": {
     "title": "More",

@@ -1,7 +1,7 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Sun, Moon, Smartphone, Check } from "lucide-react-native";
+import { Sun, Moon, Smartphone, Check, Image } from "lucide-react-native";
 import { useTheme, ThemeMode } from "../../src/components/ThemeProvider";
 import { useTranslation } from "react-i18next";
 
@@ -14,7 +14,7 @@ type ThemeOption = {
 
 export default function StyleScreen() {
   const router = useRouter();
-  const { themeMode, setThemeMode, isDark } = useTheme();
+  const { themeMode, setThemeMode, isDark, showIcons, setShowIconsState } = useTheme();
   const { t } = useTranslation();
 
   const iconColor = isDark ? "#F9FAFB" : "#212226";
@@ -100,6 +100,44 @@ export default function StyleScreen() {
               </TouchableOpacity>
             );
           })}
+        </View>
+
+        {/* Icons toggle section */}
+        <Text
+          className={`text-sm font-medium uppercase mb-2 px-2 mt-6 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+        >
+          {t("config.display")}
+        </Text>
+        <View
+          className={`${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl overflow-hidden`}
+        >
+          <View
+            className={`flex-row items-center justify-between p-4`}
+          >
+            <View className="flex-row items-center flex-1">
+              <View className="mr-3">
+                <Image size={24} color={iconColor} />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                >
+                  {t("config.showIcons")}
+                </Text>
+                <Text
+                  className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  {t("config.showIconsDesc")}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={showIcons}
+              onValueChange={(value) => setShowIconsState(value)}
+              trackColor={{ false: "#374151", true: "#FFB800" }}
+              thumbColor={showIcons ? "#F9FAFB" : "#9CA3AF"}
+            />
+          </View>
         </View>
       </View>
     </SafeAreaView>

@@ -1,5 +1,5 @@
 // TinyBase-based database implementation
-// Works on both native (iOS/Android) and web platforms
+// Works on both native(iOS/Android) and web platforms
 
 export {
   initDatabase,
@@ -26,3 +26,5 @@ export {
   initializeDatabase,
   clearAllData,
 } from './storage';
+
+export { getShowIcons, setShowIcons } from './icons';

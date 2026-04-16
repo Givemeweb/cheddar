@@ -53,7 +53,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; color?: strin
 
 export default function ExpenseCategoriesScreen() {
   const router = useRouter();
-  const { isDark } = useTheme();
+  const { isDark, showIcons } = useTheme();
   const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +93,7 @@ export default function ExpenseCategoriesScreen() {
   };
 
   const renderIcon = (iconName: string, color: string = "#EF4444") => {
+    if (!showIcons) return null;
     const IconComponent = iconMap[iconName];
     if (IconComponent) {
       return <IconComponent size={22} color={color} />;
