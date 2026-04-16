@@ -199,9 +199,127 @@ export async function addTransaction(tx: {
   };
 }
 
+export async function getTransactionById(id: string): Promise<Transaction | undefined> {
+  if (!isDatabaseReady()) return undefined;
+  const store = getStore();
+  const row = store.getRow('transactions', id);
+  if (!row || !row.type) return undefined;
+
+  return {
+    id,
+    type: row.type as 'income' | 'expense' | 'transfer',
+    categoryId: row.categoryId as string | null,
+    categoryName: row.categoryName as string | null,
+    categoryIcon: row.categoryIcon as string | null,
+    categoryType: row.categoryType as 'income' | 'expense' | null,
+    accountId: row.accountId as string,
+    accountName: row.accountName as string,
+    toAccountId: row.toAccountId as string | null,
+    toAccountName: row.toAccountName as string | null,
+    note: row.note as string | null,
+    description: row.description as string | null,
+    amount: row.amount as number,
+    date: new Date(row.date as number),
+  };
+}
+
+export async function updateTransaction(id: string, updates: {
+  type?: 'income' | 'expense' | 'transfer';
+  categoryId?: string | null;
+  categoryName?: string | null;
+  categoryIcon?: string | null;
+  categoryType?: 'income' | 'expense' | null;
+  accountId?: string;
+  accountName?: string;
+  toAccountId?: string | null;
+  toAccountName?: string | null;
+  note?: string | null;
+  description?: string | null;
+  amount?: number;
+  date?: Date;
+}): Promise<Transaction | undefined> {
+  if (!isDatabaseReady()) return undefined;
+  const store = getStore();
+
+  const currentTx = await getTransactionById(id);
+  if (!currentTx) return undefined;
+
+  // Get old values for balance adjustment
+  const oldType = currentTx.type;
+  const oldAmount = currentTx.amount;
+  const oldAccountId = currentTx.accountId;
+  const oldToAccountId = currentTx.toAccountId;
+
+  // Get new values
+  const newType = updates.type ?? currentTx.type;
+  const newAmount = updates.amount ?? currentTx.amount;
+  const newAccountId = updates.accountId ?? currentTx.accountId;
+  const newToAccountId = updates.toAccountId ?? currentTx.toAccountId;
+  const newAccountName = updates.accountName ?? currentTx.accountName;
+  const newToAccountName = updates.toAccountName ?? currentTx.toAccountName;
+
+  // Reverse old balance changes
+  if (oldType === 'transfer' && oldToAccountId) {
+    const fromBalance = store.getCell('accounts', oldAccountId, 'balance') as number ?? 0;
+    const toBalance = store.getCell('accounts', oldToAccountId, 'balance') as number ?? 0;
+    store.setCell('accounts', oldAccountId, 'balance', fromBalance - oldAmount); // reverse: was negative, add back
+    store.setCell('accounts', oldToAccountId, 'balance', toBalance + oldAmount); // reverse: was positive, subtract
+  } else {
+    const currentBalance = store.getCell('accounts', oldAccountId, 'balance') as number ?? 0;
+    store.setCell('accounts', oldAccountId, 'balance', currentBalance - oldAmount);
+  }
+
+  // Update the transaction row
+  store.setRow('transactions', id, {
+    type: newType,
+    categoryId: updates.categoryId ?? currentTx.categoryId,
+    categoryName: updates.categoryName ?? currentTx.categoryName,
+    categoryIcon: updates.categoryIcon ?? currentTx.categoryIcon,
+    categoryType: updates.categoryType ?? currentTx.categoryType,
+    accountId: newAccountId,
+    accountName: newAccountName,
+    toAccountId: newToAccountId,
+    toAccountName: newToAccountName,
+    note: updates.note ?? currentTx.note,
+    description: updates.description ?? currentTx.description,
+    amount: newAmount,
+    date: (updates.date ?? currentTx.date).getTime(),
+  });
+
+  // Apply new balance changes
+  if (newType === 'transfer' && newToAccountId) {
+    const fromBalance = store.getCell('accounts', newAccountId, 'balance') as number ?? 0;
+    const toBalance = store.getCell('accounts', newToAccountId, 'balance') as number ?? 0;
+    store.setCell('accounts', newAccountId, 'balance', fromBalance + newAmount);
+    store.setCell('accounts', newToAccountId, 'balance', toBalance - newAmount);
+  } else {
+    const currentBalance = store.getCell('accounts', newAccountId, 'balance') as number ?? 0;
+    store.setCell('accounts', newAccountId, 'balance', currentBalance + newAmount);
+  }
+
+  await saveStore();
+
+  return getTransactionById(id);
+}
+
 export async function deleteTransaction(id: string): Promise<void> {
   if (!isDatabaseReady()) return;
   const store = getStore();
+
+  // Reverse balance changes before deleting
+  const tx = await getTransactionById(id);
+  if (tx) {
+    if (tx.type === 'transfer' && tx.toAccountId) {
+      const fromBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
+      const toBalance = store.getCell('accounts', tx.toAccountId, 'balance') as number ?? 0;
+      store.setCell('accounts', tx.accountId, 'balance', fromBalance - tx.amount);
+      store.setCell('accounts', tx.toAccountId, 'balance', toBalance + tx.amount);
+    } else {
+      const currentBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
+      store.setCell('accounts', tx.accountId, 'balance', currentBalance - tx.amount);
+    }
+  }
+
   store.delRow('transactions', id);
   await saveStore();
 }

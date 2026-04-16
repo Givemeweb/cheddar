@@ -6,12 +6,14 @@ import {
     TextInput,
     ScrollView,
     ActivityIndicator,
+    Alert,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { getCategories, getAccounts, addTransaction, Category, Account } from '@/src/db/storage';
+import { getCategories, getAccounts, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account } from '@/src/db/storage';
 import DateTimePicker from '@/src/components/DateTimePicker';
 import {
     TrendingUp,
@@ -28,6 +30,7 @@ import {
     Laptop,
     StopCircle,
     Pencil,
+    Trash2,
 } from 'lucide-react-native';
 import { useTheme } from '@/src/components/ThemeProvider';
 
@@ -65,6 +68,10 @@ const renderIcon = (
 
 export default function AddTransactionScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams<{ transactionId?: string }>();
+    const transactionId = params.transactionId;
+    const isEditing = !!transactionId;
+
     const { isDark, showIcons } = useTheme();
     const { t } = useTranslation();
     const [type, setType] = useState<TransactionType>('expense');
@@ -95,11 +102,33 @@ export default function AddTransactionScreen() {
         const accs = await getAccounts();
         setCategories(cats);
         setAccounts(accs);
-        if (accs.length > 0) {
-            setSelectedAccountId(accs[0].id);
-            setFromAccountId(accs[0].id);
-            if (accs.length > 1) {
-                setToAccountId(accs[1].id);
+
+        if (isEditing && transactionId) {
+            // Load existing transaction for editing
+            const existingTx = await getTransactionById(transactionId);
+            if (existingTx) {
+                setType(existingTx.type);
+                setDate(existingTx.date);
+                setNote(existingTx.note || '');
+                setDescription(existingTx.description || '');
+                setAmount(Math.abs(existingTx.amount).toString());
+
+                if (existingTx.type === 'transfer') {
+                    setFromAccountId(existingTx.accountId);
+                    setToAccountId(existingTx.toAccountId);
+                } else {
+                    setSelectedAccountId(existingTx.accountId);
+                    setSelectedCategoryId(existingTx.categoryId);
+                }
+            }
+        } else {
+            // Default account selections for new transaction
+            if (accs.length > 0) {
+                setSelectedAccountId(accs[0].id);
+                setFromAccountId(accs[0].id);
+                if (accs.length > 1) {
+                    setToAccountId(accs[1].id);
+                }
             }
         }
         setLoading(false);
@@ -117,37 +146,99 @@ export default function AddTransactionScreen() {
             if (!fromAccountId || !toAccountId) return;
             const fromAccount = accounts.find(a => a.id === fromAccountId);
             const toAccount = accounts.find(a => a.id === toAccountId);
-            await addTransaction({
-                type: 'transfer',
-                accountId: fromAccountId,
-                accountName: fromAccount?.name || '',
-                toAccountId,
-                toAccountName: toAccount?.name || '',
-                note: note || null,
-                description: description || null,
-                amount: -Math.abs(parsedAmount),
-                date,
-            });
+
+            if (isEditing && transactionId) {
+                await updateTransaction(transactionId, {
+                    type: 'transfer',
+                    accountId: fromAccountId,
+                    accountName: fromAccount?.name || '',
+                    toAccountId,
+                    toAccountName: toAccount?.name || '',
+                    note: note || null,
+                    description: description || null,
+                    amount: -Math.abs(parsedAmount),
+                    date,
+                });
+            } else {
+                await addTransaction({
+                    type: 'transfer',
+                    accountId: fromAccountId,
+                    accountName: fromAccount?.name || '',
+                    toAccountId,
+                    toAccountName: toAccount?.name || '',
+                    note: note || null,
+                    description: description || null,
+                    amount: -Math.abs(parsedAmount),
+                    date,
+                });
+            }
         } else {
             if (!selectedAccountId || !selectedCategoryId) return;
             const account = accounts.find(a => a.id === selectedAccountId);
             const category = categories.find(c => c.id === selectedCategoryId);
-            await addTransaction({
-                type,
-                categoryId: selectedCategoryId,
-                categoryName: category?.name || null,
-                categoryIcon: category?.icon || null,
-                categoryType: category?.type || null,
-                accountId: selectedAccountId,
-                accountName: account?.name || '',
-                note: note || null,
-                description: description || null,
-                amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
-                date,
-            });
+
+            if (isEditing && transactionId) {
+                await updateTransaction(transactionId, {
+                    type,
+                    categoryId: selectedCategoryId,
+                    categoryName: category?.name || null,
+                    categoryIcon: category?.icon || null,
+                    categoryType: category?.type || null,
+                    accountId: selectedAccountId,
+                    accountName: account?.name || '',
+                    note: note || null,
+                    description: description || null,
+                    amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
+                    date,
+                });
+            } else {
+                await addTransaction({
+                    type,
+                    categoryId: selectedCategoryId,
+                    categoryName: category?.name || null,
+                    categoryIcon: category?.icon || null,
+                    categoryType: category?.type || null,
+                    accountId: selectedAccountId,
+                    accountName: account?.name || '',
+                    note: note || null,
+                    description: description || null,
+                    amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
+                    date,
+                });
+            }
         }
 
         router.back();
+    };
+
+    const handleDelete = () => {
+        if (!isEditing || !transactionId) return;
+
+        const performDelete = async () => {
+            await deleteTransaction(transactionId);
+            router.back();
+        };
+
+        if (Platform.OS === 'web') {
+            // Use browser confirm on web
+            const confirmed = window.confirm(t('transactions.deleteConfirm'));
+            if (confirmed) {
+                performDelete();
+            }
+        } else {
+            Alert.alert(
+                t('transactions.deleteTransaction'),
+                t('transactions.deleteConfirm'),
+                [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                        text: t('common.delete'),
+                        style: 'destructive',
+                        onPress: performDelete,
+                    },
+                ]
+            );
+        }
     };
 
     const getAccountName = (id: string | null) => {
@@ -196,9 +287,18 @@ export default function AddTransactionScreen() {
           <Text
             className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
           >
-            {t("transactions.newTransaction")}
+            {isEditing ? t("transactions.editTransaction") : t("transactions.newTransaction")}
           </Text>
-          <View className="w-8" />
+          {isEditing ? (
+            <Pressable
+              onPress={handleDelete}
+              className="w-8 items-center justify-center"
+            >
+              <Trash2 size={22} color="#EF4444" />
+            </Pressable>
+          ) : (
+            <View className="w-8" />
+          )}
         </View>
 
         <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>

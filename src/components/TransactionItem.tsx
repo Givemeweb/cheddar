@@ -1,4 +1,5 @@
 import { View, Text, Pressable } from "react-native";
+import { useRouter } from 'expo-router';
 import {
   TrendingUp,
   Gift,
@@ -85,12 +86,18 @@ export function formatCurrency(amount: number): string {
 export function TransactionItem({ transaction, isDark = false }: TransactionItemProps) {
   const { t } = useTranslation();
   const { showIcons } = useTheme();
+  const router = useRouter();
   const isTransfer = transaction.type === 'transfer';
   const isExpense = transaction.amount < 0;
+
+  const handlePress = () => {
+    router.push(`/add-transaction?transactionId=${transaction.id}` as never);
+  };
 
   return (
     <Pressable
       className={`flex-row items-center py-3 px-4 border-b ${isDark ? "bg-[#26282D] border-gray-800" : "bg-white border-gray-100"}`}
+      onPress={handlePress}
     >
       {/* Left side - Category and Note/Account */}
       <View className="flex-1 flex-col">
