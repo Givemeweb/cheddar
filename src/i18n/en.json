@@ -174,6 +174,23 @@
       "creditCard": "Credit Card"
     }
   },
+  "passcode": {
+    "title": "Passcode",
+    "enable": "Enable Passcode",
+    "enabled": "Passcode Enabled",
+    "change": "Change Passcode",
+    "enterNew": "Enter New Passcode",
+    "enterNewDesc": "Enter a 4-digit passcode",
+    "confirmNew": "Confirm Passcode",
+    "confirmNewDesc": "Re-enter your passcode to confirm",
+    "enterCurrent": "Enter Current Passcode",
+    "enterCurrentDesc": "Enter your current passcode to continue",
+    "error": "Error",
+    "mismatch": "Passcodes do not match. Please try again.",
+    "incorrect": "Incorrect passcode. Please try again.",
+    "unlock": "Unlock",
+    "enterPasscode": "Enter Passcode"
+  },
   "app": {
     "name": "Cheddar"
   }
