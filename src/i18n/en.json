@@ -189,7 +189,14 @@
     "mismatch": "Passcodes do not match. Please try again.",
     "incorrect": "Incorrect passcode. Please try again.",
     "unlock": "Unlock",
-    "enterPasscode": "Enter Passcode"
+    "enterPasscode": "Enter Passcode",
+    "biometric": {
+      "enable": "Use Biometric",
+      "enabled": "Biometric Enabled",
+      "unlock": "Unlock with Biometric",
+      "notAvailable": "Biometric not available on this device",
+      "notEnrolled": "No biometrics enrolled. Please set up fingerprint or face ID in your device settings."
+    }
   },
   "app": {
     "name": "Cheddar"

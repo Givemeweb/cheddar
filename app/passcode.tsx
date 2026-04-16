@@ -4,17 +4,21 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Lock, Check, Eraser } from 'lucide-react-native';
+import { Lock, Check, Eraser, Fingerprint } from 'lucide-react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '../src/components/ThemeProvider';
 import {
   getPasscode,
   setPasscode,
   isPasscodeEnabled,
   setPasscodeEnabled,
+  isBiometricEnabled,
+  setBiometricEnabled,
 } from '../src/db/passcode';
 
 type Mode = 'disabled' | 'enable_step1' | 'enable_step2' | 'change_verify' | 'change_step1' | 'change_step2' | 'disable_verify';
@@ -26,6 +30,8 @@ export default function PasscodeScreen() {
 
   const [mode, setMode] = useState<Mode>('disabled');
   const [passcodeEnabled, setPasscodeEnabledState] = useState(false);
+  const [biometricEnabledState, setBiometricEnabledState] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [input, setInput] = useState('');
   const [newPasscode, setNewPasscode] = useState('');
   const [error, setError] = useState('');
@@ -34,6 +40,14 @@ export default function PasscodeScreen() {
     async function loadState() {
       const enabled = await isPasscodeEnabled();
       setPasscodeEnabledState(enabled);
+      const bioEnabled = await isBiometricEnabled();
+      setBiometricEnabledState(bioEnabled);
+      // Check if biometric is available (only on native platforms)
+      if (Platform.OS !== 'web') {
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        setBiometricAvailable(compatible && enrolled);
+      }
     }
     loadState();
   }, []);
@@ -146,6 +160,35 @@ export default function PasscodeScreen() {
   const handleChangePasscode = () => {
     setMode('change_verify');
     setInput('');
+  };
+
+  const handleToggleBiometric = async () => {
+    if (!biometricAvailable) {
+      Alert.alert(
+        t('passcode.biometric.notAvailable'),
+        t('passcode.biometric.notEnrolled')
+      );
+      return;
+    }
+
+    if (biometricEnabledState) {
+      // Disable biometric
+      await setBiometricEnabled(false);
+      setBiometricEnabledState(false);
+    } else {
+      // Enable biometric - require authentication first
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: t('passcode.biometric.unlock'),
+        fallbackLabel: t('common.cancel'),
+        cancelLabel: t('common.cancel'),
+        disableDeviceFallback: true,
+      });
+
+      if (result.success) {
+        await setBiometricEnabled(true);
+        setBiometricEnabledState(true);
+      }
+    }
   };
 
   const renderPasscodeDots = (code: string) => {
@@ -315,6 +358,24 @@ export default function PasscodeScreen() {
           <View className={`w-5 h-5 rounded-full bg-white ${passcodeEnabled ? 'ml-auto' : ''}`} />
         </View>
       </TouchableOpacity>
+
+      {Platform.OS !== 'web' && biometricAvailable && (
+        <TouchableOpacity
+          className={`flex-row items-center justify-between p-4 rounded-xl mb-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
+          onPress={handleToggleBiometric}
+          activeOpacity={0.7}
+        >
+          <View className="flex-row items-center">
+            <Fingerprint size={22} color={biometricEnabledState ? '#10B981' : '#6B7280'} />
+            <Text className={`text-lg ml-3 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+              {t('passcode.biometric.enable')}
+            </Text>
+          </View>
+          <View className={`w-12 h-7 rounded-full p-1 ${biometricEnabledState ? 'bg-cheddar-yellow' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}>
+            <View className={`w-5 h-5 rounded-full bg-white ${biometricEnabledState ? 'ml-auto' : ''}`} />
+          </View>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity
         className={`flex-row items-center p-4 rounded-xl ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}

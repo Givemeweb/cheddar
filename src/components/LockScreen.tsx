@@ -1,21 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useTheme } from './ThemeProvider';
 import { usePasscode } from './PasscodeProvider';
-import { Eraser } from 'lucide-react-native';
+import { Eraser, Fingerprint } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 export function LockScreen() {
   const { isDark } = useTheme();
-  const { authenticate } = usePasscode();
+  const { authenticate, isBiometricAvailable, isBiometricEnabled, authenticateWithBiometric } = usePasscode();
   const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const passcodeLength = 4;
+
+  // Auto-trigger biometric authentication when screen appears
+  useEffect(() => {
+    if (isBiometricAvailable && isBiometricEnabled) {
+      authenticateWithBiometric();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleKeypadPress = async (digit: string) => {
     if (error) setError('');
@@ -37,6 +46,12 @@ export function LockScreen() {
   const handleDelete = () => {
     setInput(input.slice(0, -1));
   };
+
+  const handleBiometricPress = async () => {
+    await authenticateWithBiometric();
+  };
+
+  const showBiometricButton = Platform.OS !== 'web' && isBiometricAvailable && isBiometricEnabled;
 
   const renderPasscodeDots = () => (
     <View className="flex-row justify-center gap-4 my-8">
@@ -121,6 +136,17 @@ export function LockScreen() {
           <Text className="text-red-500 text-sm mb-2">{error}</Text>
         ) : null}
         {renderKeypad()}
+        {showBiometricButton && (
+          <TouchableOpacity
+            className={`mt-4 flex-row items-center justify-center px-6 py-3 rounded-xl ${isDark ? 'bg-[#26282D]' : 'bg-gray-100'}`}
+            onPress={handleBiometricPress}
+          >
+            <Fingerprint size={24} color="#FFB800" />
+            <Text className={`ml-2 text-cheddar-yellow font-medium`}>
+              {t('passcode.biometric.unlock')}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

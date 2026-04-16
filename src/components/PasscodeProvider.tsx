@@ -5,8 +5,9 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
-import { isPasscodeEnabled, verifyPasscode } from '../db/passcode';
+import { AppState, AppStateStatus, Platform } from 'react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { isPasscodeEnabled, verifyPasscode, isBiometricEnabled } from '../db/passcode';
 import { useDatabase } from './DatabaseProvider';
 
 interface PasscodeContextType {
@@ -14,6 +15,9 @@ interface PasscodeContextType {
   isAuthenticated: boolean;
   authenticate: (passcode: string) => Promise<boolean>;
   needsAuthentication: boolean;
+  isBiometricAvailable: boolean;
+  isBiometricEnabled: boolean;
+  authenticateWithBiometric: () => Promise<boolean>;
 }
 
 const PasscodeContext = createContext<PasscodeContextType>({
@@ -21,6 +25,9 @@ const PasscodeContext = createContext<PasscodeContextType>({
   isAuthenticated: false,
   authenticate: async () => false,
   needsAuthentication: false,
+  isBiometricAvailable: false,
+  isBiometricEnabled: false,
+  authenticateWithBiometric: async () => false,
 });
 
 export function usePasscode() {
@@ -36,6 +43,8 @@ export function PasscodeProvider({ children }: PasscodeProviderProps) {
   const [isPasscodeRequired, setIsPasscodeRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [needsAuthentication, setNeedsAuthentication] = useState(false);
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabledState] = useState(false);
 
   // Check if passcode is enabled and reset authentication on mount
   useEffect(() => {
@@ -50,6 +59,16 @@ export function PasscodeProvider({ children }: PasscodeProviderProps) {
         setIsAuthenticated(false);
         setNeedsAuthentication(true);
       }
+
+      // Check biometric availability (only on native platforms)
+      if (Platform.OS !== 'web') {
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        setIsBiometricAvailable(compatible && enrolled);
+      }
+
+      const bioEnabled = await isBiometricEnabled();
+      setBiometricEnabledState(bioEnabled);
     }
     checkPasscode();
   }, [isReady]);
@@ -85,6 +104,30 @@ export function PasscodeProvider({ children }: PasscodeProviderProps) {
     return isValid;
   };
 
+  const authenticateWithBiometric = async (): Promise<boolean> => {
+    if (Platform.OS === 'web' || !isBiometricAvailable || !biometricEnabled) {
+      return false;
+    }
+
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to unlock',
+        fallbackLabel: 'Use Passcode',
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: false,
+      });
+
+      if (result.success) {
+        setIsAuthenticated(true);
+        setNeedsAuthentication(false);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <PasscodeContext.Provider
       value={{
@@ -92,6 +135,9 @@ export function PasscodeProvider({ children }: PasscodeProviderProps) {
         isAuthenticated,
         authenticate,
         needsAuthentication,
+        isBiometricAvailable,
+        isBiometricEnabled: biometricEnabled,
+        authenticateWithBiometric,
       }}
     >
       {children}
