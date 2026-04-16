@@ -1,5 +1,17 @@
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity, Platform, StyleSheet } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolateColor,
+} from "react-native-reanimated";
+import { useEffect } from "react";
 import { useTheme } from "./ThemeProvider";
+
+const TOGGLE_WIDTH = 48;
+const TOGGLE_HEIGHT = 28;
+const THUMB_SIZE = 20;
+const PADDING = 4;
 
 type ToggleSwitchProps = {
   value: boolean;
@@ -9,15 +21,100 @@ type ToggleSwitchProps = {
 export function ToggleSwitch({ value, onValueChange }: ToggleSwitchProps) {
   const { isDark } = useTheme();
 
+  const thumbPosition = useSharedValue(value ? 1 : 0);
+  const progress = useSharedValue(value ? 1 : 0);
+
+  useEffect(() => {
+    thumbPosition.value = withSpring(value ? 1 : 0, {
+      damping: 15,
+      stiffness: 200,
+      mass: 0.5,
+    });
+    progress.value = withSpring(value ? 1 : 0, {
+      damping: 20,
+      stiffness: 300,
+    });
+  }, [value, thumbPosition, progress]);
+
+  const animatedThumbStyle = useAnimatedStyle(() => {
+    const translateX = thumbPosition.value * (TOGGLE_WIDTH - THUMB_SIZE - PADDING * 2);
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const animatedTrackStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      progress.value,
+      [0, 1],
+      [isDark ? "#4B5563" : "#D1D5DB", "#FFB800"]
+    );
+    return {
+      backgroundColor,
+    };
+  });
+
+  // Web-specific styles using CSS transitions
+  const webTrackStyle = {
+    backgroundColor: value ? "#FFB800" : isDark ? "#4B5563" : "#D1D5DB",
+  };
+
+  const webThumbStyle = {
+    transform: [{ translateX: value ? (TOGGLE_WIDTH - THUMB_SIZE - PADDING * 2) : 0 }],
+  };
+
+  if (Platform.OS === "web") {
+    return (
+      <TouchableOpacity
+        style={styles.container}
+        onPress={() => onValueChange(!value)}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.track, styles.trackWeb, webTrackStyle]}>
+          <View style={[styles.thumb, styles.thumbWeb, webThumbStyle]} />
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
-      className={`w-12 h-7 rounded-full p-1 ${value ? 'bg-cheddar-yellow' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}
+      style={styles.container}
       onPress={() => onValueChange(!value)}
       activeOpacity={0.8}
     >
-      <View
-        className={`w-5 h-5 rounded-full bg-white ${value ? 'ml-auto' : ''}`}
-      />
+      <Animated.View style={[styles.track, animatedTrackStyle]}>
+        <Animated.View style={[styles.thumb, animatedThumbStyle]} />
+      </Animated.View>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    width: TOGGLE_WIDTH,
+    height: TOGGLE_HEIGHT,
+    borderRadius: TOGGLE_HEIGHT / 2,
+    padding: PADDING,
+  },
+  track: {
+    width: TOGGLE_WIDTH,
+    height: TOGGLE_HEIGHT,
+    borderRadius: TOGGLE_HEIGHT / 2,
+    padding: PADDING,
+  },
+  trackWeb: {
+    transitionProperty: "background-color",
+    transitionDuration: "200ms",
+  },
+  thumb: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
+    backgroundColor: "white",
+  },
+  thumbWeb: {
+    transitionProperty: "transform",
+    transitionDuration: "200ms",
+  },
+});
