@@ -1,7 +1,7 @@
 import "../global.css";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { DatabaseProvider } from "../src/components/DatabaseProvider";
 import { ThemeProvider, useTheme } from "../src/components/ThemeProvider";
 import { PasscodeProvider, usePasscode } from "../src/components/PasscodeProvider";
@@ -23,7 +23,7 @@ function ThemedApp() {
 
   return (
     <View className={`flex-1 ${isDark ? 'dark bg-cheddar-dark' : 'bg-cheddar-light'}`}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, animation: Platform.OS === 'android' ? 'none' : 'default' }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="add-transaction"
