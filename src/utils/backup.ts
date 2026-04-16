@@ -3,16 +3,13 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
 import { getStore, getPersister } from '../db/tinybase';
+import type { Tables } from 'tinybase';
 
 export interface BackupData {
   version: string;
   exportDate: string;
   platform: 'ios' | 'android' | 'web';
-  data: {
-    categories: Record<string, unknown>;
-    accounts: Record<string, unknown>;
-    transactions: Record<string, unknown>;
-  };
+  data: Tables;
 }
 
 const BACKUP_VERSION = '1.0.0';
@@ -158,11 +155,7 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
     const validatedData = await validateBackupFile(backupData);
 
     // Clear existing data and set new data
-    store.setTables({
-      categories: validatedData.data.categories,
-      accounts: validatedData.data.accounts,
-      transactions: validatedData.data.transactions,
-    });
+    store.setTables(validatedData.data as Parameters<typeof store.setTables>[0]);
 
     // Persist changes
     await persister.save();
