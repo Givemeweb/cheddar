@@ -76,7 +76,7 @@ interface TransactionItemProps {
 export function formatCurrency(amount: number): string {
   const absAmount = Math.abs(amount);
   const formatted = `€${absAmount.toFixed(2)}`;
-  return amount < 0 ? `-${formatted}` : formatted;
+  return formatted;
 }
 
 export function TransactionItem({ transaction, isDark = false }: TransactionItemProps) {
@@ -142,31 +142,11 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
           <>
             {/* Income column */}
             <View className="w-20 items-end">
-              {!isExpense ? (
-                <Text className="text-cheddar-income font-medium">
-                  {formatCurrency(transaction.amount)}
-                </Text>
-              ) : (
-                <Text
-                  className={`${isDark ? "text-gray-500" : "text-cheddar-gray"}`}
-                >
-                  €0.00
-                </Text>
-              )}
-            </View>
-            {/* Expense column */}
-            <View className="w-20 items-end">
-              {isExpense ? (
-                <Text className="text-cheddar-expense font-medium">
-                  {formatCurrency(transaction.amount)}
-                </Text>
-              ) : (
-                <Text
-                  className={`${isDark ? "text-gray-500" : "text-cheddar-gray"}`}
-                >
-                  €0.00
-                </Text>
-              )}
+              <Text
+                className={`${isExpense ? "text-cheddar-expense" : "text-cheddar-income"} font-medium`}
+              >
+                {formatCurrency(transaction.amount)}
+              </Text>
             </View>
           </>
         )}

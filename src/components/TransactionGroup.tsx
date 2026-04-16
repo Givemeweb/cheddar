@@ -20,7 +20,7 @@ export function TransactionGroup({ group, isDark = false }: TransactionGroupProp
             {group.dateLabel}
           </Text>
         </View>
-        <View className="flex-row">
+        <View className="flex-row gap-6">
           <Text className="text-cheddar-income mr-4">
             {formatCurrencyShort(group.totalIncome)}
           </Text>
