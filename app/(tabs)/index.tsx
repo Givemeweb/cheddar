@@ -265,7 +265,7 @@ export default function TransactionsScreen() {
       </View>
       <FlatList
         data={groupedTransactions}
-        keyExtractor={(item) => item.dateLabel}
+        keyExtractor={(item) => item.date.toISOString().split("T")[0]}
         renderItem={({ item }) => (
           <TransactionGroup group={item} isDark={isDark} />
         )}
