@@ -9,9 +9,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Lock, Check, Eraser, Fingerprint } from 'lucide-react-native';
+import { Lock, Eraser, Fingerprint } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '../src/components/ThemeProvider';
+import { ToggleSwitch } from '../src/components/ToggleSwitch';
 import {
   getPasscode,
   setPasscode,
@@ -278,9 +279,7 @@ export default function PasscodeScreen() {
             {t('passcode.enable')}
           </Text>
         </View>
-        <View className={`w-12 h-7 rounded-full p-1 ${passcodeEnabled ? 'bg-cheddar-yellow' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}>
-          <View className={`w-5 h-5 rounded-full bg-white ${passcodeEnabled ? 'ml-auto' : ''}`} />
-        </View>
+        <ToggleSwitch value={passcodeEnabled} onValueChange={handleTogglePasscode} />
       </TouchableOpacity>
     </View>
   );
@@ -354,9 +353,7 @@ export default function PasscodeScreen() {
             {t('passcode.enabled')}
           </Text>
         </View>
-        <View className={`w-12 h-7 rounded-full p-1 ${passcodeEnabled ? 'bg-cheddar-yellow' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}>
-          <View className={`w-5 h-5 rounded-full bg-white ${passcodeEnabled ? 'ml-auto' : ''}`} />
-        </View>
+        <ToggleSwitch value={passcodeEnabled} onValueChange={handleTogglePasscode} />
       </TouchableOpacity>
 
       {Platform.OS !== 'web' && biometricAvailable && (
@@ -371,9 +368,7 @@ export default function PasscodeScreen() {
               {t('passcode.biometric.enable')}
             </Text>
           </View>
-          <View className={`w-12 h-7 rounded-full p-1 ${biometricEnabledState ? 'bg-cheddar-yellow' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`}>
-            <View className={`w-5 h-5 rounded-full bg-white ${biometricEnabledState ? 'ml-auto' : ''}`} />
-          </View>
+          <ToggleSwitch value={biometricEnabledState} onValueChange={handleToggleBiometric} />
         </TouchableOpacity>
       )}
 

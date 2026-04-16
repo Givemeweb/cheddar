@@ -1,8 +1,9 @@
-import { View, Text, TouchableOpacity, Switch } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Sun, Moon, Smartphone, Check, Image } from "lucide-react-native";
 import { useTheme, ThemeMode } from "../../src/components/ThemeProvider";
+import { ToggleSwitch } from "../../src/components/ToggleSwitch";
 import { useTranslation } from "react-i18next";
 
 type ThemeOption = {
@@ -131,11 +132,9 @@ export default function StyleScreen() {
                 </Text>
               </View>
             </View>
-            <Switch
+            <ToggleSwitch
               value={showIcons}
               onValueChange={(value) => setShowIconsState(value)}
-              trackColor={{ false: "#374151", true: "#FFB800" }}
-              thumbColor={showIcons ? "#F9FAFB" : "#9CA3AF"}
             />
           </View>
         </View>
