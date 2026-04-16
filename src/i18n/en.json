@@ -41,7 +41,10 @@
     "noNote": "No note",
     "editTransaction": "Edit Transaction",
     "deleteTransaction": "Delete Transaction",
-    "deleteConfirm": "Are you sure you want to delete this transaction?"
+    "deleteConfirm": "Are you sure you want to delete this transaction?",
+    "error": "Error",
+    "invalidAmount": "Please enter a valid amount",
+    "categoryRequired": "Please select a category"
   },
   "accounts": {
     "title": "Accounts",

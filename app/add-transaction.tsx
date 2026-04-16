@@ -139,8 +139,17 @@ export default function AddTransactionScreen() {
     );
 
     const handleSave = async () => {
+        const validationError = validateForm();
+        if (validationError) {
+            if (Platform.OS === 'web') {
+                window.alert(validationError);
+            } else {
+                Alert.alert(t('transactions.error'), validationError);
+            }
+            return;
+        }
+
         const parsedAmount = parseFloat(amount);
-        if (isNaN(parsedAmount)) return;
 
         if (type === 'transfer') {
             if (!fromAccountId || !toAccountId) return;
@@ -173,9 +182,8 @@ export default function AddTransactionScreen() {
                 });
             }
         } else {
-            if (!selectedAccountId || !selectedCategoryId) return;
-            const account = accounts.find(a => a.id === selectedAccountId);
-            const category = categories.find(c => c.id === selectedCategoryId);
+            const account = accounts.find(a => a.id === selectedAccountId!);
+            const category = categories.find(c => c.id === selectedCategoryId!);
 
             if (isEditing && transactionId) {
                 await updateTransaction(transactionId, {
@@ -251,6 +259,19 @@ export default function AddTransactionScreen() {
         if (!id) return t('transactions.selectCategory');
         const cat = categories.find(c => c.id === id);
         return cat ? cat.name : t('transactions.selectCategory');
+    };
+
+    const validateForm = (): string | null => {
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            return t('transactions.invalidAmount');
+        }
+        if (type !== 'transfer') {
+            if (!selectedCategoryId) {
+                return t('transactions.categoryRequired');
+            }
+        }
+        return null;
     };
 
     const getCategoryIcon = (id: string | null) => {
