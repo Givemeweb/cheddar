@@ -27,6 +27,7 @@ import {
     HeartPulse,
     Laptop,
     StopCircle,
+    Pencil,
 } from 'lucide-react-native';
 import { useTheme } from '@/src/components/ThemeProvider';
 
@@ -296,33 +297,43 @@ export default function AddTransactionScreen() {
                 </View>
               )}
 
-              <Pressable
-                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                onPress={() => setShowCategoryPicker(true)}
-              >
-                <Text
-                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  {t("transactions.category")}
-                </Text>
-                <View className="flex-row items-center">
-                  {getCategoryIcon(selectedCategoryId) && showIcons && (
-                    <View className="mr-2">
-                      {renderIcon(
-                        getCategoryIcon(selectedCategoryId)!,
-                        16,
-                        type === "income" ? "#10B981" : "#EF4444",
-                        showIcons,
-                      )}
-                    </View>
-                  )}
+              <View className={`rounded-xl mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}>
+                <View className="flex-row items-center justify-between px-4 pt-4 pb-1">
                   <Text
-                    className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                    className={`text-xs font-medium uppercase ${isDark ? "text-gray-400" : "text-gray-500"}`}
                   >
-                    {getCategoryLabel(selectedCategoryId)}
+                    {t("transactions.category")}
                   </Text>
+                  <Pressable
+                    onPress={() => router.push(type === 'income' ? '/configuration/income-categories' as never : '/configuration/expense-categories' as never)}
+                    className="p-1"
+                  >
+                    <Pencil size={16} color="#FFB800" />
+                  </Pressable>
                 </View>
-              </Pressable>
+                <Pressable
+                  className="px-4 pb-4"
+                  onPress={() => setShowCategoryPicker(true)}
+                >
+                  <View className="flex-row items-center">
+                    {getCategoryIcon(selectedCategoryId) && showIcons && (
+                      <View className="mr-2">
+                        {renderIcon(
+                          getCategoryIcon(selectedCategoryId)!,
+                          16,
+                          type === "income" ? "#10B981" : "#EF4444",
+                          showIcons,
+                        )}
+                      </View>
+                    )}
+                    <Text
+                      className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                    >
+                      {getCategoryLabel(selectedCategoryId)}
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
               {showCategoryPicker && (
                 <View
                   className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
