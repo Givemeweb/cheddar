@@ -135,7 +135,19 @@
     "importError": "Failed to import backup.",
     "importFailed": "Import failed. Please try again.",
     "importSummary": "{{categories}} categories, {{accounts}} accounts, {{transactions}} transactions restored.",
-    "importWarning": "Warning: Importing a backup will replace all your current data. Make sure to export your current data first if you want to keep it."
+    "importWarning": "Warning: Importing a backup will replace all your current data. Make sure to export your current data first if you want to keep it.",
+    "resetData": "Reset Data",
+    "resetDataDesc": "Clear all data and start fresh",
+    "resetButton": "Reset All Data",
+    "resetButtonDesc": "Delete all accounts, categories, and transactions",
+    "resetWarning": "Warning",
+    "resetInfo": "This will permanently delete all your data including accounts, categories, and transactions. This action cannot be undone. You may want to export a backup first.",
+    "resetConfirmTitle": "Reset All Data?",
+    "resetConfirmMessage": "This will permanently delete all your accounts, categories, and transactions. This action cannot be undone.",
+    "resetSuccessTitle": "Data Reset",
+    "resetSuccessMessage": "All data has been cleared and default categories have been restored.",
+    "resetError": "Error",
+    "resetFailed": "Failed to reset data. Please try again."
   },
   "stats": {
     "title": "Stats",

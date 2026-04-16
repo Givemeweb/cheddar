@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Smartphone, ChevronRight } from "lucide-react-native";
+import { Smartphone, Trash2, ChevronRight } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
 
 type MenuItem = {
@@ -25,6 +25,12 @@ export default function BackupScreen() {
       sublabel: t('backup.onDeviceDesc'),
       icon: <Smartphone size={22} color={iconColor} />,
       route: "/backup-device",
+    },
+    {
+      label: t('backup.resetData'),
+      sublabel: t('backup.resetDataDesc'),
+      icon: <Trash2 size={22} color="#EF4444" />,
+      route: "/backup-reset",
     },
   ];
 
@@ -52,8 +58,14 @@ export default function BackupScreen() {
           <TouchableOpacity
             key={item.route}
             className={`flex-row items-center justify-between p-4 ${
-              isDark ? "bg-[#26282D]" : "bg-white"
-            } rounded-xl`}
+              index === 0 ? "rounded-t-xl" : ""
+            } ${index === menuItems.length - 1 ? "rounded-b-xl" : ""} ${
+              index > 0 && index < menuItems.length
+                ? isDark
+                  ? "border-t border-gray-700"
+                  : "border-t border-gray-100"
+                : ""
+            } ${isDark ? "bg-[#26282D]" : "bg-white"}`}
             activeOpacity={0.7}
             onPress={() => router.push(item.route as never)}
           >

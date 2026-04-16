@@ -93,8 +93,14 @@ const getDefaultAccounts = (): TablesSchema['accounts'] => ({
   '3': { name: i18n.t('defaultData.accounts.creditCard'), icon: 'credit-card', description: null, balance: 0.0, order: 2 },
 });
 
-export async function initDatabase(): Promise<Store> {
-  if (store) return store;
+export async function initDatabase(forceReinit: boolean = false): Promise<Store> {
+  if (store && !forceReinit) return store;
+
+  // If force reinitializing, clear the existing store
+  if (store && forceReinit) {
+    store = null;
+    persister = null;
+  }
 
   store = createStore();
 
