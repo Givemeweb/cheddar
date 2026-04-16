@@ -131,9 +131,13 @@ export default function AddTransactionScreen() {
         } else {
             if (!selectedAccountId || !selectedCategoryId) return;
             const account = accounts.find(a => a.id === selectedAccountId);
+            const category = categories.find(c => c.id === selectedCategoryId);
             await addTransaction({
                 type,
                 categoryId: selectedCategoryId,
+                categoryName: category?.name || null,
+                categoryIcon: category?.icon || null,
+                categoryType: category?.type || null,
                 accountId: selectedAccountId,
                 accountName: account?.name || '',
                 note: note || null,

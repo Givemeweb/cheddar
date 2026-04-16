@@ -20,6 +20,9 @@ export interface Transaction {
   id: string;
   type: 'income' | 'expense' | 'transfer';
   categoryId: string | null;
+  categoryName: string | null;
+  categoryIcon: string | null;
+  categoryType: 'income' | 'expense' | null;
   accountId: string;
   accountName: string;
   toAccountId: string | null;
@@ -111,6 +114,9 @@ export async function getTransactions(): Promise<Transaction[]> {
       id,
       type: data.type as 'income' | 'expense' | 'transfer',
       categoryId: data.categoryId as string | null,
+      categoryName: data.categoryName as string | null,
+      categoryIcon: data.categoryIcon as string | null,
+      categoryType: data.categoryType as 'income' | 'expense' | null,
       accountId: data.accountId as string,
       accountName: data.accountName as string,
       toAccountId: data.toAccountId as string | null,
@@ -126,6 +132,9 @@ export async function getTransactions(): Promise<Transaction[]> {
 export async function addTransaction(tx: {
   type: 'income' | 'expense' | 'transfer';
   categoryId?: string | null;
+  categoryName?: string | null;
+  categoryIcon?: string | null;
+  categoryType?: 'income' | 'expense' | null;
   accountId: string;
   accountName: string;
   toAccountId?: string | null;
@@ -144,6 +153,9 @@ export async function addTransaction(tx: {
   store.setRow('transactions', id, {
     type: tx.type,
     categoryId: tx.categoryId ?? null,
+    categoryName: tx.categoryName ?? null,
+    categoryIcon: tx.categoryIcon ?? null,
+    categoryType: tx.categoryType ?? null,
     accountId: tx.accountId,
     accountName: tx.accountName,
     toAccountId: tx.toAccountId ?? null,
@@ -173,6 +185,9 @@ export async function addTransaction(tx: {
     id,
     type: tx.type,
     categoryId: tx.categoryId ?? null,
+    categoryName: tx.categoryName ?? null,
+    categoryIcon: tx.categoryIcon ?? null,
+    categoryType: tx.categoryType ?? null,
     accountId: tx.accountId,
     accountName: tx.accountName,
     toAccountId: tx.toAccountId ?? null,
@@ -263,6 +278,19 @@ export async function updateCategory(id: string, updates: { name?: string; icon?
     icon: newIcon,
     type: currentCategory.type,
   });
+
+  // Update all transactions that reference this category
+  const transactions = store.getTable('transactions');
+  if (transactions) {
+    for (const [txId, txData] of Object.entries(transactions)) {
+      const txCategoryId = txData.categoryId as string | null;
+      if (txCategoryId === id) {
+        // This transaction's category is being updated
+        store.setCell('transactions', txId, 'categoryName', newName);
+        store.setCell('transactions', txId, 'categoryIcon', newIcon);
+      }
+    }
+  }
 
   await saveStore();
 

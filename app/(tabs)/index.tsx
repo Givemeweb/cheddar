@@ -13,7 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import {
-  getCategories,
   getTransactions,
 } from "../../src/db/storage";
 import { TransactionGroup } from "../../src/components/TransactionGroup";
@@ -68,10 +67,7 @@ export default function TransactionsScreen() {
 
   async function fetchTransactions() {
     try {
-      const allCategories = await getCategories();
       const allTransactions = await getTransactions();
-
-      const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
 
       // Filter transactions by selected month
       const startOfMonth = new Date(
@@ -96,9 +92,6 @@ export default function TransactionsScreen() {
 
       const txWithDetails: TransactionWithDetails[] = filteredTransactions.map(
         (tx) => {
-          const category = tx.categoryId
-            ? categoryMap.get(tx.categoryId)
-            : null;
           return {
             id: tx.id,
             type: tx.type || "expense",
@@ -109,11 +102,11 @@ export default function TransactionsScreen() {
             description: tx.description,
             amount: tx.amount,
             date: new Date(tx.date),
-            category: category
+            category: tx.categoryName
               ? {
-                  name: category.name,
-                  icon: category.icon,
-                  type: category.type as "income" | "expense",
+                  name: tx.categoryName,
+                  icon: tx.categoryIcon || "",
+                  type: tx.categoryType as "income" | "expense",
                 }
               : null,
             account: { name: tx.accountName, description: null },
