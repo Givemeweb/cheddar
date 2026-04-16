@@ -54,6 +54,7 @@
     "totalAssets": "Total Assets",
     "noAccounts": "No accounts yet",
     "name": "Name",
+    "icon": "Icon",
     "accountName": "Account name",
     "descriptionOptional": "Description (optional)",
     "addDescriptionPlaceholder": "Add a description",

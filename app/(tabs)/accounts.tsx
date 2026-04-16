@@ -11,8 +11,28 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import {
+  Wallet,
+  PiggyBank,
+  CreditCard,
+  Landmark,
+  Building2,
+  CircleDollarSign,
+  Banknote,
+  LucideIcon,
+} from "lucide-react-native";
 import { getAccounts, Account } from "../../src/db/storage";
 import { useTheme } from "../../src/components/ThemeProvider";
+
+const iconMap: Record<string, LucideIcon> = {
+  'wallet': Wallet,
+  'piggy-bank': PiggyBank,
+  'credit-card': CreditCard,
+  'landmark': Landmark,
+  'building-2': Building2,
+  'circle-dollar-sign': CircleDollarSign,
+  'banknote': Banknote,
+};
 
 export default function AccountsScreen() {
   const router = useRouter();
@@ -21,7 +41,7 @@ export default function AccountsScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark } = useTheme();
+  const { isDark, showIcons } = useTheme();
   const { t } = useTranslation();
 
   useFocusEffect(
@@ -118,31 +138,38 @@ export default function AccountsScreen() {
         data={accountsList}
         keyExtractor={(item) => item.id}
         contentContainerClassName="px-4"
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push(`/configuration/edit-account?id=${item.id}`)}
-            className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
-          >
-            <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
-              <Text className="text-2xl">💰</Text>
-            </View>
-            <View className="flex-1">
-              <Text className={`text-lg font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                {item.name}
-              </Text>
-              {item.description && (
-                <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
-                  {item.description}
+        renderItem={({ item }) => {
+            const IconComponent = showIcons ? iconMap[item.icon || 'wallet'] : null;
+            return (
+              <Pressable
+                onPress={() => router.push(`/configuration/edit-account?id=${item.id}`)}
+                className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
+              >
+                <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
+                  {IconComponent ? (
+                    <IconComponent size={24} color={isDark ? "#F9FAFB" : "#212226"} />
+                  ) : (
+                    <Text className="text-2xl">💰</Text>
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className={`text-lg font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                    {item.name}
+                  </Text>
+                  {item.description && (
+                    <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>
+                      {item.description}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  className={`text-lg font-semibold ${item.balance >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
+                >
+                  €{item.balance.toFixed(2)}
                 </Text>
-              )}
-            </View>
-            <Text
-              className={`text-lg font-semibold ${item.balance >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
-            >
-              €{item.balance.toFixed(2)}
-            </Text>
-          </Pressable>
-        )}
+              </Pressable>
+            );
+          }}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-20">
             <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-cheddar-gray'}`}>{t('accounts.noAccounts')}</Text>

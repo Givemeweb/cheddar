@@ -11,6 +11,7 @@ export interface Category {
 export interface Account {
   id: string;
   name: string;
+  icon: string;
   description: string | null;
   balance: number;
   order: number;
@@ -73,6 +74,7 @@ export async function getAccounts(): Promise<Account[]> {
     .map(([id, data]) => ({
       id,
       name: data.name as string,
+      icon: (data.icon as string) ?? 'wallet',
       description: data.description as string | null,
       balance: data.balance as number,
       order: (data.order as number) ?? 0,
@@ -89,6 +91,7 @@ export async function getAccountById(id: string): Promise<Account | undefined> {
   return {
     id,
     name: row.name as string,
+    icon: (row.icon as string) ?? 'wallet',
     description: row.description as string | null,
     balance: row.balance as number,
     order: (row.order as number) ?? 0,
@@ -423,6 +426,7 @@ export async function updateCategory(id: string, updates: { name?: string; icon?
 // Account management
 export async function addAccount(account: {
   name: string;
+  icon?: string;
   description?: string | null;
 }): Promise<Account> {
   if (!isDatabaseReady()) {
@@ -435,8 +439,11 @@ export async function addAccount(account: {
   const accounts = await getAccounts();
   const maxOrder = accounts.length > 0 ? Math.max(...accounts.map(a => a.order)) : -1;
 
+  const accountIcon = account.icon ?? 'wallet';
+
   store.setRow('accounts', id, {
     name: account.name,
+    icon: accountIcon,
     description: account.description ?? null,
     balance: 0,
     order: maxOrder + 1,
@@ -447,6 +454,7 @@ export async function addAccount(account: {
   return {
     id,
     name: account.name,
+    icon: accountIcon,
     description: account.description ?? null,
     balance: 0,
     order: maxOrder + 1,
@@ -471,7 +479,7 @@ export async function reorderAccounts(accountIds: string[]): Promise<void> {
   await saveStore();
 }
 
-export async function updateAccount(id: string, updates: { name?: string; description?: string | null }): Promise<Account | undefined> {
+export async function updateAccount(id: string, updates: { name?: string; icon?: string; description?: string | null }): Promise<Account | undefined> {
   if (!isDatabaseReady()) return undefined;
   const store = getStore();
 
@@ -479,11 +487,13 @@ export async function updateAccount(id: string, updates: { name?: string; descri
   if (!currentAccount) return undefined;
 
   const newName = updates.name ?? currentAccount.name;
+  const newIcon = updates.icon ?? currentAccount.icon;
   const newDescription = updates.description ?? currentAccount.description;
 
   // Update account
   store.setRow('accounts', id, {
     name: newName,
+    icon: newIcon,
     description: newDescription,
     balance: currentAccount.balance,
     order: currentAccount.order,
@@ -513,6 +523,7 @@ export async function updateAccount(id: string, updates: { name?: string; descri
   return {
     id,
     name: newName,
+    icon: newIcon,
     description: newDescription,
     balance: currentAccount.balance,
     order: currentAccount.order,

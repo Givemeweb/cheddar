@@ -22,6 +22,7 @@ export interface Category {
 export interface Account {
   id: string;
   name: string;
+  icon: string;
   description: string | null;
   balance: number;
   order: number;
@@ -44,7 +45,7 @@ export interface Transaction {
 // TinyBase schema types
 export interface TablesSchema {
   categories: { [id: string]: { name: string; icon: string; type: string } };
-  accounts: { [id: string]: { name: string; description: string | null; balance: number; order: number } };
+  accounts: { [id: string]: { name: string; icon: string; description: string | null; balance: number; order: number } };
   transactions: {
     [id: string]: {
       type: string;
@@ -84,9 +85,9 @@ const getDefaultCategories = (): TablesSchema['categories'] => ({
 });
 
 const getDefaultAccounts = (): TablesSchema['accounts'] => ({
-  '1': { name: i18n.t('defaultData.accounts.checking'), description: null, balance: 0.0, order: 0 },
-  '2': { name: i18n.t('defaultData.accounts.savings'), description: null, balance: 0.0, order: 1 },
-  '3': { name: i18n.t('defaultData.accounts.creditCard'), description: null, balance: 0.0, order: 2 },
+  '1': { name: i18n.t('defaultData.accounts.checking'), icon: 'wallet', description: null, balance: 0.0, order: 0 },
+  '2': { name: i18n.t('defaultData.accounts.savings'), icon: 'piggy-bank', description: null, balance: 0.0, order: 1 },
+  '3': { name: i18n.t('defaultData.accounts.creditCard'), icon: 'credit-card', description: null, balance: 0.0, order: 2 },
 });
 
 export async function initDatabase(): Promise<Store> {
@@ -147,6 +148,11 @@ export async function initDatabase(): Promise<Store> {
       Object.entries(accounts).forEach(([id, data]) => {
         if (data.order === undefined || data.order === null) {
           store!.setCell('accounts', id, 'order', orderIndex);
+          needsSave = true;
+        }
+        // Migrate accounts without icon field
+        if (data.icon === undefined || data.icon === null) {
+          store!.setCell('accounts', id, 'icon', 'wallet');
           needsSave = true;
         }
         orderIndex++;
