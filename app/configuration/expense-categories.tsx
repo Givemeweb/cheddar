@@ -148,6 +148,7 @@ export default function ExpenseCategoriesScreen() {
             {categories.map((category, index) => (
               <Pressable
                 key={category.id}
+                onPress={() => router.push(`/configuration/edit-category?id=${category.id}` as never)}
                 className={`flex-row items-center justify-between p-4 ${
                   index > 0 ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-100') : ''
                 }`}

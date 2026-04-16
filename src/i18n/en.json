@@ -64,6 +64,7 @@
     "expenseCategories": "Expense Categories",
     "addIncomeCategory": "Add Income Category",
     "addExpenseCategory": "Add Expense Category",
+    "editCategory": "Edit Category",
     "name": "Name",
     "icon": "Icon",
     "categoryName": "Category name",

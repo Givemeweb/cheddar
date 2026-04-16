@@ -51,7 +51,7 @@ const iconOptions: IconOption[] = [
 
 export default function AddIncomeCategoryScreen() {
   const router = useRouter();
-  const { isDark } = useTheme();
+  const { isDark, showIcons } = useTheme();
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('trending-up');
@@ -135,14 +135,16 @@ export default function AddIncomeCategoryScreen() {
           />
         </View>
 
-        <View className={`rounded-xl p-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
-          <Text className={`text-sm font-medium uppercase mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            {t('categories.icon')}
-          </Text>
-          <View className="flex-row flex-wrap">
-            {iconOptions.map(renderIconOption)}
+        {showIcons && (
+          <View className={`rounded-xl p-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
+            <Text className={`text-sm font-medium uppercase mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {t('categories.icon')}
+            </Text>
+            <View className="flex-row flex-wrap">
+              {iconOptions.map(renderIconOption)}
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

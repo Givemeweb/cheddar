@@ -248,6 +248,32 @@ export async function deleteCategory(id: string): Promise<void> {
   await saveStore();
 }
 
+export async function updateCategory(id: string, updates: { name?: string; icon?: string }): Promise<Category | undefined> {
+  if (!isDatabaseReady()) return undefined;
+  const store = getStore();
+
+  const currentCategory = await getCategoryById(id);
+  if (!currentCategory) return undefined;
+
+  const newName = updates.name ?? currentCategory.name;
+  const newIcon = updates.icon ?? currentCategory.icon;
+
+  store.setRow('categories', id, {
+    name: newName,
+    icon: newIcon,
+    type: currentCategory.type,
+  });
+
+  await saveStore();
+
+  return {
+    id,
+    name: newName,
+    icon: newIcon,
+    type: currentCategory.type,
+  };
+}
+
 // Account management
 export async function addAccount(account: {
   name: string;
