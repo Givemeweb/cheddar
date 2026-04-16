@@ -56,9 +56,9 @@ export default function EditAccountScreen() {
       if (!id) return;
       const account = await getAccountById(id);
       if (account) {
-        setName(account.name);
-        setDescription(account.description || '');
-        setSelectedIcon(account.icon || 'wallet');
+        setName(account.name ?? '');
+        setDescription(account.description ?? '');
+        setSelectedIcon(account.icon ?? 'wallet');
       }
       setLoading(false);
     }
