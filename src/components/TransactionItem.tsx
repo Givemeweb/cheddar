@@ -99,45 +99,51 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
       className={`flex-row items-center py-3 px-4 border-b ${isDark ? "bg-[#26282D] border-gray-800" : "bg-white border-gray-100"}`}
       onPress={handlePress}
     >
-      {/* Left side - Category and Note/Account */}
-      <View className="flex-1 flex-col">
-        <View className="flex-row items-center">
-          {showIcons && (
-            <View className="mr-2">
-              {isTransfer ? (
-                <ArrowRightLeft size={18} color="#6B7280" />
-              ) : transaction.category?.icon ? (
-                renderIcon(
-                  transaction.category.icon,
-                  18,
-                  transaction.category.type === "income" ? "#10B981" : "#EF4444",
-                  showIcons,
-                )
-              ) : null}
-            </View>
-          )}
-          <Text
-            className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-          >
-            {isTransfer
-              ? t("transactions.type.transfer")
-              : transaction.category?.name}
-          </Text>
-        </View>
-        <View className="flex-row items-center mt-1">
+      {/* Column 1 - Category */}
+      <View className="flex-row items-center">
+        {showIcons && (
+          <View className="mr-2">
+            {isTransfer ? (
+              <ArrowRightLeft size={18} color="#6B7280" />
+            ) : transaction.category?.icon ? (
+              renderIcon(
+                transaction.category.icon,
+                18,
+                transaction.category.type === "income" ? "#10B981" : "#EF4444",
+                showIcons,
+              )
+            ) : null}
+          </View>
+        )}
+        <Text
+          className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+        >
+          {isTransfer
+            ? t("transactions.type.transfer")
+            : transaction.category?.name}
+        </Text>
+      </View>
+
+      {/* Column 2 - Note and Account */}
+      <View className="flex-1 ml-4 flex-col">
+        {transaction.note && (
           <Text
             className={`text-sm ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
           >
-            {transaction.note || t("transactions.noNote")} ·{" "}
-            {transaction.account.name}
-            {isTransfer &&
-              transaction.toAccount &&
-              ` → ${transaction.toAccount.name}`}
+            {transaction.note}
           </Text>
-        </View>
+        )}
+        <Text
+          className={`text-sm ${transaction.note ? "mt-0.5" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}
+        >
+          {transaction.account.name}
+          {isTransfer &&
+            transaction.toAccount &&
+            ` → ${transaction.toAccount.name}`}
+        </Text>
       </View>
 
-      {/* Right side - Income and Expense columns */}
+      {/* Column 3 - Amount */}
       <View className="flex-row items-center">
         {isTransfer ? (
           <>
