@@ -7,7 +7,7 @@ interface TransactionGroupProps {
 }
 
 function formatCurrencyShort(amount: number): string {
-  return `€${amount.toFixed(2)}`;
+  return `€ ${amount.toFixed(2)}`;
 }
 
 export function TransactionGroup({ group, isDark = false }: TransactionGroupProps) {

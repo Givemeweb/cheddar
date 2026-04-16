@@ -79,7 +79,7 @@ interface TransactionItemProps {
 
 export function formatCurrency(amount: number): string {
   const absAmount = Math.abs(amount);
-  const formatted = `€${absAmount.toFixed(2)}`;
+  const formatted = `€ ${absAmount.toFixed(2)}`;
   return formatted;
 }
 
