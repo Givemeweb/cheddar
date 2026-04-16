@@ -100,7 +100,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
       onPress={handlePress}
     >
       {/* Column 1 - Category */}
-      <View className="flex-row items-center">
+      <View className="w-[12%] flex-row items-center">
         {showIcons && (
           <View className="mr-2">
             {isTransfer ? (
@@ -117,6 +117,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
         )}
         <Text
           className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          numberOfLines={1}
         >
           {isTransfer
             ? t("transactions.type.transfer")
@@ -125,7 +126,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
       </View>
 
       {/* Column 2 - Note and Account */}
-      <View className="flex-1 ml-4 flex-col">
+      <View className="flex-1 flex-col items-start ml-2">
         {transaction.note && (
           <Text
             className={`text-sm ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
@@ -144,15 +145,15 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
       </View>
 
       {/* Column 3 - Amount */}
-      <View className="flex-row items-center">
+      <View className="flex-1 flex-row items-center justify-end">
         {isTransfer ? (
           <>
-            <View className="w-20 items-end">
+            <View className="flex-1 items-end">
               <Text className="text-gray-400">
                 {formatCurrency(Math.abs(transaction.amount))}
               </Text>
             </View>
-            <View className="w-20 items-end">
+            <View className="flex-1 items-end">
               <Text className="text-gray-400">
                 {formatCurrency(Math.abs(transaction.amount))}
               </Text>
@@ -161,7 +162,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
         ) : (
           <>
             {/* Income column */}
-            <View className="w-20 items-end">
+            <View className="flex-1 items-end">
               <Text
                 className={`${isExpense ? "text-cheddar-expense" : "text-cheddar-income"} font-medium`}
               >
