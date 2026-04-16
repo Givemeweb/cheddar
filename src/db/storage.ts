@@ -529,3 +529,38 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
     order: currentAccount.order,
   };
 }
+
+// Alarm settings
+export interface AlarmSettings {
+  enabled: boolean;
+  time: string; // HH:MM format
+  days: number[]; // 0-6 for Sunday-Saturday
+}
+
+export async function getAlarmSettings(): Promise<AlarmSettings> {
+  if (!isDatabaseReady()) {
+    return { enabled: false, time: '21:00', days: [0, 1, 2, 3, 4, 5, 6] };
+  }
+  const store = getStore();
+
+  const enabled = store.getValue('alarmEnabled') as string;
+  const time = store.getValue('alarmTime') as string;
+  const days = store.getValue('alarmDays') as string;
+
+  return {
+    enabled: enabled === 'true',
+    time: time ?? '21:00',
+    days: days ? days.split(',').map(Number) : [0, 1, 2, 3, 4, 5, 6],
+  };
+}
+
+export async function saveAlarmSettings(settings: AlarmSettings): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+
+  store.setValue('alarmEnabled', settings.enabled ? 'true' : 'false');
+  store.setValue('alarmTime', settings.time);
+  store.setValue('alarmDays', settings.days.join(','));
+
+  await saveStore();
+}

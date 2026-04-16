@@ -8,6 +8,7 @@ import {
 import { View, ActivityIndicator, Text, useColorScheme } from "react-native";
 import { initDatabase } from "../db/index";
 import { initializeDatabase } from "../db/storage";
+import { initializeNotifications } from "../utils/notifications";
 
 type DatabaseContextType = {
   isReady: boolean;
@@ -39,6 +40,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         // Then seed data if needed
         await initializeDatabase();
         console.log("Database seeded");
+        // Initialize notifications
+        await initializeNotifications();
+        console.log("Notifications initialized");
         setIsReady(true);
       } catch (err) {
         console.error("Database initialization error:", err);

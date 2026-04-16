@@ -198,6 +198,15 @@
       "notEnrolled": "No biometrics enrolled. Please set up fingerprint or face ID in your device settings."
     }
   },
+  "alarm": {
+    "enable": "Enable Reminder",
+    "enableDesc": "Get reminded to track your expenses",
+    "time": "Time",
+    "timeDesc": "Set reminder time",
+    "repeat": "Repeat",
+    "notificationTitle": "Time to track your expenses!",
+    "notificationBody": "Don't forget to add your transactions for today."
+  },
   "app": {
     "name": "Cheddar"
   }

@@ -65,6 +65,9 @@ export interface TablesSchema {
 export interface ValuesSchema {
   theme: string;
   showIcons: string;
+  alarmEnabled: string;
+  alarmTime: string;
+  alarmDays: string;
 }
 
 let store: Store | null = null;
@@ -116,6 +119,20 @@ export async function initDatabase(): Promise<Store> {
   // Initialize showIcons value if not set (default: false - icons disabled)
   if (store.getValue('showIcons') === undefined) {
     store.setValue('showIcons', 'false');
+    await persister.save();
+  }
+
+  // Initialize alarm values if not set (default: disabled, 9:00 PM, all days)
+  if (store.getValue('alarmEnabled') === undefined) {
+    store.setValue('alarmEnabled', 'false');
+    await persister.save();
+  }
+  if (store.getValue('alarmTime') === undefined) {
+    store.setValue('alarmTime', '21:00'); // 9:00 PM
+    await persister.save();
+  }
+  if (store.getValue('alarmDays') === undefined) {
+    store.setValue('alarmDays', '0,1,2,3,4,5,6'); // All days (Sun-Sat)
     await persister.save();
   }
 

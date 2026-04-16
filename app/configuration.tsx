@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -65,11 +65,11 @@ export default function ConfigurationScreen() {
           icon: <Lock size={22} color={iconColor} />,
           route: "/passcode",
         },
-        {
+        ...(Platform.OS !== 'web' ? [{
           label: t('config.alarmSettings'),
           icon: <Bell size={22} color={iconColor} />,
           route: "/configuration/alarms",
-        },
+        }] : []),
         {
           label: t('config.style'),
           icon: <Palette size={22} color={iconColor} />,
