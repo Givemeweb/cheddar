@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
-import { View, Text, ActivityIndicator, useWindowDimensions, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, ActivityIndicator, useWindowDimensions, TouchableOpacity, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
 import DotChart from "../src/components/DotChart";
@@ -26,10 +27,32 @@ export default function TotalStatsScreen() {
   const [totalAssets, setTotalAssets] = useState(0);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [incomeExpenseData, setIncomeExpenseData] = useState<IncomeExpenseData[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol } = useTheme();
   const { t } = useTranslation();
+
+  const monthYear = currentDate.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+
+  const goToPreviousMonth = () => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -41,19 +64,19 @@ export default function TotalStatsScreen() {
           const total = accounts.reduce((sum, acc) => sum + acc.balance, 0);
           setTotalAssets(total);
 
-          // Calculate monthly asset growth for last 6 months
-          const now = new Date();
+          // Calculate monthly asset growth for last 6 months ending at selected month
           const months: MonthlyData[] = [];
 
           for (let i = 5; i >= 0; i--) {
-            const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
             const monthName = monthDate.toLocaleString('en', { month: 'short' });
-            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+            const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0, 23, 59, 59, 999);
 
             // Calculate balance at the end of this month
             // Start from current total and subtract transactions that happened after this month
             let monthBalance = total;
 
+            const now = new Date();
             for (const tx of transactions) {
               const txDate = new Date(tx.date);
               if (txDate > monthEnd) {
@@ -77,12 +100,12 @@ export default function TotalStatsScreen() {
 
           setMonthlyData(months);
 
-          // Calculate monthly income and expenses for last 6 months
+          // Calculate monthly income and expenses for last 6 months ending at selected month
           const incomeExpenseMonths: IncomeExpenseData[] = [];
 
           for (let i = 5; i >= 0; i--) {
-            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+            const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+            const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0, 23, 59, 59, 999);
             const monthName = monthStart.toLocaleString('en', { month: 'short' });
 
             let monthIncome = 0;
@@ -114,7 +137,7 @@ export default function TotalStatsScreen() {
         }
       }
       fetchData();
-    }, [])
+    }, [currentDate])
   );
 
   if (loading) {
@@ -131,18 +154,41 @@ export default function TotalStatsScreen() {
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
       <View
-        className={`flex-row items-center px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
+        className={`flex-row items-center justify-between px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-cheddar-yellow text-lg font-medium">
-            {t("common.back")}
+        <View className="flex-row items-center">
+          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+            <Text className="text-cheddar-yellow text-lg font-medium">
+              {t("common.back")}
+            </Text>
+          </TouchableOpacity>
+          <Text
+            className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          >
+            {t("totalStats.title")}
           </Text>
-        </TouchableOpacity>
-        <Text
-          className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-        >
-          {t("totalStats.title")}
-        </Text>
+        </View>
+        <View className="flex-row items-center">
+          <Pressable
+            onPress={goToPreviousMonth}
+            className="p-2"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ChevronLeft size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
+          </Pressable>
+          <Text
+            className={`text-base font-semibold ${isDark ? "text-white" : "text-cheddar-dark"}`}
+          >
+            {monthYear}
+          </Text>
+          <Pressable
+            onPress={goToNextMonth}
+            className="p-2"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ChevronRight size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Total Balance */}
