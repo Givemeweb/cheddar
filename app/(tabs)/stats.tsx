@@ -250,9 +250,13 @@ export default function StatsScreen() {
                 {categoryStats.map((stat) => (
                   <View key={stat.id} className="flex-row items-center py-2">
                     <View
-                      className="w-4 h-4 rounded-full mr-3"
+                      className="px-2 py-0.5 rounded-full mr-3"
                       style={{ backgroundColor: stat.color }}
-                    />
+                    >
+                      <Text className="text-xs font-medium text-cheddar-dark">
+                        {((stat.total / total) * 100).toFixed(0)}%
+                      </Text>
+                    </View>
                     <View className="mr-2">
                       {renderIcon(
                         stat.icon,
