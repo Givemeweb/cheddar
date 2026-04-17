@@ -62,13 +62,16 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <RechartsBarChart data={data} margin={{ top: 20, right: 20, bottom: 60, left: 60 }}>
+      <RechartsBarChart
+        data={data}
+        margin={{ top: 20, right: 20, bottom: 60, left: 0 }}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
         <XAxis
           dataKey="month"
           tick={customXAxisTick}
           tickLine={false}
-          axisLine={{ stroke: '#374151' }}
+          axisLine={{ stroke: "#374151" }}
         />
         <YAxis
           domain={[0, yMax]}
@@ -82,17 +85,35 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
             if (active && payload && payload.length) {
               const data = payload[0].payload;
               return (
-                <div style={{
-                  backgroundColor: '#26282D',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                }}>
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: 0 }}>{data.month}</p>
-                  <p style={{ color: 'rgba(59, 130, 246, 0.8)', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
+                <div
+                  style={{
+                    backgroundColor: "#26282D",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                  }}
+                >
+                  <p style={{ color: "#9CA3AF", fontSize: "12px", margin: 0 }}>
+                    {data.month}
+                  </p>
+                  <p
+                    style={{
+                      color: "rgba(59, 130, 246, 0.8)",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      margin: 0,
+                    }}
+                  >
                     Income: {formatCurrency(data.income)}
                   </p>
-                  <p style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
+                  <p
+                    style={{
+                      color: "rgba(239, 68, 68, 0.8)",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      margin: 0,
+                    }}
+                  >
                     Expense: {formatCurrency(data.expense)}
                   </p>
                 </div>

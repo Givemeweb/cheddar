@@ -40,7 +40,10 @@ export default function DotChart({ data, width = 400, height = 300 }: DotChartPr
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 40, left: 60 }}>
+      <LineChart
+        data={chartData}
+        margin={{ top: 20, right: 20, bottom: 40, left: 0 }}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
         <XAxis
           dataKey="month"
@@ -60,14 +63,25 @@ export default function DotChart({ data, width = 400, height = 300 }: DotChartPr
             if (active && payload && payload.length) {
               const data = payload[0].payload;
               return (
-                <div style={{
-                  backgroundColor: '#26282D',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                }}>
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: 0 }}>{data.month}</p>
-                  <p style={{ color: '#FFB800', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
+                <div
+                  style={{
+                    backgroundColor: "#26282D",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                  }}
+                >
+                  <p style={{ color: "#9CA3AF", fontSize: "12px", margin: 0 }}>
+                    {data.month}
+                  </p>
+                  <p
+                    style={{
+                      color: "#FFB800",
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                      margin: 0,
+                    }}
+                  >
                     {formatCurrency(data.value)}
                   </p>
                 </div>
@@ -81,8 +95,13 @@ export default function DotChart({ data, width = 400, height = 300 }: DotChartPr
           dataKey="value"
           stroke="#FFB800"
           strokeWidth={2}
-          dot={{ r: 6, fill: '#FFB800', stroke: '#FFB800', strokeWidth: 2 }}
-          activeDot={{ r: 8, fill: '#FFB800', stroke: '#FFB800', strokeWidth: 2 }}
+          dot={{ r: 6, fill: "#FFB800", stroke: "#FFB800", strokeWidth: 2 }}
+          activeDot={{
+            r: 8,
+            fill: "#FFB800",
+            stroke: "#FFB800",
+            strokeWidth: 2,
+          }}
         />
       </LineChart>
     </ResponsiveContainer>
