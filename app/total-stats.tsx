@@ -10,6 +10,8 @@ import { useTheme } from "../src/components/ThemeProvider";
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
 
+type ChartDimensions = { width: number; height: number } | null;
+
 type MonthlyData = {
   month: string;
   value: number;
@@ -28,6 +30,10 @@ export default function TotalStatsScreen() {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [incomeExpenseData, setIncomeExpenseData] = useState<IncomeExpenseData[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [dotChartDimensions, setDotChartDimensions] =
+    useState<ChartDimensions>(null);
+  const [barChartDimensions, setBarChartDimensions] =
+    useState<ChartDimensions>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol } = useTheme();
@@ -204,9 +210,9 @@ export default function TotalStatsScreen() {
       </View>
 
       {/* Asset Growth Chart */}
-      <View className="px-4 mb-4">
+      <View className="flex-1 px-4 mb-4">
         <View
-          className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          className={`flex-1 rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
         >
           <Text
             className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
@@ -214,14 +220,23 @@ export default function TotalStatsScreen() {
             {t("totalStats.monthlyGrowth")}
           </Text>
           {monthlyData.length > 0 ? (
-            <View style={{ height: 250 }}>
-              <DotChart data={monthlyData} height={250} />
+            <View
+              className="flex-1"
+              onLayout={(event) => {
+                const { width, height } = event.nativeEvent.layout;
+                setDotChartDimensions({ width, height });
+              }}
+            >
+              {dotChartDimensions && (
+                <DotChart
+                  data={monthlyData}
+                  width={dotChartDimensions.width}
+                  height={dotChartDimensions.height}
+                />
+              )}
             </View>
           ) : (
-            <View
-              className="items-center justify-center"
-              style={{ height: 250 }}
-            >
+            <View className="flex-1 items-center justify-center">
               <Text
                 className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
               >
@@ -233,9 +248,9 @@ export default function TotalStatsScreen() {
       </View>
 
       {/* Income vs Expense Chart */}
-      <View className="px-4 mb-4">
+      <View className="flex-1 px-4 mb-4">
         <View
-          className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          className={`flex-1 rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
         >
           <Text
             className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
@@ -243,14 +258,23 @@ export default function TotalStatsScreen() {
             {t("totalStats.incomeExpense")}
           </Text>
           {incomeExpenseData.length > 0 ? (
-            <View style={{ height: 250 }}>
-              <BarChart data={incomeExpenseData} height={250} />
+            <View
+              className="flex-1"
+              onLayout={(event) => {
+                const { width, height } = event.nativeEvent.layout;
+                setBarChartDimensions({ width, height });
+              }}
+            >
+              {barChartDimensions && (
+                <BarChart
+                  data={incomeExpenseData}
+                  width={barChartDimensions.width}
+                  height={barChartDimensions.height}
+                />
+              )}
             </View>
           ) : (
-            <View
-              className="items-center justify-center"
-              style={{ height: 250 }}
-            >
+            <View className="flex-1 items-center justify-center">
               <Text
                 className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
               >

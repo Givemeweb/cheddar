@@ -9,7 +9,6 @@ type DotChartProps = {
   }>;
   width?: number;
   height?: number;
-  dom?: import('expo/dom').DOMProps;
 };
 
 function formatCurrency(value: number): string {
@@ -39,10 +38,10 @@ export default function DotChart({ data, width = 400, height = 300 }: DotChartPr
   const yMax = Math.ceil(maxValue + padding * 0.1);
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width={width} height={height}>
       <LineChart
         data={chartData}
-        margin={{ top: 20, right: 20, bottom: 40, left: 0 }}
+        margin={{ top: 20, right: 20, bottom: 10, left: 0 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
         <XAxis

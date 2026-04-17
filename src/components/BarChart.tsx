@@ -41,19 +41,46 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
   const maxValue = Math.max(...data.flatMap(d => [d.income, d.expense]));
   const yMax = Math.ceil(maxValue * 1.1) || 100;
 
-  const customXAxisTick = ({ x, y, payload }: { x: number; y: number; payload: { value: string; index: number } }) => {
+  const customXAxisTick = ({
+    x,
+    y,
+    payload,
+  }: {
+    x: number;
+    y: number;
+    payload: { value: string; index: number };
+  }) => {
     const dataItem = data[payload.index];
     if (!dataItem) return null;
 
     return (
       <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} textAnchor="middle" fill="#9CA3AF" fontSize={12} fontWeight="500">
+        <text
+          x={0}
+          y={0}
+          textAnchor="middle"
+          fill="#9CA3AF"
+          fontSize={12}
+          fontWeight="500"
+        >
           {dataItem.month}
         </text>
-        <text x={0} y={16} textAnchor="middle" fill="rgba(59, 130, 246, 0.8)" fontSize={10}>
+        <text
+          x={0}
+          y={16}
+          textAnchor="middle"
+          fill="rgba(59, 130, 246, 0.8)"
+          fontSize={10}
+        >
           {formatShort(dataItem.income)}
         </text>
-        <text x={0} y={30} textAnchor="middle" fill="rgba(239, 68, 68, 0.8)" fontSize={10}>
+        <text
+          x={0}
+          y={30}
+          textAnchor="middle"
+          fill="rgba(239, 68, 68, 0.8)"
+          fontSize={10}
+        >
           {formatShort(dataItem.expense)}
         </text>
       </g>
@@ -61,10 +88,10 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
   };
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width={width} height={height}>
       <RechartsBarChart
         data={data}
-        margin={{ top: 20, right: 20, bottom: 60, left: 0 }}
+        margin={{ top: 20, right: 20, bottom: 20, left: 0 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
         <XAxis
