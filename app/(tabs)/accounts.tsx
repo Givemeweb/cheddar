@@ -20,6 +20,7 @@ import {
   CircleDollarSign,
   Banknote,
   LucideIcon,
+  BarChart3,
 } from "lucide-react-native";
 import { getAccounts, Account } from "../../src/db/storage";
 import { useTheme } from "../../src/components/ThemeProvider";
@@ -83,16 +84,27 @@ export default function AccountsScreen() {
           >
             {t("accounts.title")}
           </Text>
-          <Pressable
-            onPress={() => setMenuVisible(!menuVisible)}
-            className="p-2"
-          >
-            <Text
-              className={`text-2xl ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={() => router.push("/total-stats")}
+              className="p-2 mr-1"
             >
-              ⋮
-            </Text>
-          </Pressable>
+              <BarChart3
+                size={24}
+                color={isDark ? "#F9FAFB" : "#212226"}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => setMenuVisible(!menuVisible)}
+              className="p-2"
+            >
+              <Text
+                className={`text-2xl ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              >
+                ⋮
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 

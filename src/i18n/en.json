@@ -156,6 +156,12 @@
     "categories": "Categories",
     "noTransactions": "No {{tab}} transactions this month"
   },
+  "totalStats": {
+    "title": "Total Stats",
+    "balance": "Balance",
+    "monthlyGrowth": "Monthly Asset Growth",
+    "noData": "No historical data available"
+  },
   "days": {
     "short": {
       "sun": "Sun",
