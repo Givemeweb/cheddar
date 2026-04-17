@@ -23,6 +23,16 @@ function formatCurrency(value: number): string {
   return `$${value.toFixed(0)}`;
 }
 
+function formatShort(value: number): string {
+  if (Math.abs(value) >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  }
+  if (Math.abs(value) >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  }
+  return value.toFixed(0);
+}
+
 export default function BarChart({ data, width = 400, height = 300 }: BarChartProps) {
   if (data.length === 0) {
     return null;
@@ -31,15 +41,34 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
   const maxValue = Math.max(...data.flatMap(d => [d.income, d.expense]));
   const yMax = Math.ceil(maxValue * 1.1) || 100;
 
+  const customXAxisTick = ({ x, y, payload }: { x: number; y: number; payload: { value: string; index: number } }) => {
+    const dataItem = data[payload.index];
+    if (!dataItem) return null;
+
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} textAnchor="middle" fill="#9CA3AF" fontSize={12} fontWeight="500">
+          {dataItem.month}
+        </text>
+        <text x={0} y={16} textAnchor="middle" fill="rgba(59, 130, 246, 0.8)" fontSize={10}>
+          {formatShort(dataItem.income)}
+        </text>
+        <text x={0} y={30} textAnchor="middle" fill="rgba(239, 68, 68, 0.8)" fontSize={10}>
+          {formatShort(dataItem.expense)}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <RechartsBarChart data={data} margin={{ top: 20, right: 20, bottom: 40, left: 60 }}>
+      <RechartsBarChart data={data} margin={{ top: 20, right: 20, bottom: 60, left: 60 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
         <XAxis
           dataKey="month"
-          stroke="#9CA3AF"
-          fontSize={12}
+          tick={customXAxisTick}
           tickLine={false}
+          axisLine={{ stroke: '#374151' }}
         />
         <YAxis
           domain={[0, yMax]}
