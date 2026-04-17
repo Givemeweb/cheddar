@@ -103,6 +103,7 @@ export default function DotChart({ data, width = 400, height = 300, currencySymb
             stroke: "#FFB800",
             strokeWidth: 2,
           }}
+          isAnimationActive={false}
         />
       </LineChart>
     </ResponsiveContainer>
