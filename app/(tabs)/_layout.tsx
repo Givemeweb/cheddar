@@ -2,7 +2,6 @@ import { Tabs } from "expo-router";
 import { View, Text, useWindowDimensions, StyleSheet } from "react-native";
 import { Receipt, BarChart3, Wallet, Settings } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { SideNav } from "../../src/components/SideNav";
 import { useTheme } from "../../src/components/ThemeProvider";
 
 function TabIcon({
@@ -38,75 +37,23 @@ export default function TabsLayout() {
   const { t } = useTranslation();
   const isLargeScreen = width >= 768;
 
-  // On large screens, we use side navigation instead of tabs
-  if (isLargeScreen) {
-    return (
-      <View style={[styles.desktopContainer, isDark && styles.desktopContainerDark]}>
-        <SideNav />
-        <View style={styles.contentContainer}>
-          <Tabs
-            screenOptions={{
-              headerShown: false,
-              tabBarStyle: { display: "none" },
-            }}
-          >
-            <Tabs.Screen
-              name="index"
-              options={{
-                title: t('tabs.transactions'),
-                tabBarIcon: ({ focused }) => (
-                  <TabIcon icon={Receipt} focused={focused} isDark={isDark} />
-                ),
-              }}
-            />
-            <Tabs.Screen
-              name="stats"
-              options={{
-                title: t('tabs.stats'),
-                tabBarIcon: ({ focused }) => (
-                  <TabIcon icon={BarChart3} focused={focused} isDark={isDark} />
-                ),
-              }}
-            />
-            <Tabs.Screen
-              name="accounts"
-              options={{
-                title: t('tabs.accounts'),
-                tabBarIcon: ({ focused }) => (
-                  <TabIcon icon={Wallet} focused={focused} isDark={isDark} />
-                ),
-              }}
-            />
-            <Tabs.Screen
-              name="more"
-              options={{
-                title: t('tabs.more'),
-                tabBarIcon: ({ focused }) => (
-                  <TabIcon icon={Settings} focused={focused} isDark={isDark} />
-                ),
-              }}
-            />
-          </Tabs>
-        </View>
-      </View>
-    );
-  }
-
-  // On small screens, use regular bottom tabs
+  // On large screens, hide tab bar (side nav is handled by root layout)
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#FFB800",
         tabBarInactiveTintColor: isDark ? "#9CA3AF" : "#6B7280",
-        tabBarStyle: {
-          backgroundColor: isDark ? "#26282D" : "#FFFFFF",
-          borderTopWidth: 1,
-          borderTopColor: isDark ? "#374151" : "#E5E7EB",
-          height: 80,
-          paddingBottom: 12,
-          paddingTop: 8,
-        },
+        tabBarStyle: isLargeScreen
+          ? { display: "none" }
+          : {
+              backgroundColor: isDark ? "#26282D" : "#FFFFFF",
+              borderTopWidth: 1,
+              borderTopColor: isDark ? "#374151" : "#E5E7EB",
+              height: 80,
+              paddingBottom: 12,
+              paddingTop: 8,
+            },
       }}
     >
       <Tabs.Screen
@@ -148,17 +95,3 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  desktopContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#F9FAFB",
-  },
-  desktopContainerDark: {
-    backgroundColor: "#111827",
-  },
-  contentContainer: {
-    flex: 1,
-  },
-});
