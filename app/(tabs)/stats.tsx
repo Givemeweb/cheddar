@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import PieChart from "../../src/components/PieChart";
 import { getCategories, getTransactions } from "../../src/db/storage";
 import { renderIcon } from "../../src/components/TransactionItem";
@@ -34,10 +35,32 @@ export default function StatsScreen() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [chartSize, setChartSize] = useState<{ width: number; height: number } | null>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol } = useTheme();
   const { t } = useTranslation();
+
+  const monthYear = currentDate.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+
+  const goToPreviousMonth = () => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
 
   useEffect(() => {
     async function fetchStats() {
@@ -47,8 +70,29 @@ export default function StatsScreen() {
 
         const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
 
+        // Filter by selected month
+        const startOfMonth = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          1,
+        );
+        const endOfMonth = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+
+        const monthTransactions = allTransactions.filter((tx) => {
+          const txDate = new Date(tx.date);
+          return txDate >= startOfMonth && txDate <= endOfMonth;
+        });
+
         // Filter by income or expense (exclude transfers which have no category)
-        const filteredTransactions = allTransactions.filter((tx) => {
+        const filteredTransactions = monthTransactions.filter((tx) => {
           if (!tx.categoryId) return false;
           const cat = categoryMap.get(tx.categoryId);
           return cat?.type === activeTab;
@@ -95,7 +139,7 @@ export default function StatsScreen() {
 
     setLoading(true);
     fetchStats();
-  }, [activeTab]);
+  }, [activeTab, currentDate]);
 
   return (
     <SafeAreaView
@@ -103,6 +147,29 @@ export default function StatsScreen() {
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
       <View className="px-4 py-4">
+        {/* Month Navigation */}
+        <View className="flex-row items-center mb-3">
+          <Pressable
+            onPress={goToPreviousMonth}
+            className="p-1"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ChevronLeft size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+          </Pressable>
+          <Text
+            className={`text-base font-semibold mx-2 ${isDark ? "text-white" : "text-cheddar-dark"}`}
+          >
+            {monthYear}
+          </Text>
+          <Pressable
+            onPress={goToNextMonth}
+            className="p-1"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ChevronRight size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+          </Pressable>
+        </View>
+
         {/* Tab Buttons */}
         <View
           className={`flex-row ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
