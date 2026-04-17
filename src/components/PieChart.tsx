@@ -16,7 +16,7 @@ type PieChartProps = {
 
 export default function PieChart({ data, innerRadius = 0, width, height }: PieChartProps) {
   return (
-    <RechartsPieChart width={width} height={height}>
+    <RechartsPieChart width={width} height={height} style={{ touchAction: 'none', overflow: 'hidden' }}>
       <Pie
         data={data}
         dataKey="value"

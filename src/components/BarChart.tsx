@@ -88,10 +88,11 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
   };
 
   return (
-    <ResponsiveContainer width={width} height={height}>
+    <ResponsiveContainer width={width} height={height} style={{ touchAction: 'none', overflow: 'hidden' }}>
       <RechartsBarChart
         data={data}
         margin={{ top: 20, right: 20, bottom: 20, left: 0 }}
+        style={{ touchAction: 'none' }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
         <XAxis

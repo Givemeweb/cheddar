@@ -38,10 +38,11 @@ export default function DotChart({ data, width = 400, height = 300 }: DotChartPr
   const yMax = Math.ceil(maxValue + padding * 0.1);
 
   return (
-    <ResponsiveContainer width={width} height={height}>
+    <ResponsiveContainer width={width} height={height} style={{ touchAction: 'none', overflow: 'hidden' }}>
       <LineChart
         data={chartData}
         margin={{ top: 20, right: 20, bottom: 10, left: 0 }}
+        style={{ touchAction: 'none' }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
         <XAxis
