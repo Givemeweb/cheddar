@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
-import { View, Text, useWindowDimensions, StyleSheet } from "react-native";
-import { Receipt, BarChart3, Wallet, Settings } from "lucide-react-native";
+import { View, Text, useWindowDimensions } from "react-native";
+import { BarChart3, Wallet, Settings, BookText } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../src/components/ThemeProvider";
 
@@ -61,7 +61,7 @@ export default function TabsLayout() {
         options={{
           title: t("tabs.transactions"),
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon={Receipt} focused={focused} isDark={isDark} />
+            <TabIcon icon={BookText} focused={focused} isDark={isDark} />
           ),
         }}
       />

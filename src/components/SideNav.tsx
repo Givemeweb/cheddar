@@ -1,5 +1,5 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { Receipt, BarChart3, Wallet, Settings } from "lucide-react-native";
+import { BookText, BarChart3, Wallet, Settings } from "lucide-react-native";
 import { usePathname, useRouter } from "expo-router";
 import { useTheme } from "./ThemeProvider";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { name: "index", label: "Transactions", icon: Receipt, href: "/" },
+  { name: "index", label: "Transactions", icon: BookText, href: "/" },
   { name: "stats", label: "Stats", icon: BarChart3, href: "/stats" },
   { name: "accounts", label: "Accounts", icon: Wallet, href: "/accounts" },
   { name: "more", label: "More", icon: Settings, href: "/more" },
