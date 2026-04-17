@@ -27,6 +27,7 @@ export default function TotalStatsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [totalAssets, setTotalAssets] = useState(0);
+  const [selectedMonthBalance, setSelectedMonthBalance] = useState(0);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [incomeExpenseData, setIncomeExpenseData] = useState<IncomeExpenseData[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -105,6 +106,11 @@ export default function TotalStatsScreen() {
           }
 
           setMonthlyData(months);
+
+          // The selected month's balance is the last item in the months array
+          if (months.length > 0) {
+            setSelectedMonthBalance(months[months.length - 1].value);
+          }
 
           // Calculate monthly income and expenses for last 6 months ending at selected month
           const incomeExpenseMonths: IncomeExpenseData[] = [];
@@ -204,7 +210,7 @@ export default function TotalStatsScreen() {
             {t("totalStats.balance")}
           </Text>
           <Text className="text-cheddar-dark text-xl font-bold mt-1">
-            {currencySymbol} {totalAssets.toFixed(2)}
+            {currencySymbol} {selectedMonthBalance.toFixed(2)}
           </Text>
         </View>
       </View>
