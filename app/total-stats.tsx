@@ -218,7 +218,10 @@ export default function TotalStatsScreen() {
               <DotChart data={monthlyData} height={250} />
             </View>
           ) : (
-            <View className="items-center justify-center" style={{ height: 250 }}>
+            <View
+              className="items-center justify-center"
+              style={{ height: 250 }}
+            >
               <Text
                 className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
               >
@@ -244,7 +247,10 @@ export default function TotalStatsScreen() {
               <BarChart data={incomeExpenseData} height={250} />
             </View>
           ) : (
-            <View className="items-center justify-center" style={{ height: 250 }}>
+            <View
+              className="items-center justify-center"
+              style={{ height: 250 }}
+            >
               <Text
                 className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
               >
@@ -252,21 +258,6 @@ export default function TotalStatsScreen() {
               </Text>
             </View>
           )}
-          {/* Legend */}
-          <View className="flex-row justify-center mt-4">
-            <View className="flex-row items-center mr-6">
-              <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(59, 130, 246, 0.5)' }} />
-              <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
-                {t("totalStats.income")}
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.5)' }} />
-              <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
-                {t("totalStats.expense")}
-              </Text>
-            </View>
-          </View>
         </View>
       </View>
     </SafeAreaView>
