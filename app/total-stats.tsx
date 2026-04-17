@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, ActivityIndicator, useWindowDimensions, TouchableOpacity, ScrollView, Pressable } from "react-native";
+import { View, Text, ActivityIndicator, useWindowDimensions, TouchableOpacity, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -193,85 +193,82 @@ export default function TotalStatsScreen() {
 
       {/* Total Balance */}
       <View className="px-4 mb-4 mt-4">
-        <View className="bg-cheddar-yellow rounded-xl p-6 shadow-sm">
+        <View className="bg-cheddar-yellow rounded-xl p-4 shadow-sm">
           <Text className="text-cheddar-dark text-sm font-medium">
             {t("totalStats.balance")}
           </Text>
-          <Text className="text-cheddar-dark text-3xl font-bold mt-1">
+          <Text className="text-cheddar-dark text-xl font-bold mt-1">
             {currencySymbol} {totalAssets.toFixed(2)}
           </Text>
         </View>
       </View>
 
-      {/* Scrollable Content */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Asset Growth Chart */}
-        <View className="px-4 mb-4">
-          <View
-            className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+      {/* Asset Growth Chart */}
+      <View className="px-4 mb-4">
+        <View
+          className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+        >
+          <Text
+            className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
           >
-            <Text
-              className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-            >
-              {t("totalStats.monthlyGrowth")}
-            </Text>
-            {monthlyData.length > 0 ? (
-              <View style={{ height: 250 }}>
-                <DotChart data={monthlyData} height={250} />
-              </View>
-            ) : (
-              <View className="items-center justify-center" style={{ height: 250 }}>
-                <Text
-                  className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
-                >
-                  {t("totalStats.noData")}
-                </Text>
-              </View>
-            )}
-          </View>
+            {t("totalStats.monthlyGrowth")}
+          </Text>
+          {monthlyData.length > 0 ? (
+            <View style={{ height: 250 }}>
+              <DotChart data={monthlyData} height={250} />
+            </View>
+          ) : (
+            <View className="items-center justify-center" style={{ height: 250 }}>
+              <Text
+                className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+              >
+                {t("totalStats.noData")}
+              </Text>
+            </View>
+          )}
         </View>
+      </View>
 
-        {/* Income vs Expense Chart */}
-        <View className="px-4 mb-4">
-          <View
-            className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+      {/* Income vs Expense Chart */}
+      <View className="px-4 mb-4">
+        <View
+          className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+        >
+          <Text
+            className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
           >
-            <Text
-              className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-            >
-              {t("totalStats.incomeExpense")}
-            </Text>
-            {incomeExpenseData.length > 0 ? (
-              <View style={{ height: 250 }}>
-                <BarChart data={incomeExpenseData} height={250} />
-              </View>
-            ) : (
-              <View className="items-center justify-center" style={{ height: 250 }}>
-                <Text
-                  className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
-                >
-                  {t("totalStats.noData")}
-                </Text>
-              </View>
-            )}
-            {/* Legend */}
-            <View className="flex-row justify-center mt-4">
-              <View className="flex-row items-center mr-6">
-                <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(59, 130, 246, 0.5)' }} />
-                <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
-                  {t("totalStats.income")}
-                </Text>
-              </View>
-              <View className="flex-row items-center">
-                <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.5)' }} />
-                <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
-                  {t("totalStats.expense")}
-                </Text>
-              </View>
+            {t("totalStats.incomeExpense")}
+          </Text>
+          {incomeExpenseData.length > 0 ? (
+            <View style={{ height: 250 }}>
+              <BarChart data={incomeExpenseData} height={250} />
+            </View>
+          ) : (
+            <View className="items-center justify-center" style={{ height: 250 }}>
+              <Text
+                className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+              >
+                {t("totalStats.noData")}
+              </Text>
+            </View>
+          )}
+          {/* Legend */}
+          <View className="flex-row justify-center mt-4">
+            <View className="flex-row items-center mr-6">
+              <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(59, 130, 246, 0.5)' }} />
+              <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
+                {t("totalStats.income")}
+              </Text>
+            </View>
+            <View className="flex-row items-center">
+              <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.5)' }} />
+              <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
+                {t("totalStats.expense")}
+              </Text>
             </View>
           </View>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
