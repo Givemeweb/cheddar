@@ -11,16 +11,17 @@ type BarChartProps = {
   width?: number;
   height?: number;
   dom?: import('expo/dom').DOMProps;
+  currencySymbol?: string;
 };
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number, symbol: string): string {
   if (Math.abs(value) >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
+    return `${symbol}${(value / 1000000).toFixed(1)}M`;
   }
   if (Math.abs(value) >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
+    return `${symbol}${(value / 1000).toFixed(1)}K`;
   }
-  return `$${value.toFixed(0)}`;
+  return `${symbol}${value.toFixed(0)}`;
 }
 
 function formatShort(value: number): string {
@@ -33,7 +34,7 @@ function formatShort(value: number): string {
   return value.toFixed(0);
 }
 
-export default function BarChart({ data, width = 400, height = 300 }: BarChartProps) {
+export default function BarChart({ data, width = 400, height = 300, currencySymbol = '$' }: BarChartProps) {
   if (data.length === 0) {
     return null;
   }
@@ -103,7 +104,7 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
         />
         <YAxis
           domain={[0, yMax]}
-          tickFormatter={formatCurrency}
+          tickFormatter={(value) => formatCurrency(value, currencySymbol)}
           stroke="#9CA3AF"
           fontSize={12}
           tickLine={false}
@@ -132,7 +133,7 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
                       margin: 0,
                     }}
                   >
-                    Income: {formatCurrency(data.income)}
+                    Income: {formatCurrency(data.income, currencySymbol)}
                   </p>
                   <p
                     style={{
@@ -142,7 +143,7 @@ export default function BarChart({ data, width = 400, height = 300 }: BarChartPr
                       margin: 0,
                     }}
                   >
-                    Expense: {formatCurrency(data.expense)}
+                    Expense: {formatCurrency(data.expense, currencySymbol)}
                   </p>
                 </div>
               );

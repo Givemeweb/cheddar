@@ -9,19 +9,20 @@ type DotChartProps = {
   }>;
   width?: number;
   height?: number;
+  currencySymbol?: string;
 };
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number, symbol: string): string {
   if (Math.abs(value) >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
+    return `${symbol}${(value / 1000000).toFixed(1)}M`;
   }
   if (Math.abs(value) >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
+    return `${symbol}${(value / 1000).toFixed(1)}K`;
   }
-  return `$${value.toFixed(0)}`;
+  return `${symbol}${value.toFixed(0)}`;
 }
 
-export default function DotChart({ data, width = 400, height = 300 }: DotChartProps) {
+export default function DotChart({ data, width = 400, height = 300, currencySymbol = '$' }: DotChartProps) {
   if (data.length === 0) {
     return null;
   }
@@ -53,7 +54,7 @@ export default function DotChart({ data, width = 400, height = 300 }: DotChartPr
         />
         <YAxis
           domain={[yMin, yMax]}
-          tickFormatter={formatCurrency}
+          tickFormatter={(value) => formatCurrency(value, currencySymbol)}
           stroke="#9CA3AF"
           fontSize={12}
           tickLine={false}
@@ -82,7 +83,7 @@ export default function DotChart({ data, width = 400, height = 300 }: DotChartPr
                       margin: 0,
                     }}
                   >
-                    {formatCurrency(data.value)}
+                    {formatCurrency(data.value, currencySymbol)}
                   </p>
                 </div>
               );

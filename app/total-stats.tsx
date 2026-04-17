@@ -232,6 +232,7 @@ export default function TotalStatsScreen() {
                   data={monthlyData}
                   width={dotChartDimensions.width}
                   height={dotChartDimensions.height}
+                  currencySymbol={currencySymbol}
                 />
               )}
             </View>
@@ -270,6 +271,7 @@ export default function TotalStatsScreen() {
                   data={incomeExpenseData}
                   width={barChartDimensions.width}
                   height={barChartDimensions.height}
+                  currencySymbol={currencySymbol}
                 />
               )}
             </View>
