@@ -139,16 +139,16 @@ export default function DeleteAccountScreen() {
                 }`}
               >
                 <View className="flex-row items-center flex-1">
-                  <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
-                    {(() => {
-                      const IconComponent = showIcons && iconMap[account.icon || 'wallet'];
-                      return IconComponent ? (
-                        <IconComponent size={20} color={isDark ? "#F9FAFB" : "#212226"} />
-                      ) : (
-                        <Text className="text-xl">💰</Text>
-                      );
-                    })()}
-                  </View>
+                  {showIcons && (
+                    <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
+                      {(() => {
+                        const IconComponent = iconMap[account.icon || 'wallet'];
+                        return IconComponent ? (
+                          <IconComponent size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                        ) : null;
+                      })()}
+                    </View>
+                  )}
                   <View>
                     <Text className={`text-lg ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                       {account.name}

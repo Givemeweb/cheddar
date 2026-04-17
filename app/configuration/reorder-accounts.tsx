@@ -9,14 +9,38 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { getAccounts, reorderAccounts, Account } from '@/src/db/storage';
-import { GripVertical } from 'lucide-react-native';
+import {
+  getAccounts,
+  reorderAccounts,
+  Account,
+} from '@/src/db/storage';
+import {
+  GripVertical,
+  Wallet,
+  PiggyBank,
+  CreditCard,
+  Landmark,
+  Building2,
+  CircleDollarSign,
+  Banknote,
+  LucideIcon,
+} from 'lucide-react-native';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 
+const iconMap: Record<string, LucideIcon> = {
+  'wallet': Wallet,
+  'piggy-bank': PiggyBank,
+  'credit-card': CreditCard,
+  'landmark': Landmark,
+  'building-2': Building2,
+  'circle-dollar-sign': CircleDollarSign,
+  'banknote': Banknote,
+};
+
 export default function ReorderAccountsScreen() {
   const router = useRouter();
-  const { isDark } = useTheme();
+  const { isDark, showIcons } = useTheme();
   const { t } = useTranslation();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,11 +87,18 @@ export default function ReorderAccountsScreen() {
       className={`flex-row items-center px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-800" : "bg-white border-gray-100"}`}
     >
       <GripVertical size={20} color="#9CA3AF" />
-      <View
-        className={`w-10 h-10 rounded-full items-center justify-center mx-3 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
-      >
-        <Text className="text-xl">💰</Text>
-      </View>
+      {showIcons && (
+        <View
+          className={`w-10 h-10 rounded-full items-center justify-center mx-3 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
+        >
+          {(() => {
+            const IconComponent = iconMap[item.icon || 'wallet'];
+            return IconComponent ? (
+              <IconComponent size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+            ) : null;
+          })()}
+        </View>
+      )}
       <View className="flex-1">
         <Text
           className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
