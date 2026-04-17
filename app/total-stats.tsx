@@ -107,7 +107,7 @@ export default function TotalStatsScreen() {
       </View>
 
       {/* Total Balance */}
-      <View className="px-4 mb-4">
+      <View className="px-4 mb-4 mt-4">
         <View className="bg-cheddar-yellow rounded-xl p-6 shadow-sm">
           <Text className="text-cheddar-dark text-sm font-medium">
             {t("totalStats.balance")}
