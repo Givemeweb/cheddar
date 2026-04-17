@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, ActivityIndicator, useWindowDimensions, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator, useWindowDimensions, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -7,10 +7,17 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
 import DotChart from "../src/components/DotChart";
+import BarChart from "../src/components/BarChart";
 
 type MonthlyData = {
   month: string;
   value: number;
+};
+
+type IncomeExpenseData = {
+  month: string;
+  income: number;
+  expense: number;
 };
 
 export default function TotalStatsScreen() {
@@ -18,6 +25,7 @@ export default function TotalStatsScreen() {
   const [loading, setLoading] = useState(true);
   const [totalAssets, setTotalAssets] = useState(0);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [incomeExpenseData, setIncomeExpenseData] = useState<IncomeExpenseData[]>([]);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol } = useTheme();
@@ -68,6 +76,37 @@ export default function TotalStatsScreen() {
           }
 
           setMonthlyData(months);
+
+          // Calculate monthly income and expenses for last 6 months
+          const incomeExpenseMonths: IncomeExpenseData[] = [];
+
+          for (let i = 5; i >= 0; i--) {
+            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+            const monthName = monthStart.toLocaleString('en', { month: 'short' });
+
+            let monthIncome = 0;
+            let monthExpense = 0;
+
+            for (const tx of transactions) {
+              const txDate = new Date(tx.date);
+              if (txDate >= monthStart && txDate <= monthEnd) {
+                if (tx.type === 'income') {
+                  monthIncome += Math.abs(tx.amount);
+                } else if (tx.type === 'expense') {
+                  monthExpense += Math.abs(tx.amount);
+                }
+              }
+            }
+
+            incomeExpenseMonths.push({
+              month: monthName,
+              income: monthIncome,
+              expense: monthExpense,
+            });
+          }
+
+          setIncomeExpenseData(incomeExpenseMonths);
         } catch (error) {
           console.error("Error fetching data:", error);
         } finally {
@@ -118,31 +157,75 @@ export default function TotalStatsScreen() {
         </View>
       </View>
 
-      {/* Chart */}
-      <View className="px-4 mb-4 flex-1">
-        <View
-          className={`rounded-xl p-4 shadow-sm flex-1 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-        >
-          <Text
-            className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+      {/* Scrollable Content */}
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Asset Growth Chart */}
+        <View className="px-4 mb-4">
+          <View
+            className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
           >
-            {t("totalStats.monthlyGrowth")}
-          </Text>
-          {monthlyData.length > 0 ? (
-            <View className="flex-1">
-              <DotChart data={monthlyData} height={250} />
-            </View>
-          ) : (
-            <View className="flex-1 items-center justify-center">
-              <Text
-                className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
-              >
-                {t("totalStats.noData")}
-              </Text>
-            </View>
-          )}
+            <Text
+              className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("totalStats.monthlyGrowth")}
+            </Text>
+            {monthlyData.length > 0 ? (
+              <View style={{ height: 250 }}>
+                <DotChart data={monthlyData} height={250} />
+              </View>
+            ) : (
+              <View className="items-center justify-center" style={{ height: 250 }}>
+                <Text
+                  className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                >
+                  {t("totalStats.noData")}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+
+        {/* Income vs Expense Chart */}
+        <View className="px-4 mb-4">
+          <View
+            className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("totalStats.incomeExpense")}
+            </Text>
+            {incomeExpenseData.length > 0 ? (
+              <View style={{ height: 250 }}>
+                <BarChart data={incomeExpenseData} height={250} />
+              </View>
+            ) : (
+              <View className="items-center justify-center" style={{ height: 250 }}>
+                <Text
+                  className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                >
+                  {t("totalStats.noData")}
+                </Text>
+              </View>
+            )}
+            {/* Legend */}
+            <View className="flex-row justify-center mt-4">
+              <View className="flex-row items-center mr-6">
+                <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(59, 130, 246, 0.5)' }} />
+                <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
+                  {t("totalStats.income")}
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <View className="w-4 h-4 rounded-sm mr-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.5)' }} />
+                <Text className={`text-sm ${isDark ? "text-gray-300" : "text-cheddar-gray"}`}>
+                  {t("totalStats.expense")}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

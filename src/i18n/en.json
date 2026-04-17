@@ -160,6 +160,9 @@
     "title": "Total Stats",
     "balance": "Balance",
     "monthlyGrowth": "Monthly Asset Growth",
+    "incomeExpense": "Income vs Expenses",
+    "income": "Income",
+    "expense": "Expense",
     "noData": "No historical data available"
   },
   "days": {
