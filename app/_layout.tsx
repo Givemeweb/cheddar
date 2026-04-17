@@ -42,13 +42,43 @@ function ThemedApp() {
             <Stack.Screen
               name="configuration"
               options={{
-                animation: 'slide_from_right',
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
               }}
             />
             <Stack.Screen
               name="passcode"
               options={{
-                animation: 'slide_from_right',
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="backup"
+              options={{
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="backup-device"
+              options={{
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="backup-export"
+              options={{
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="backup-import"
+              options={{
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="backup-reset"
+              options={{
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
               }}
             />
           </Stack>
@@ -72,13 +102,43 @@ function ThemedApp() {
         <Stack.Screen
           name="configuration"
           options={{
-            animation: 'slide_from_right',
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
           }}
         />
         <Stack.Screen
           name="passcode"
           options={{
-            animation: 'slide_from_right',
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="backup"
+          options={{
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="backup-device"
+          options={{
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="backup-export"
+          options={{
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="backup-import"
+          options={{
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="backup-reset"
+          options={{
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
           }}
         />
       </Stack>
