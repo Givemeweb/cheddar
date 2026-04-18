@@ -52,6 +52,8 @@ export type TransactionWithDetails = {
   id: string;
   type: 'income' | 'expense' | 'transfer';
   categoryId: string | null;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
   accountId: string;
   toAccountId?: string | null;
   note: string | null;
@@ -115,14 +117,24 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
             ) : null}
           </View>
         )}
-        <Text
-          className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-          numberOfLines={1}
-        >
-          {isTransfer
-            ? t("transactions.type.transfer")
-            : transaction.category?.name}
-        </Text>
+        <View className="flex-col">
+          <Text
+            className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            numberOfLines={1}
+          >
+            {isTransfer
+              ? t("transactions.type.transfer")
+              : transaction.category?.name}
+          </Text>
+          {transaction.subcategoryName && (
+            <Text
+              className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}
+              numberOfLines={1}
+            >
+              {transaction.subcategoryName}
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Column 2 - Note and Account */}

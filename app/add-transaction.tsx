@@ -14,6 +14,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { getCategories, getAccounts, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account } from '@/src/db/storage';
+import { getSubcategoriesEnabled, getSubcategories, type Subcategory } from '@/src/db';
 import DateTimePicker from '@/src/components/DateTimePicker';
 import {
     TrendingUp,
@@ -78,6 +79,7 @@ export default function AddTransactionScreen() {
     const [date, setDate] = useState(new Date());
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+    const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
     const [fromAccountId, setFromAccountId] = useState<string | null>(null);
     const [toAccountId, setToAccountId] = useState<string | null>(null);
     const [amount, setAmount] = useState('');
@@ -85,9 +87,12 @@ export default function AddTransactionScreen() {
     const [description, setDescription] = useState('');
     const [categories, setCategories] = useState<Category[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+    const [subcategoriesEnabled, setSubcategoriesEnabled] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showAccountPicker, setShowAccountPicker] = useState(false);
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+    const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false);
     const [showFromPicker, setShowFromPicker] = useState(false);
     const [showToPicker, setShowToPicker] = useState(false);
 
@@ -100,8 +105,10 @@ export default function AddTransactionScreen() {
     const loadData = async () => {
         const cats = await getCategories();
         const accs = await getAccounts();
+        const subEnabled = await getSubcategoriesEnabled();
         setCategories(cats);
         setAccounts(accs);
+        setSubcategoriesEnabled(subEnabled);
 
         if (isEditing && transactionId) {
             // Load existing transaction for editing
@@ -119,6 +126,13 @@ export default function AddTransactionScreen() {
                 } else {
                     setSelectedAccountId(existingTx.accountId);
                     setSelectedCategoryId(existingTx.categoryId);
+                    setSelectedSubcategoryId(existingTx.subcategoryId);
+
+                    // Load subcategories for the category
+                    if (subEnabled && existingTx.categoryId) {
+                        const subs = await getSubcategories(existingTx.categoryId);
+                        setSubcategories(subs);
+                    }
                 }
             }
         } else {
@@ -184,15 +198,18 @@ export default function AddTransactionScreen() {
         } else {
             const account = accounts.find(a => a.id === selectedAccountId!);
             const category = categories.find(c => c.id === selectedCategoryId!);
+            const subcategory = subcategories.find(s => s.id === selectedSubcategoryId);
 
             if (isEditing && transactionId) {
                 await updateTransaction(transactionId, {
                     type,
                     categoryId: selectedCategoryId,
+                    subcategoryId: selectedSubcategoryId,
+                    subcategoryName: subcategory?.name || null,
                     categoryName: category?.name || null,
                     categoryIcon: category?.icon || null,
                     categoryType: category?.type || null,
-                    accountId: selectedAccountId,
+                    accountId: selectedAccountId!,
                     accountName: account?.name || '',
                     note: note || null,
                     description: description || null,
@@ -203,10 +220,12 @@ export default function AddTransactionScreen() {
                 await addTransaction({
                     type,
                     categoryId: selectedCategoryId,
+                    subcategoryId: selectedSubcategoryId,
+                    subcategoryName: subcategory?.name || null,
                     categoryName: category?.name || null,
                     categoryIcon: category?.icon || null,
                     categoryType: category?.type || null,
-                    accountId: selectedAccountId,
+                    accountId: selectedAccountId!,
                     accountName: account?.name || '',
                     note: note || null,
                     description: description || null,
@@ -259,6 +278,33 @@ export default function AddTransactionScreen() {
         if (!id) return t('transactions.selectCategory');
         const cat = categories.find(c => c.id === id);
         return cat ? cat.name : t('transactions.selectCategory');
+    };
+
+    const getSubcategoryLabel = (id: string | null) => {
+        if (!id) return t('transactions.selectSubcategory') || 'Select subcategory';
+        const sub = subcategories.find(s => s.id === id);
+        return sub ? sub.name : (t('transactions.selectSubcategory') || 'Select subcategory');
+    };
+
+    const handleCategorySelect = async (categoryId: string) => {
+        setSelectedCategoryId(categoryId);
+        setSelectedSubcategoryId(null);
+        setShowCategoryPicker(false);
+
+        // Load subcategories for the selected category
+        if (subcategoriesEnabled && categoryId) {
+            const subs = await getSubcategories(categoryId);
+            setSubcategories(subs);
+        } else {
+            setSubcategories([]);
+        }
+    };
+
+    const handleTypeChange = (newType: TransactionType) => {
+        setType(newType);
+        setSelectedCategoryId(null);
+        setSelectedSubcategoryId(null);
+        setSubcategories([]);
     };
 
     const validateForm = (): string | null => {
@@ -329,10 +375,7 @@ export default function AddTransactionScreen() {
           >
             <Pressable
               className={`flex-1 py-3 items-center ${type === "income" ? "bg-cheddar-yellow" : ""}`}
-              onPress={() => {
-                setType("income");
-                setSelectedCategoryId(null);
-              }}
+              onPress={() => handleTypeChange("income")}
             >
               <Text
                 className={`font-medium ${type === "income" ? "text-cheddar-dark" : isDark ? "text-gray-400" : "text-cheddar-gray"}`}
@@ -342,10 +385,7 @@ export default function AddTransactionScreen() {
             </Pressable>
             <Pressable
               className={`flex-1 py-3 items-center ${type === "expense" ? "bg-cheddar-yellow" : ""}`}
-              onPress={() => {
-                setType("expense");
-                setSelectedCategoryId(null);
-              }}
+              onPress={() => handleTypeChange("expense")}
             >
               <Text
                 className={`font-medium ${type === "expense" ? "text-cheddar-dark" : isDark ? "text-gray-400" : "text-cheddar-gray"}`}
@@ -467,10 +507,7 @@ export default function AddTransactionScreen() {
                     <Pressable
                       key={cat.id}
                       className={`p-4 border-b flex-row items-center ${selectedCategoryId === cat.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
-                      onPress={() => {
-                        setSelectedCategoryId(cat.id);
-                        setShowCategoryPicker(false);
-                      }}
+                      onPress={() => handleCategorySelect(cat.id)}
                     >
                       {showIcons && (
                         <View className="mr-3">
@@ -486,6 +523,47 @@ export default function AddTransactionScreen() {
                         className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
                       >
                         {cat.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              {/* Subcategory Selector - shown when subcategories are enabled and a category is selected */}
+              {subcategoriesEnabled && selectedCategoryId && subcategories.length > 0 && (
+                <Pressable
+                  className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                  onPress={() => setShowSubcategoryPicker(!showSubcategoryPicker)}
+                >
+                  <Text
+                    className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    {t('transactions.subcategory') || 'Subcategory'}
+                  </Text>
+                  <Text
+                    className={`text-base ${isDark ? "text-cheddar-light" : "text-cheddar-dark"} ${!selectedSubcategoryId ? "opacity-60" : ""}`}
+                  >
+                    {getSubcategoryLabel(selectedSubcategoryId)}
+                  </Text>
+                </Pressable>
+              )}
+              {showSubcategoryPicker && subcategories.length > 0 && (
+                <View
+                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                >
+                  {subcategories.map((sub) => (
+                    <Pressable
+                      key={sub.id}
+                      className={`p-4 border-b ${selectedSubcategoryId === sub.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                      onPress={() => {
+                        setSelectedSubcategoryId(sub.id);
+                        setShowSubcategoryPicker(false);
+                      }}
+                    >
+                      <Text
+                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {sub.name}
                       </Text>
                     </Pressable>
                   ))}

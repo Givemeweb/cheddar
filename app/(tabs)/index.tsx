@@ -87,6 +87,8 @@ export default function TransactionsScreen() {
             id: tx.id,
             type: tx.type || "expense",
             categoryId: tx.categoryId,
+            subcategoryId: tx.subcategoryId,
+            subcategoryName: tx.subcategoryName,
             accountId: tx.accountId,
             toAccountId: tx.toAccountId,
             note: tx.note,

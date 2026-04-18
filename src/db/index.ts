@@ -30,6 +30,19 @@ export {
 export { getShowIcons, setShowIcons } from './icons';
 
 export {
+  getSubcategoriesEnabled,
+  setSubcategoriesEnabled,
+  getSubcategories,
+  getAllSubcategories,
+  getSubcategoryById,
+  addSubcategory,
+  updateSubcategory,
+  deleteSubcategory,
+  deleteSubcategoriesByCategory,
+  type Subcategory,
+} from './subcategories';
+
+export {
   getMainCurrencyCode,
   setMainCurrencyCode,
   getCurrencySymbol,

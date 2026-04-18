@@ -21,6 +21,8 @@ export interface Transaction {
   id: string;
   type: 'income' | 'expense' | 'transfer';
   categoryId: string | null;
+  subcategoryId: string | null;
+  subcategoryName: string | null;
   categoryName: string | null;
   categoryIcon: string | null;
   categoryType: 'income' | 'expense' | null;
@@ -117,6 +119,8 @@ export async function getTransactions(): Promise<Transaction[]> {
       id,
       type: data.type as 'income' | 'expense' | 'transfer',
       categoryId: data.categoryId as string | null,
+      subcategoryId: data.subcategoryId as string | null,
+      subcategoryName: data.subcategoryName as string | null,
       categoryName: data.categoryName as string | null,
       categoryIcon: data.categoryIcon as string | null,
       categoryType: data.categoryType as 'income' | 'expense' | null,
@@ -135,6 +139,8 @@ export async function getTransactions(): Promise<Transaction[]> {
 export async function addTransaction(tx: {
   type: 'income' | 'expense' | 'transfer';
   categoryId?: string | null;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
   categoryName?: string | null;
   categoryIcon?: string | null;
   categoryType?: 'income' | 'expense' | null;
@@ -156,6 +162,8 @@ export async function addTransaction(tx: {
   store.setRow('transactions', id, {
     type: tx.type,
     categoryId: tx.categoryId ?? null,
+    subcategoryId: tx.subcategoryId ?? null,
+    subcategoryName: tx.subcategoryName ?? null,
     categoryName: tx.categoryName ?? null,
     categoryIcon: tx.categoryIcon ?? null,
     categoryType: tx.categoryType ?? null,
@@ -188,6 +196,8 @@ export async function addTransaction(tx: {
     id,
     type: tx.type,
     categoryId: tx.categoryId ?? null,
+    subcategoryId: tx.subcategoryId ?? null,
+    subcategoryName: tx.subcategoryName ?? null,
     categoryName: tx.categoryName ?? null,
     categoryIcon: tx.categoryIcon ?? null,
     categoryType: tx.categoryType ?? null,
@@ -212,6 +222,8 @@ export async function getTransactionById(id: string): Promise<Transaction | unde
     id,
     type: row.type as 'income' | 'expense' | 'transfer',
     categoryId: row.categoryId as string | null,
+    subcategoryId: row.subcategoryId as string | null,
+    subcategoryName: row.subcategoryName as string | null,
     categoryName: row.categoryName as string | null,
     categoryIcon: row.categoryIcon as string | null,
     categoryType: row.categoryType as 'income' | 'expense' | null,
@@ -229,6 +241,8 @@ export async function getTransactionById(id: string): Promise<Transaction | unde
 export async function updateTransaction(id: string, updates: {
   type?: 'income' | 'expense' | 'transfer';
   categoryId?: string | null;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
   categoryName?: string | null;
   categoryIcon?: string | null;
   categoryType?: 'income' | 'expense' | null;
@@ -276,6 +290,8 @@ export async function updateTransaction(id: string, updates: {
   store.setRow('transactions', id, {
     type: newType,
     categoryId: updates.categoryId ?? currentTx.categoryId,
+    subcategoryId: updates.subcategoryId ?? currentTx.subcategoryId,
+    subcategoryName: updates.subcategoryName ?? currentTx.subcategoryName,
     categoryName: updates.categoryName ?? currentTx.categoryName,
     categoryIcon: updates.categoryIcon ?? currentTx.categoryIcon,
     categoryType: updates.categoryType ?? currentTx.categoryType,

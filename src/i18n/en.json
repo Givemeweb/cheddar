@@ -32,6 +32,8 @@
     "addDescription": "Add a description",
     "selectAccount": "Select account",
     "selectCategory": "Select category",
+    "selectSubcategory": "Select subcategory",
+    "subcategory": "Subcategory",
     "saveTransaction": "Save Transaction",
     "type": {
       "income": "Income",
@@ -78,7 +80,12 @@
     "deleteConfirmTitle": "Delete Category",
     "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?\n\nExisting transactions with this category will not be affected.",
     "noIncomeCategories": "No income categories yet.\nTap the + button to add one.",
-    "noExpenseCategories": "No expense categories yet.\nTap the + button to add one."
+    "noExpenseCategories": "No expense categories yet.\nTap the + button to add one.",
+    "subcategories": "Subcategories",
+    "subcategoriesDesc": "Enable subcategories for this category type",
+    "addSubcategory": "Add Subcategory",
+    "subcategoryName": "Subcategory name",
+    "noSubcategories": "No subcategories yet.\nTap the + button to add one."
   },
   "config": {
     "title": "Configuration",

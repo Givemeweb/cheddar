@@ -28,13 +28,16 @@ import {
   Receipt,
   HeartPulse,
   Laptop,
+  ChevronRight,
 } from 'lucide-react-native';
 import {
   getCategoriesByType,
   deleteCategory,
   Category,
 } from '@/src/db/storage';
+import { getSubcategoriesEnabled, setSubcategoriesEnabled } from '@/src/db';
 import { useTheme } from '@/src/components/ThemeProvider';
+import { ToggleSwitch } from '@/src/components/ToggleSwitch';
 import { useTranslation } from 'react-i18next';
 
 // Map icon names to Lucide components
@@ -59,11 +62,14 @@ export default function IncomeCategoriesScreen() {
   const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subcategoriesEnabled, setSubcategoriesEnabledState] = useState(false);
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
     const cats = await getCategoriesByType('income');
     setCategories(cats);
+    const enabled = await getSubcategoriesEnabled();
+    setSubcategoriesEnabledState(enabled);
     setLoading(false);
   }, []);
 
@@ -113,6 +119,11 @@ export default function IncomeCategoriesScreen() {
     return <Circle size={22} color={color} />;
   };
 
+  const handleToggleSubcategories = async (value: boolean) => {
+    await setSubcategoriesEnabled(value);
+    setSubcategoriesEnabledState(value);
+  };
+
   if (loading) {
     return (
       <SafeAreaView className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
@@ -148,6 +159,24 @@ export default function IncomeCategoriesScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Subcategories Toggle */}
+      <View className={`mx-4 mt-4 rounded-xl ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
+        <View className="flex-row items-center justify-between p-4">
+          <View className="flex-1 mr-4">
+            <Text className={`text-base font-medium ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+              {t('categories.subcategories')}
+            </Text>
+            <Text className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {t('categories.subcategoriesDesc')}
+            </Text>
+          </View>
+          <ToggleSwitch
+            value={subcategoriesEnabled}
+            onValueChange={handleToggleSubcategories}
+          />
+        </View>
+      </View>
+
       <ScrollView className="flex-1 px-4 pt-4">
         {categories.length === 0 ? (
           <View className="flex-1 items-center justify-center py-12">
@@ -165,15 +194,24 @@ export default function IncomeCategoriesScreen() {
                 }`}
               >
                 <Pressable
-                  onPress={() => router.push(`/configuration/edit-category?id=${category.id}` as never)}
+                  onPress={() => {
+                    if (subcategoriesEnabled) {
+                      router.push(`/configuration/subcategories?categoryId=${category.id}` as never);
+                    } else {
+                      router.push(`/configuration/edit-category?id=${category.id}` as never);
+                    }
+                  }}
                   className="flex-row items-center flex-1"
                 >
                   <View className="mr-3">
                     {renderIcon(category.icon)}
                   </View>
-                  <Text className={`text-lg ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                  <Text className={`text-lg flex-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
                     {category.name}
                   </Text>
+                  {subcategoriesEnabled && (
+                    <ChevronRight size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                  )}
                 </Pressable>
                 <TouchableOpacity
                   onPress={(e) => {

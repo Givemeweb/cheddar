@@ -45,11 +45,14 @@ export interface Transaction {
 // TinyBase schema types
 export interface TablesSchema {
   categories: { [id: string]: { name: string; icon: string; type: string } };
+  subcategories: { [id: string]: { name: string; categoryId: string } };
   accounts: { [id: string]: { name: string; icon: string; description: string | null; balance: number; order: number } };
   transactions: {
     [id: string]: {
       type: string;
       categoryId: string | null;
+      subcategoryId: string | null;
+      subcategoryName: string | null;
       accountId: string;
       accountName: string;
       toAccountId: string | null;
@@ -142,6 +145,12 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
     await persister.save();
   }
 
+  // Initialize subcategories value if not set (default: disabled)
+  if (store.getValue('subcategoriesEnabled') === undefined) {
+    store.setValue('subcategoriesEnabled', 'false');
+    await persister.save();
+  }
+
   // Check if we need to seed default data
   const categories = store.getTables()?.categories;
   if (!categories || Object.keys(categories).length === 0) {
@@ -206,6 +215,15 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
             store!.setCell('transactions', id, 'toAccountName', toAccount.name as string);
             needsSave = true;
           }
+        }
+        // Ensure subcategoryId and subcategoryName fields exist (migration)
+        if (data.subcategoryId === undefined) {
+          store!.setCell('transactions', id, 'subcategoryId', null);
+          needsSave = true;
+        }
+        if (data.subcategoryName === undefined) {
+          store!.setCell('transactions', id, 'subcategoryName', null);
+          needsSave = true;
         }
       });
       if (needsSave) {
