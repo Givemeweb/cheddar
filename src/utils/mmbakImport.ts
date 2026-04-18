@@ -79,7 +79,7 @@ interface MMCategory {
   NAME: string;
   TYPE: number; // 0 = income, 1 = expense
   ORDERSEQ: number;
-  pUid: string | null; // parent category uid (for subcategories)
+  pUid: number | string; // parent category ID (0 for top-level, as string or number)
   C_IS_DEL: number;
 }
 
@@ -98,6 +98,7 @@ interface MMTransaction {
   ctgUid: string | null;
   toAssetUid: string | null;
   ZCONTENT: string | null; // note
+  ZDATA: string | null; // description
   ZDATE: string; // date as string
   ZMONEY: string; // amount as string
   DO_TYPE: string; // '0' = income, '1' = expense
@@ -129,6 +130,8 @@ interface CheddarTransaction {
   id: string;
   type: 'income' | 'expense' | 'transfer';
   categoryId: string | null;
+  subcategoryId: string | null;
+  subcategoryName: string | null;
   categoryName: string | null;
   categoryIcon: string | null;
   categoryType: 'income' | 'expense' | null;
@@ -409,22 +412,24 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
   // Parse the MMBak file
   const { categories: mmCategories, accounts: mmAccounts, transactions: mmTransactions } = await parseMMBakFile(uriOrFile);
 
-  // Create ID mappings (MM uid -> Cheddar id)
-  const categoryIdMap: Record<string, string> = {};
+  // Create ID mappings (MM ID -> Cheddar id)
+  const categoryIdMap: Record<number, string> = {}; // Maps MM category ID to Cheddar ID
+  const subcategoryIdMap: Record<number, string> = {}; // Maps MM subcategory ID to Cheddar ID
   const accountIdMap: Record<string, string> = {};
 
   // Track account balances from transactions
   const accountBalances: Record<string, number> = {};
 
-  // Process categories
+  // Process categories - only import parent categories (pUid = 0 or "0")
   const cheddarCategories: Record<string, CheddarCategory> = {};
 
-  // First pass: create all parent categories
   for (const mmCat of mmCategories) {
-    if (mmCat.pUid) continue; // Skip subcategories for now
+    // Only import parent categories (pUid = 0 or "0" means it's a top-level category)
+    const pUidNum = typeof mmCat.pUid === 'string' ? parseInt(mmCat.pUid) : mmCat.pUid;
+    if (pUidNum !== 0) continue;
 
     const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-    categoryIdMap[mmCat.uid || String(mmCat.ID)] = id;
+    categoryIdMap[mmCat.ID] = id;
 
     cheddarCategories[id] = {
       id,
@@ -434,25 +439,20 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
     };
   }
 
-  // Second pass: handle subcategories (flatten them for now, or we could create new categories)
-  // For now, we'll create them as regular categories
+  // Build subcategory lookup (subcategory ID -> parent category ID + subcategory name)
+  const subcategoryLookup: Record<number, { parentId: number; parentCheddarId: string; name: string }> = {};
   for (const mmCat of mmCategories) {
-    if (!mmCat.pUid) continue; // Only process subcategories
-
-    const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-    categoryIdMap[mmCat.uid || String(mmCat.ID)] = id;
-
-    // Find parent type
-    const parentUid = mmCat.pUid;
-    const parentCat = mmCategories.find(c => c.uid === parentUid);
-    const parentType = parentCat ? parentCat.TYPE : 1;
-
-    cheddarCategories[id] = {
-      id,
-      name: mmCat.NAME,
-      icon: getIconForCategory(mmCat.NAME),
-      type: parentType === 0 ? 'income' : 'expense',
-    };
+    const pUidNum = typeof mmCat.pUid === 'string' ? parseInt(mmCat.pUid) : mmCat.pUid;
+    if (pUidNum > 0) {
+      const parentCat = mmCategories.find(c => c.ID === pUidNum);
+      if (parentCat && categoryIdMap[parentCat.ID]) {
+        subcategoryLookup[mmCat.ID] = {
+          parentId: pUidNum,
+          parentCheddarId: categoryIdMap[parentCat.ID],
+          name: mmCat.NAME,
+        };
+      }
+    }
   }
 
   // Process accounts
@@ -489,9 +489,40 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
       type = 'expense';
     }
 
-    // Map category
-    const categoryId = mmTx.ctgUid ? categoryIdMap[mmTx.ctgUid] : null;
-    const category = categoryId ? cheddarCategories[categoryId] : null;
+    // Map category - ctgUid is the category/subcategory ID as string
+    let categoryId: string | null = null;
+    let subcategoryId: string | null = null;
+    let subcategoryName: string | null = null;
+    let categoryName: string | null = mmTx.CATEGORY_NAME;
+    let categoryIcon: string | null = null;
+    let categoryType: 'income' | 'expense' | null = null;
+
+    if (mmTx.ctgUid) {
+      const ctgId = parseInt(mmTx.ctgUid);
+      if (!isNaN(ctgId)) {
+        // Check if it's a subcategory
+        if (subcategoryLookup[ctgId]) {
+          // It's a subcategory - use parent category
+          categoryId = subcategoryLookup[ctgId].parentCheddarId;
+          subcategoryName = subcategoryLookup[ctgId].name;
+          const parentCat = cheddarCategories[categoryId];
+          if (parentCat) {
+            categoryName = parentCat.name;
+            categoryIcon = parentCat.icon;
+            categoryType = parentCat.type;
+          }
+        } else if (categoryIdMap[ctgId]) {
+          // It's a parent category
+          categoryId = categoryIdMap[ctgId];
+          const cat = cheddarCategories[categoryId];
+          if (cat) {
+            categoryName = cat.name;
+            categoryIcon = cat.icon;
+            categoryType = cat.type;
+          }
+        }
+      }
+    }
 
     // Map account
     const accountId = accountIdMap[mmTx.assetUid];
@@ -548,15 +579,17 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
       id,
       type,
       categoryId,
-      categoryName: category?.name || mmTx.CATEGORY_NAME,
-      categoryIcon: category?.icon || null,
-      categoryType: category?.type || null,
+      subcategoryId,
+      subcategoryName,
+      categoryName,
+      categoryIcon,
+      categoryType,
       accountId,
       accountName: account.name,
       toAccountId,
       toAccountName: toAccount?.name || null,
       note: mmTx.ZCONTENT || null,
-      description: null,
+      description: mmTx.ZDATA || null,
       amount: cheddarAmount,
       date,
     };
@@ -589,8 +622,8 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
         {
           type: tx.type,
           categoryId: tx.categoryId,
-          subcategoryId: null,
-          subcategoryName: null,
+          subcategoryId: tx.subcategoryId,
+          subcategoryName: tx.subcategoryName,
           categoryName: tx.categoryName,
           categoryIcon: tx.categoryIcon,
           categoryType: tx.categoryType,
