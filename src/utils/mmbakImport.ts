@@ -99,13 +99,13 @@ interface MMTransaction {
   toAssetUid: string | null;
   ZCONTENT: string | null; // note
   ZDATA: string | null; // description
-  ZDATE: string; // date as string
+  ZDATE: string | number; // timestamp in milliseconds (stored as text)
   ZMONEY: string; // amount as string
   DO_TYPE: string; // '0' = income, '1' = expense
   ASSET_NIC: string; // account name
   CATEGORY_NAME: string | null;
   IN_ZMONEY: string | null; // for transfers
-  UTIME: number; // timestamp
+  UTIME: string | number; // timestamp in milliseconds
   IS_DEL: number;
 }
 
@@ -537,21 +537,17 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
     // Parse amount
     const amount = parseFloat(mmTx.ZMONEY) || 0;
 
-    // Parse date - MM stores dates in various formats
+    // Parse date - ZDATE is the transaction date in milliseconds (stored as text or number)
+    // UTIME is the last modified time, we use ZDATE as the transaction date
     let date: number;
-    if (mmTx.UTIME) {
-      // UTIME is a Unix timestamp in milliseconds
-      date = mmTx.UTIME;
-    } else if (mmTx.ZDATE) {
-      // ZDATE might be a string or timestamp
-      const parsed = parseInt(mmTx.ZDATE);
-      if (!isNaN(parsed)) {
-        date = parsed;
-      } else {
-        // Try parsing as date string
-        const dateObj = new Date(mmTx.ZDATE);
-        date = isNaN(dateObj.getTime()) ? Date.now() : dateObj.getTime();
-      }
+    if (mmTx.ZDATE) {
+      // ZDATE is the transaction creation date in milliseconds
+      const zdateVal = typeof mmTx.ZDATE === 'string' ? parseInt(mmTx.ZDATE) : mmTx.ZDATE;
+      date = isNaN(zdateVal) ? Date.now() : zdateVal;
+    } else if (mmTx.UTIME) {
+      // Fallback to UTIME if ZDATE not available
+      const utimeVal = typeof mmTx.UTIME === 'string' ? parseInt(mmTx.UTIME) : mmTx.UTIME;
+      date = isNaN(utimeVal) ? Date.now() : utimeVal;
     } else {
       date = Date.now();
     }
