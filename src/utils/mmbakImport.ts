@@ -641,6 +641,12 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
     }
   }
 
+  // Enable subcategories if any were imported
+  const hasSubcategories = Object.keys(cheddarSubcategories).length > 0;
+  if (hasSubcategories) {
+    store.setValue('subcategoriesEnabled', 'true');
+  }
+
   // Save to Cheddar database
   store.setTables({
     categories: Object.fromEntries(
