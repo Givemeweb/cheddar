@@ -50,11 +50,8 @@ export default function BackupMMBakScreen() {
       setImportData(null);
       setErrorMessage(null);
 
-      // Validate file
-      const isValid = await validateMMBakFile(asset.uri);
-      if (!isValid) {
-        throw new Error('Invalid MMBak file. Please select a valid Money Manager backup file (.mmbak or .db).');
-      }
+      // Validate file (throws with detailed error message)
+      await validateMMBakFile(asset.uri);
 
       // Import data
       const importResult = await importFromMMBak(asset.uri);
@@ -79,11 +76,8 @@ export default function BackupMMBakScreen() {
     setErrorMessage(null);
 
     try {
-      // Validate file
-      const isValid = await validateMMBakFile(file);
-      if (!isValid) {
-        throw new Error('Invalid MMBak file. Please select a valid Money Manager backup file (.mmbak or .db).');
-      }
+      // Validate file (throws with detailed error message)
+      await validateMMBakFile(file);
 
       // Import data
       const importResult = await importFromMMBak(file);
