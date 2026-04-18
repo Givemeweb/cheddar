@@ -228,9 +228,9 @@ export async function parseMMBakFile(uri: string): Promise<{
     // Copy file and open database
     db = await openDatabaseFromUri(uri);
 
-    // Get all categories (excluding deleted ones)
+    // Get all categories
     const categories = db.getAllSync<MMCategory>(
-      'SELECT * FROM ZCATEGORY WHERE C_IS_DEL = 0 OR C_IS_DEL IS NULL ORDER BY ORDERSEQ'
+      'SELECT * FROM ZCATEGORY ORDER BY ORDERSEQ'
     );
 
     // Get all accounts
@@ -263,9 +263,10 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
   // Parse the MMBak file
   const { categories: mmCategories, accounts: mmAccounts, transactions: mmTransactions } = await parseMMBakFile(uri);
 
-  // Create ID mappings (MM ID -> Cheddar id)
-  const categoryIdMap: Record<number, string> = {}; // Maps MM category ID to Cheddar ID
-  const subcategoryIdMap: Record<number, string> = {}; // Maps MM subcategory ID to Cheddar ID
+  // Create ID mappings (MM uid -> Cheddar id)
+  // Categories can be referenced by either ID (integer) or uid (UUID string)
+  const categoryIdMap: Record<string, string> = {}; // Maps MM category uid to Cheddar ID
+  const subcategoryIdMap: Record<string, string> = {}; // Maps MM subcategory uid to Cheddar ID
   const accountIdMap: Record<string, string> = {};
 
   // Track account balances from transactions
@@ -275,12 +276,16 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
   const cheddarCategories: Record<string, CheddarCategory> = {};
 
   for (const mmCat of mmCategories) {
-    // Only import parent categories (pUid = 0 or "0" means it's a top-level category)
+    // Only import parent categories (pUid = 0, "0", or empty means it's a top-level category)
     const pUidNum = typeof mmCat.pUid === 'string' ? parseInt(mmCat.pUid) : mmCat.pUid;
-    if (pUidNum !== 0) continue;
+    // NaN !== 0 is true, so empty string pUid will pass; also skip ifpUid > 0 (subcategory)
+    if (!isNaN(pUidNum) && pUidNum !== 0) continue;
 
     const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-    categoryIdMap[mmCat.ID] = id;
+    // Map by uid (UUID) - transactions reference categories by uid
+    if (mmCat.uid) {
+      categoryIdMap[mmCat.uid] = id;
+    }
 
     cheddarCategories[id] = {
       id,
@@ -290,21 +295,34 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
     };
   }
 
-  // Process subcategories and build lookup (subcategory ID -> parent category ID + subcategory name)
+  // Process subcategories and build lookup (subcategory uid -> parent category uid + subcategory name)
   const cheddarSubcategories: Record<string, CheddarSubcategory> = {};
-  const subcategoryLookup: Record<number, { parentId: number; parentCheddarId: string; name: string; cheddarId: string }> = {};
+  const subcategoryLookup: Record<string, { parentUid: string; parentCheddarId: string; name: string; cheddarId: string }> = {};
 
   for (const mmCat of mmCategories) {
-    const pUidNum = typeof mmCat.pUid === 'string' ? parseInt(mmCat.pUid) : mmCat.pUid;
-    if (pUidNum > 0) {
-      const parentCat = mmCategories.find(c => c.ID === pUidNum);
-      if (parentCat && categoryIdMap[parentCat.ID]) {
-        const subcategoryId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-        subcategoryIdMap[mmCat.ID] = subcategoryId;
+    const pUidStr = String(mmCat.pUid || '');
+    // Skip if no uid for this category
+    if (!mmCat.uid) continue;
 
-        subcategoryLookup[mmCat.ID] = {
-          parentId: pUidNum,
-          parentCheddarId: categoryIdMap[parentCat.ID],
+    // pUid can be: "0", empty string (parent categories), numeric string (old format), or UUID (new format)
+    // Subcategories have pUid > 0 (numeric) or pUid is a UUID
+    const pUidNum = parseInt(pUidStr);
+    const isUuid = pUidStr.includes('-');
+    const isSubcategory = isUuid || (!isNaN(pUidNum) && pUidNum > 0);
+
+    if (isSubcategory) {
+      // Find parent category - pUid references either parent's ID (numeric) or uid (UUID)
+      const parentCat = isUuid
+        ? mmCategories.find(c => c.uid === pUidStr)
+        : mmCategories.find(c => c.ID === pUidNum);
+
+      if (parentCat && parentCat.uid && categoryIdMap[parentCat.uid]) {
+        const subcategoryId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+        subcategoryIdMap[mmCat.uid] = subcategoryId;
+
+        subcategoryLookup[mmCat.uid] = {
+          parentUid: parentCat.uid,
+          parentCheddarId: categoryIdMap[parentCat.uid],
           name: mmCat.NAME,
           cheddarId: subcategoryId,
         };
@@ -312,7 +330,7 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
         cheddarSubcategories[subcategoryId] = {
           id: subcategoryId,
           name: mmCat.NAME,
-          categoryId: categoryIdMap[parentCat.ID],
+          categoryId: categoryIdMap[parentCat.uid],
         };
       }
     }
@@ -352,7 +370,7 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
       type = 'expense';
     }
 
-    // Map category - ctgUid is the category/subcategory ID as string
+    // Map category - ctgUid is the category/subcategory uid (UUID string)
     let categoryId: string | null = null;
     let subcategoryId: string | null = null;
     let subcategoryName: string | null = null;
@@ -361,29 +379,27 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
     let categoryType: 'income' | 'expense' | null = null;
 
     if (mmTx.ctgUid) {
-      const ctgId = parseInt(mmTx.ctgUid);
-      if (!isNaN(ctgId)) {
-        // Check if it's a subcategory
-        if (subcategoryLookup[ctgId]) {
-          // It's a subcategory - use parent category and set subcategoryId
-          categoryId = subcategoryLookup[ctgId].parentCheddarId;
-          subcategoryId = subcategoryLookup[ctgId].cheddarId;
-          subcategoryName = subcategoryLookup[ctgId].name;
-          const parentCat = cheddarCategories[categoryId];
-          if (parentCat) {
-            categoryName = parentCat.name;
-            categoryIcon = parentCat.icon;
-            categoryType = parentCat.type;
-          }
-        } else if (categoryIdMap[ctgId]) {
-          // It's a parent category
-          categoryId = categoryIdMap[ctgId];
-          const cat = cheddarCategories[categoryId];
-          if (cat) {
-            categoryName = cat.name;
-            categoryIcon = cat.icon;
-            categoryType = cat.type;
-          }
+      // ctgUid is a UUID string referencing the category's uid field
+      // Check if it's a subcategory
+      if (subcategoryLookup[mmTx.ctgUid]) {
+        // It's a subcategory - use parent category and set subcategoryId
+        categoryId = subcategoryLookup[mmTx.ctgUid].parentCheddarId;
+        subcategoryId = subcategoryLookup[mmTx.ctgUid].cheddarId;
+        subcategoryName = subcategoryLookup[mmTx.ctgUid].name;
+        const parentCat = cheddarCategories[categoryId];
+        if (parentCat) {
+          categoryName = parentCat.name;
+          categoryIcon = parentCat.icon;
+          categoryType = parentCat.type;
+        }
+      } else if (categoryIdMap[mmTx.ctgUid]) {
+        // It's a parent category
+        categoryId = categoryIdMap[mmTx.ctgUid];
+        const cat = cheddarCategories[categoryId];
+        if (cat) {
+          categoryName = cat.name;
+          categoryIcon = cat.icon;
+          categoryType = cat.type;
         }
       }
     }
