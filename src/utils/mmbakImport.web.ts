@@ -420,16 +420,6 @@ export async function importFromMMBak(file: WebFile): Promise<MMBakImportResult>
   for (const mmTx of mmTransactions) {
     const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
-    // Determine transaction type
-    let type: 'income' | 'expense' | 'transfer' = 'expense';
-    if (mmTx.toAssetUid && mmTx.IN_ZMONEY) {
-      type = 'transfer';
-    } else if (mmTx.DO_TYPE === '0') {
-      type = 'income';
-    } else {
-      type = 'expense';
-    }
-
     // Map category - ctgUid is the category/subcategory uid (UUID string)
     let categoryId: string | null = null;
     let subcategoryId: string | null = null;
@@ -492,24 +482,54 @@ export async function importFromMMBak(file: WebFile): Promise<MMBakImportResult>
       date = Date.now();
     }
 
-    // Calculate amount based on type
-    // In MM: expense amounts are positive, income amounts are positive
-    // In Cheddar: expense amounts are negative, income amounts are positive
-    let cheddarAmount = amount;
-    if (type === 'expense') {
-      cheddarAmount = -Math.abs(amount);
-    } else if (type === 'income') {
+    // Determine transaction type and amount based on DO_TYPE
+    // DO_TYPE values in Money Manager:
+    // 0 = income, 1 = expense
+    // 3 = transfer out (money leaves this account)
+    // 4 = transfer in (money arrives to this account)
+    // 7 = income-type adjustment (adds to balance)
+    // 8 = expense-type adjustment (subtracts from balance)
+    let type: 'income' | 'expense' | 'transfer' = 'expense';
+    let cheddarAmount = 0;
+
+    const doType = mmTx.DO_TYPE;
+
+    if (doType === '0') {
+      // Income
+      type = 'income';
       cheddarAmount = Math.abs(amount);
-    } else if (type === 'transfer') {
-      // Transfers: amount is negative (outgoing), IN_ZMONEY is positive (incoming)
+    } else if (doType === '1') {
+      // Expense
+      type = 'expense';
+      cheddarAmount = -Math.abs(amount);
+    } else if (doType === '3') {
+      // Transfer out - money leaves this account
+      type = 'transfer';
+      cheddarAmount = -Math.abs(amount);
+    } else if (doType === '4') {
+      // Transfer in - money arrives to this account
+      type = 'transfer';
+      cheddarAmount = Math.abs(amount);
+    } else if (doType === '7') {
+      // Income-type adjustment (e.g., initial balance, correction)
+      type = 'income';
+      cheddarAmount = Math.abs(amount);
+    } else if (doType === '8') {
+      // Expense-type adjustment (e.g., correction)
+      type = 'expense';
+      cheddarAmount = -Math.abs(amount);
+    } else {
+      // Fallback for unknown types - treat as expense
+      type = 'expense';
       cheddarAmount = -Math.abs(amount);
     }
 
     // Update account balance
+    // For DO_TYPE 3/4 (transfers), each row belongs to one account and the paired row
+    // handles the other account, so we only update the account this transaction belongs to
     accountBalances[accountId] += cheddarAmount;
-    if (toAccountId && toAccount) {
-      accountBalances[toAccountId] += Math.abs(amount);
-    }
+
+    const toAccountName = toAccount?.name || null;
 
     cheddarTransactions[id] = {
       id,
@@ -523,7 +543,7 @@ export async function importFromMMBak(file: WebFile): Promise<MMBakImportResult>
       accountId,
       accountName: account.name,
       toAccountId,
-      toAccountName: toAccount?.name || null,
+      toAccountName,
       note: mmTx.ZCONTENT || null,
       description: mmTx.ZDATA || null,
       amount: cheddarAmount,
