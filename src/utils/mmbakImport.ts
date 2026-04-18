@@ -117,6 +117,12 @@ interface CheddarCategory {
   type: 'income' | 'expense';
 }
 
+interface CheddarSubcategory {
+  id: string;
+  name: string;
+  categoryId: string;
+}
+
 interface CheddarAccount {
   id: string;
   name: string;
@@ -147,6 +153,7 @@ interface CheddarTransaction {
 
 export interface MMBakImportResult {
   categories: number;
+  subcategories: number;
   accounts: number;
   transactions: number;
   importDate: string;
@@ -439,17 +446,29 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
     };
   }
 
-  // Build subcategory lookup (subcategory ID -> parent category ID + subcategory name)
-  const subcategoryLookup: Record<number, { parentId: number; parentCheddarId: string; name: string }> = {};
+  // Process subcategories and build lookup (subcategory ID -> parent category ID + subcategory name)
+  const cheddarSubcategories: Record<string, CheddarSubcategory> = {};
+  const subcategoryLookup: Record<number, { parentId: number; parentCheddarId: string; name: string; cheddarId: string }> = {};
+
   for (const mmCat of mmCategories) {
     const pUidNum = typeof mmCat.pUid === 'string' ? parseInt(mmCat.pUid) : mmCat.pUid;
     if (pUidNum > 0) {
       const parentCat = mmCategories.find(c => c.ID === pUidNum);
       if (parentCat && categoryIdMap[parentCat.ID]) {
+        const subcategoryId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+        subcategoryIdMap[mmCat.ID] = subcategoryId;
+
         subcategoryLookup[mmCat.ID] = {
           parentId: pUidNum,
           parentCheddarId: categoryIdMap[parentCat.ID],
           name: mmCat.NAME,
+          cheddarId: subcategoryId,
+        };
+
+        cheddarSubcategories[subcategoryId] = {
+          id: subcategoryId,
+          name: mmCat.NAME,
+          categoryId: categoryIdMap[parentCat.ID],
         };
       }
     }
@@ -502,8 +521,9 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
       if (!isNaN(ctgId)) {
         // Check if it's a subcategory
         if (subcategoryLookup[ctgId]) {
-          // It's a subcategory - use parent category
+          // It's a subcategory - use parent category and set subcategoryId
           categoryId = subcategoryLookup[ctgId].parentCheddarId;
+          subcategoryId = subcategoryLookup[ctgId].cheddarId;
           subcategoryName = subcategoryLookup[ctgId].name;
           const parentCat = cheddarCategories[categoryId];
           if (parentCat) {
@@ -606,6 +626,12 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
         { name: cat.name, icon: cat.icon, type: cat.type }
       ])
     ),
+    subcategories: Object.fromEntries(
+      Object.entries(cheddarSubcategories).map(([id, sub]) => [
+        id,
+        { name: sub.name, categoryId: sub.categoryId }
+      ])
+    ),
     accounts: Object.fromEntries(
       Object.entries(cheddarAccounts).map(([id, acc]) => [
         id,
@@ -640,6 +666,7 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
 
   return {
     categories: Object.keys(cheddarCategories).length,
+    subcategories: Object.keys(cheddarSubcategories).length,
     accounts: Object.keys(cheddarAccounts).length,
     transactions: Object.keys(cheddarTransactions).length,
     importDate: new Date().toISOString(),
