@@ -1,6 +1,6 @@
-import { Platform } from 'react-native';
-import { openDatabaseSync, SQLiteDatabase } from 'expo-sqlite';
-import { File as ExpoFile, Paths } from 'expo-file-system';
+// Web-only implementation using sql.js
+// Native implementation (iOS/Android) is in mmbakImport.native.ts
+
 import { getStore, saveStore } from '../db/tinybase';
 
 // Dynamic import for sql.js (web only)
@@ -23,7 +23,7 @@ type SqlJsModule = {
   default: (config?: { locateFile?: (file: string) => string }) => Promise<SqlJsStatic>;
 };
 
-// Web File type (for when Platform.OS === 'web')
+// Web File type
 type WebFile = globalThis.File;
 
 // Cached sql.js instance for web
@@ -65,12 +65,6 @@ async function getSqlJs(): Promise<SqlJsStatic> {
 
   return sqlJsPromise;
 }
-
-/**
- * MMBak Import Utility
- * Imports data from Money Manager app backup files (.mmbak)
- * These are SQLite databases with tables: ZCATEGORY, ASSETS, INOUTCOME
- */
 
 // MMBak database schema types
 interface MMCategory {
@@ -211,79 +205,6 @@ const getIconForCategory = (name: string): string => {
   return 'circle';
 };
 
-// ============ Native (iOS/Android) Implementation ============
-
-const TEMP_DB_NAME = 'mmbak_temp_import.db';
-
-/**
- * Open database file by copying to SQLite directory (Native only)
- */
-async function openDatabaseFromUri(uri: string): Promise<SQLiteDatabase> {
-  console.log('[MMBak] Opening database from URI:', uri);
-
-  // Create a File instance from the URI
-  const sourceFile = new ExpoFile(uri);
-  console.log('[MMBak] Source file URI:', sourceFile.uri);
-  console.log('[MMBak] Source file exists:', sourceFile.exists);
-  console.log('[MMBak] Source file size:', sourceFile.size);
-
-  if (!sourceFile.exists) {
-    throw new Error('Source file does not exist');
-  }
-
-  // Copy to cache directory - read bytes and write manually for reliability
-  const destFile = new ExpoFile(Paths.cache, TEMP_DB_NAME);
-  console.log('[MMBak] Destination file URI:', destFile.uri);
-
-  // Delete existing temp file if present
-  if (destFile.exists) {
-    destFile.delete();
-    console.log('[MMBak] Deleted existing temp file');
-  }
-
-  // Read bytes from source and write to destination
-  console.log('[MMBak] Reading bytes from source file...');
-  const bytes = await sourceFile.bytes();
-  console.log('[MMBak] Read', bytes.length, 'bytes');
-
-  // Write to destination
-  destFile.write(bytes);
-  console.log('[MMBak] Wrote bytes to destination');
-
-  // Verify the copy worked
-  console.log('[MMBak] Destination exists after write:', destFile.exists);
-  console.log('[MMBak] Destination size after write:', destFile.size);
-
-  // Open the database using the directory URI path
-  const cacheUri = Paths.cache.uri;
-  console.log('[MMBak] Cache directory URI:', cacheUri);
-
-  // For expo-sqlite, we need to strip file:// prefix for the directory
-  const dbPath = cacheUri.replace(/^file:\/\//, '');
-  console.log('[MMBak] Opening database with name:', TEMP_DB_NAME, 'directory:', dbPath);
-
-  const db = openDatabaseSync(TEMP_DB_NAME, {}, dbPath);
-  console.log('[MMBak] Database opened');
-  return db;
-}
-
-/**
- * Clean up temporary database file (Native only)
- */
-async function cleanupTempDatabase(): Promise<void> {
-  try {
-    const destFile = new ExpoFile(Paths.cache, TEMP_DB_NAME);
-    if (destFile.exists) {
-      destFile.delete();
-      console.log('[MMBak] Temp database cleaned up');
-    }
-  } catch (error) {
-    console.error('[MMBak] Error cleaning up temp database:', error);
-  }
-}
-
-// ============ Web Implementation ============
-
 /**
  * Parse SQLite database on web using sql.js
  */
@@ -382,65 +303,25 @@ async function validateMMBakFileWeb(file: WebFile): Promise<boolean> {
   }
 }
 
-// ============ Unified API ============
-
 /**
- * Parse MMBak file and extract data (cross-platform)
+ * Parse MMBak file and extract data (web implementation)
  */
-export async function parseMMBakFile(uriOrFile: string | WebFile): Promise<{
+export async function parseMMBakFile(file: WebFile): Promise<{
   categories: MMCategory[];
   accounts: MMAccount[];
   transactions: MMTransaction[];
 }> {
-  if (Platform.OS === 'web') {
-    if (typeof uriOrFile === 'string') {
-      throw new Error('Web platform requires a File object, not a URI');
-    }
-    return parseMMBakFileWeb(uriOrFile);
-  }
-
-  // Native implementation
-  const uri = typeof uriOrFile === 'string' ? uriOrFile : uriOrFile;
-  let db: SQLiteDatabase | null = null;
-
-  try {
-    // Copy file and open database
-    db = await openDatabaseFromUri(uri as string);
-
-    // Get all categories (excluding deleted ones)
-    const categories = db.getAllSync<MMCategory>(
-      'SELECT * FROM ZCATEGORY WHERE C_IS_DEL = 0 OR C_IS_DEL IS NULL ORDER BY ORDERSEQ'
-    );
-
-    // Get all accounts
-    const accounts = db.getAllSync<MMAccount>(
-      'SELECT * FROM ASSETS ORDER BY ORDERSEQ'
-    );
-
-    // Get all transactions (excluding deleted ones)
-    const transactions = db.getAllSync<MMTransaction>(
-      'SELECT * FROM INOUTCOME WHERE IS_DEL = 0 OR IS_DEL IS NULL ORDER BY UTIME'
-    );
-
-    return { categories, accounts, transactions };
-  } finally {
-    // Close database
-    if (db) {
-      db.closeSync();
-    }
-    // Clean up temp file
-    await cleanupTempDatabase();
-  }
+  return parseMMBakFileWeb(file);
 }
 
 /**
- * Import MMBak data into Cheddar database (cross-platform)
+ * Import MMBak data into Cheddar database (web implementation)
  */
-export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBakImportResult> {
+export async function importFromMMBak(file: WebFile): Promise<MMBakImportResult> {
   const store = getStore();
 
   // Parse the MMBak file
-  const { categories: mmCategories, accounts: mmAccounts, transactions: mmTransactions } = await parseMMBakFile(uriOrFile);
+  const { categories: mmCategories, accounts: mmAccounts, transactions: mmTransactions } = await parseMMBakFile(file);
 
   // Create ID mappings (MM ID -> Cheddar id)
   const categoryIdMap: Record<number, string> = {}; // Maps MM category ID to Cheddar ID
@@ -703,114 +584,9 @@ export async function importFromMMBak(uriOrFile: string | WebFile): Promise<MMBa
 }
 
 /**
- * Validate if a file is a valid MMBak database (cross-platform)
+ * Validate if a file is a valid MMBak database (web implementation)
  * Returns true if valid, throws error with details if invalid
  */
-export async function validateMMBakFile(uriOrFile: string | WebFile): Promise<boolean> {
-  if (Platform.OS === 'web') {
-    if (typeof uriOrFile === 'string') {
-      throw new Error('Web platform requires a File object, not a URI');
-    }
-    return validateMMBakFileWeb(uriOrFile);
-  }
-
-  // Native implementation - uriOrFile is always a string at this point
-  const uri = uriOrFile as string;
-  let db: SQLiteDatabase | null = null;
-
-  try {
-    console.log('[MMBak] Validating file:', uri);
-    console.log('[MMBak] Platform:', Platform.OS);
-
-    // Create file instance and check existence
-    let sourceFile: ExpoFile;
-    try {
-      sourceFile = new ExpoFile(uri);
-      console.log('[MMBak] ExpoFile created, uri:', sourceFile.uri);
-    } catch (e) {
-      console.error('[MMBak] Failed to create ExpoFile:', e);
-      throw new Error(`Failed to access file: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    // Check if file exists
-    let exists: boolean;
-    try {
-      exists = sourceFile.exists;
-      console.log('[MMBak] File exists:', exists);
-    } catch (e) {
-      console.error('[MMBak] Error checking file existence:', e);
-      throw new Error(`Cannot check file existence: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    if (!exists) {
-      throw new Error('Selected file does not exist or cannot be accessed');
-    }
-
-    // Check file size
-    let size: number;
-    try {
-      size = sourceFile.size;
-      console.log('[MMBak] File size:', size, 'bytes');
-    } catch (e) {
-      console.log('[MMBak] Could not get file size:', e);
-      size = 0;
-    }
-
-    if (size === 0) {
-      throw new Error('File is empty');
-    }
-
-    // Open database
-    try {
-      db = await openDatabaseFromUri(uri);
-      console.log('[MMBak] Database opened successfully');
-    } catch (e) {
-      console.error('[MMBak] Failed to open database:', e);
-      throw new Error(`Cannot open database: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    // Check if required tables exist
-    let tables: { name: string }[];
-    try {
-      // First, let's see ALL tables in the database
-      const allTables = db.getAllSync<{ name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-      );
-      console.log('[MMBak] ALL tables in database:', allTables.map(t => t.name));
-
-      tables = db.getAllSync<{ name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('ZCATEGORY', 'ASSETS', 'INOUTCOME')"
-      );
-      console.log('[MMBak] Matching tables:', tables);
-    } catch (e) {
-      console.error('[MMBak] Error querying tables:', e);
-      throw new Error(`Cannot read database tables: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    const tableNames = tables.map(t => t.name);
-
-    if (!tableNames.includes('ZCATEGORY')) {
-      throw new Error('Database missing ZCATEGORY table - not a valid Money Manager backup');
-    }
-    if (!tableNames.includes('ASSETS')) {
-      throw new Error('Database missing ASSETS table - not a valid Money Manager backup');
-    }
-    if (!tableNames.includes('INOUTCOME')) {
-      throw new Error('Database missing INOUTCOME table - not a valid Money Manager backup');
-    }
-
-    console.log('[MMBak] Validation passed');
-    return true;
-  } finally {
-    // Close database
-    if (db) {
-      try {
-        db.closeSync();
-      } catch (e) {
-        console.error('[MMBak] Error closing database:', e);
-      }
-    }
-    // Clean up temp file
-    await cleanupTempDatabase();
-  }
+export async function validateMMBakFile(file: WebFile): Promise<boolean> {
+  return validateMMBakFileWeb(file);
 }
