@@ -35,7 +35,6 @@ import {
   deleteCategory,
   Category,
 } from '@/src/db/storage';
-import { getSubcategoriesEnabled, setSubcategoriesEnabled } from '@/src/db';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { ToggleSwitch } from '@/src/components/ToggleSwitch';
 import { useTranslation } from 'react-i18next';
@@ -58,18 +57,15 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; color?: strin
 
 export default function IncomeCategoriesScreen() {
   const router = useRouter();
-  const { isDark, showIcons } = useTheme();
+  const { isDark, showIcons, subcategoriesEnabled, setSubcategoriesEnabledState } = useTheme();
   const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subcategoriesEnabled, setSubcategoriesEnabledState] = useState(false);
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
     const cats = await getCategoriesByType('income');
     setCategories(cats);
-    const enabled = await getSubcategoriesEnabled();
-    setSubcategoriesEnabledState(enabled);
     setLoading(false);
   }, []);
 
@@ -120,8 +116,7 @@ export default function IncomeCategoriesScreen() {
   };
 
   const handleToggleSubcategories = async (value: boolean) => {
-    await setSubcategoriesEnabled(value);
-    setSubcategoriesEnabledState(value);
+    await setSubcategoriesEnabledState(value);
   };
 
   if (loading) {

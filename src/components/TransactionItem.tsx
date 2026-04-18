@@ -87,7 +87,7 @@ export function formatCurrency(amount: number, currency: string = '€'): string
 
 export function TransactionItem({ transaction, isDark = false }: TransactionItemProps) {
   const { t } = useTranslation();
-  const { showIcons, currencySymbol } = useTheme();
+  const { showIcons, currencySymbol, subcategoriesEnabled } = useTheme();
   const router = useRouter();
   const isTransfer = transaction.type === 'transfer';
   const isExpense = transaction.amount < 0;
@@ -126,7 +126,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
               ? t("transactions.type.transfer")
               : transaction.category?.name}
           </Text>
-          {transaction.subcategoryName && (
+          {subcategoriesEnabled && transaction.subcategoryName && (
             <Text
               className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}
               numberOfLines={1}

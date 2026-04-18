@@ -9,6 +9,7 @@ import { useColorScheme } from 'react-native';
 import { getTheme, setTheme, ThemeMode } from '../db/theme';
 import { getShowIcons, setShowIcons } from '../db/icons';
 import { getMainCurrencyCode, setMainCurrencyCode, getCurrencySymbol, DEFAULT_CURRENCY_SYMBOL, DEFAULT_CURRENCY_CODE } from '../db/currency';
+import { getSubcategoriesEnabled, setSubcategoriesEnabled as persistSubcategoriesEnabled } from '../db/subcategories';
 import { useDatabase } from './DatabaseProvider';
 
 export type { ThemeMode } from '../db/theme';
@@ -20,10 +21,12 @@ interface ThemeContextType {
   activeTheme: ActiveTheme;
   isDark: boolean;
   showIcons: boolean;
+  subcategoriesEnabled: boolean;
   currencySymbol: string;
   currencyCode: string;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setShowIconsState: (show: boolean) => Promise<void>;
+  setSubcategoriesEnabledState: (enabled: boolean) => Promise<void>;
   setCurrencyState: (code: string) => Promise<void>;
 }
 
@@ -32,10 +35,12 @@ const ThemeContext = createContext<ThemeContextType>({
   activeTheme: 'light',
   isDark: false,
   showIcons: false,
+  subcategoriesEnabled: false,
   currencySymbol: DEFAULT_CURRENCY_SYMBOL,
   currencyCode: DEFAULT_CURRENCY_CODE,
   setThemeMode: async () => {},
   setShowIconsState: async () => {},
+  setSubcategoriesEnabledState: async () => {},
   setCurrencyState: async () => {},
 });
 
@@ -51,6 +56,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const { isReady } = useDatabase();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [showIcons, setShowIconsState] = useState<boolean>(false);
+  const [subcategoriesEnabled, setSubcategoriesEnabledState] = useState<boolean>(false);
   const [currencySymbol, setCurrencySymbolState] = useState<string>(DEFAULT_CURRENCY_SYMBOL);
   const [currencyCode, setCurrencyCodeState] = useState<string>(DEFAULT_CURRENCY_CODE);
   const systemColorScheme = useColorScheme();
@@ -62,9 +68,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     async function loadSettings() {
       const savedTheme = await getTheme();
       const savedShowIcons = await getShowIcons();
+      const savedSubcategoriesEnabled = await getSubcategoriesEnabled();
       const savedCurrencyCode = await getMainCurrencyCode();
       setThemeModeState(savedTheme);
       setShowIconsState(savedShowIcons);
+      setSubcategoriesEnabledState(savedSubcategoriesEnabled);
       setCurrencyCodeState(savedCurrencyCode);
       setCurrencySymbolState(getCurrencySymbol(savedCurrencyCode));
     }
@@ -94,6 +102,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     await setMainCurrencyCode(code);
   };
 
+  const handleSetSubcategoriesEnabled = async (enabled: boolean) => {
+    setSubcategoriesEnabledState(enabled);
+    await persistSubcategoriesEnabled(enabled);
+  };
+
   return (
     <ThemeContext.Provider
       value={{
@@ -101,10 +114,12 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         activeTheme,
         isDark,
         showIcons,
+        subcategoriesEnabled,
         currencySymbol,
         currencyCode,
         setThemeMode: handleSetThemeMode,
         setShowIconsState: handleSetShowIcons,
+        setSubcategoriesEnabledState: handleSetSubcategoriesEnabled,
         setCurrencyState: handleSetCurrency,
       }}
     >
