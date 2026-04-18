@@ -228,9 +228,9 @@ export async function parseMMBakFile(uri: string): Promise<{
     // Copy file and open database
     db = await openDatabaseFromUri(uri);
 
-    // Get all categories
+    // Get all categories (excluding deleted ones)
     const categories = db.getAllSync<MMCategory>(
-      'SELECT * FROM ZCATEGORY ORDER BY ORDERSEQ'
+      'SELECT * FROM ZCATEGORY WHERE C_IS_DEL = 0 OR C_IS_DEL IS NULL ORDER BY ORDERSEQ'
     );
 
     // Get all accounts
@@ -272,14 +272,19 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
   // Track account balances from transactions
   const accountBalances: Record<string, number> = {};
 
-  // Process categories - only import parent categories (pUid = 0 or "0")
+  // Process categories - only import parent categories (pUid = 0, "0", empty, or null)
   const cheddarCategories: Record<string, CheddarCategory> = {};
 
   for (const mmCat of mmCategories) {
-    // Only import parent categories (pUid = 0, "0", or empty means it's a top-level category)
-    const pUidNum = typeof mmCat.pUid === 'string' ? parseInt(mmCat.pUid) : mmCat.pUid;
-    // NaN !== 0 is true, so empty string pUid will pass; also skip ifpUid > 0 (subcategory)
-    if (!isNaN(pUidNum) && pUidNum !== 0) continue;
+    // Determine if this is a subcategory by checking pUid
+    const pUidStr = String(mmCat.pUid || '');
+    const pUidNum = parseInt(pUidStr);
+    const isUuid = pUidStr.includes('-');
+    // Subcategories have pUid as UUID or numeric > 0
+    const isSubcategory = isUuid || (!isNaN(pUidNum) && pUidNum > 0);
+
+    // Skip subcategories - only import parent categories
+    if (isSubcategory) continue;
 
     const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
     // Map by uid (UUID) - transactions reference categories by uid
