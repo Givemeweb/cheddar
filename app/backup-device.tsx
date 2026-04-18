@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Upload, Download, ChevronRight } from "lucide-react-native";
+import { Upload, Download, ChevronRight, FileJson } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
 
 type MenuItem = {
@@ -47,6 +47,12 @@ export default function BackupDeviceScreen() {
           sublabel: t('backup.importBackupDesc'),
           icon: <Download size={22} color="#3B82F6" />,
           route: "/backup-import",
+        },
+        {
+          label: t('backup.importMMBak'),
+          sublabel: t('backup.importMMBakDesc'),
+          icon: <FileJson size={22} color="#8B5CF6" />,
+          route: "/backup-mmbak",
         },
       ],
     },
