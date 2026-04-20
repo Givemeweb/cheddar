@@ -102,7 +102,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
       onPress={handlePress}
     >
       {/* Column 1 - Category */}
-      <View className="w-fit flex-row items-center mr-4">
+      <View className="w-[10%] flex-row items-center mr-4">
         {showIcons && (
           <View className="mr-2">
             {isTransfer ? (
@@ -117,10 +117,11 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
             ) : null}
           </View>
         )}
-        <View className="flex-col">
+        <View className="flex-col flex-1">
           <Text
             className={`text-base font-medium ${isTransfer ? "text-gray-500" : isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
             numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {isTransfer
               ? t("transactions.type.transfer")
@@ -130,6 +131,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
             <Text
               className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}
               numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {transaction.subcategoryName}
             </Text>
