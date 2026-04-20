@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { getCategories, getAccounts, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account } from '@/src/db/storage';
+import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account } from '@/src/db/storage';
 import { getSubcategoriesEnabled, getSubcategories, type Subcategory } from '@/src/db';
 import DateTimePicker from '@/src/components/DateTimePicker';
 import {
@@ -95,6 +95,8 @@ export default function AddTransactionScreen() {
     const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false);
     const [showFromPicker, setShowFromPicker] = useState(false);
     const [showToPicker, setShowToPicker] = useState(false);
+    const [previousNotes, setPreviousNotes] = useState<string[]>([]);
+    const [showNoteSuggestions, setShowNoteSuggestions] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -106,6 +108,12 @@ export default function AddTransactionScreen() {
         const cats = await getCategories();
         const accs = await getAccounts();
         const subEnabled = await getSubcategoriesEnabled();
+        const allTransactions = await getTransactions();
+
+        // Extract unique non-empty notes from transactions
+        const uniqueNotes = [...new Set(allTransactions.map(tx => tx.note).filter((note): note is string => !!note))];
+        setPreviousNotes(uniqueNotes);
+
         setCategories(cats);
         setAccounts(accs);
         setSubcategoriesEnabled(subEnabled);
@@ -324,6 +332,36 @@ export default function AddTransactionScreen() {
         if (!id) return null;
         const cat = categories.find(c => c.id === id);
         return cat ? cat.icon : null;
+    };
+
+    const getMatchingNotes = (searchText: string): string[] => {
+        if (!searchText.trim()) return [];
+        const lowerSearch = searchText.toLowerCase();
+        return previousNotes
+            .filter(note => note.toLowerCase().includes(lowerSearch) && note.toLowerCase() !== lowerSearch)
+            .slice(0, 5); // Limit to 5 suggestions
+    };
+
+    const renderHighlightedNote = (note: string, searchText: string) => {
+        const lowerNote = note.toLowerCase();
+        const lowerSearch = searchText.toLowerCase();
+        const startIndex = lowerNote.indexOf(lowerSearch);
+
+        if (startIndex === -1) {
+            return <Text className={isDark ? "text-cheddar-light" : "text-cheddar-dark"}>{note}</Text>;
+        }
+
+        const beforeMatch = note.slice(0, startIndex);
+        const match = note.slice(startIndex, startIndex + searchText.length);
+        const afterMatch = note.slice(startIndex + searchText.length);
+
+        return (
+            <Text>
+                {beforeMatch && <Text className={isDark ? "text-cheddar-light" : "text-cheddar-dark"}>{beforeMatch}</Text>}
+                <Text className="text-cheddar-expense font-semibold">{match}</Text>
+                {afterMatch && <Text className={isDark ? "text-cheddar-light" : "text-cheddar-dark"}>{afterMatch}</Text>}
+            </Text>
+        );
     };
 
     if (loading) {
@@ -684,10 +722,41 @@ export default function AddTransactionScreen() {
             <TextInput
               className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
               value={note}
-              onChangeText={setNote}
+              onChangeText={(text) => {
+                setNote(text);
+                setShowNoteSuggestions(text.trim().length > 0 && getMatchingNotes(text).length > 0);
+              }}
+              onBlur={() => {
+                // Delay hiding to allow selecting suggestions
+                setTimeout(() => setShowNoteSuggestions(false), 200);
+              }}
+              onFocus={() => {
+                if (note.trim().length > 0 && getMatchingNotes(note).length > 0) {
+                    setShowNoteSuggestions(true);
+                }
+              }}
               placeholder={t("transactions.addNote")}
               placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
             />
+            {/* Autocomplete Dropdown */}
+            {showNoteSuggestions && getMatchingNotes(note).length > 0 && (
+              <View
+                className={`mt-2 rounded-xl overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+              >
+                {getMatchingNotes(note).map((suggestion, index) => (
+                  <Pressable
+                    key={index}
+                    className={`p-3 border-b ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                    onPress={() => {
+                      setNote(suggestion);
+                      setShowNoteSuggestions(false);
+                    }}
+                  >
+                    {renderHighlightedNote(suggestion, note)}
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Description */}
