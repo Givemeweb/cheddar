@@ -102,7 +102,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
       onPress={handlePress}
     >
       {/* Column 1 - Category */}
-      <View className="w-[10%] flex-row items-center mr-4">
+      <View className="w-[20%] flex-row items-center mr-4">
         {showIcons && (
           <View className="mr-2">
             {isTransfer ? (
