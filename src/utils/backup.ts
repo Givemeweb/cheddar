@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
+import * as SQLite from 'expo-sqlite';
 import { getStore, getPersister } from '../db/tinybase';
 import type { Tables } from 'tinybase';
 
@@ -170,4 +171,201 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
     console.error('Import failed:', error);
     throw error;
   }
+}
+
+/**
+ * Export database as SQL file
+ * For native platforms: serialize the SQLite database directly
+ * For web: generate SQL statements from TinyBase data (since web uses IndexedDB)
+ */
+export async function exportDatabaseToSql(): Promise<string | null> {
+  try {
+    const store = getStore();
+    const persister = await getPersister();
+
+    if (!store || !persister) {
+      throw new Error('Database not initialized');
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const fileName = `cheddar-backup-${timestamp}.db`;
+
+    if (Platform.OS === 'web') {
+      // For web, we export as SQL statements since we use IndexedDB
+      const tables = store.getTables();
+      const sqlStatements = generateSqlFromTables(tables);
+      const sqlContent = sqlStatements.join(';\n') + ';\n';
+
+      // Create and download the file
+      const blob = new Blob([sqlContent], { type: 'application/sql' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName.replace('.db', '.sql');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return null;
+    }
+
+    // For native platforms (iOS/Android), export the SQLite database file directly
+    // Open the database and serialize it
+    const db = await SQLite.openDatabaseAsync('cheddar.db');
+    const serializedData = await db.serializeAsync();
+    await db.closeAsync();
+
+    // Write to file and share
+    const file = new File(Paths.document, fileName);
+    file.write(serializedData);
+
+    // Share the file
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'application/x-sqlite3',
+        dialogTitle: 'Save SQL Backup',
+        UTI: 'public.database',
+      });
+    }
+
+    return file.uri;
+  } catch (error) {
+    console.error('SQL Export failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate SQL statements from TinyBase tables
+ * Used for web platform where we use IndexedDB instead of SQLite
+ */
+function generateSqlFromTables(tables: Tables | undefined): string[] {
+  const statements: string[] = [];
+
+  // Add header
+  statements.push('-- Cheddar Backup SQL');
+  statements.push(`-- Export Date: ${new Date().toISOString()}`);
+  statements.push('-- Version: 1.0.0');
+  statements.push('');
+
+  // Create tables
+  statements.push('-- Create tables');
+  statements.push(`CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOTNULL,
+  icon TEXT NOTNULL,
+  type TEXT NOTNULL
+)`);
+
+  statements.push(`CREATE TABLE IF NOT EXISTS subcategories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOTNULL,
+  categoryId TEXT NOTNULL,
+  FOREIGN KEY (categoryId) REFERENCES categories(id)
+)`);
+
+  statements.push(`CREATE TABLE IF NOT EXISTS accounts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOTNULL,
+  icon TEXT NOTNULL,
+  description TEXT,
+  balance REAL NOTNULL,
+  \`order\` INTEGER NOTNULL
+)`);
+
+  statements.push(`CREATE TABLE IF NOT EXISTS transactions (
+  id TEXT PRIMARY KEY,
+  type TEXT NOTNULL,
+  categoryId TEXT,
+  subcategoryId TEXT,
+  subcategoryName TEXT,
+  accountId TEXT NOTNULL,
+  accountName TEXT NOTNULL,
+  toAccountId TEXT,
+  toAccountName TEXT,
+  note TEXT,
+  description TEXT,
+  amount REAL NOTNULL,
+  date INTEGER NOTNULL,
+  FOREIGN KEY (categoryId) REFERENCES categories(id),
+  FOREIGN KEY (accountId) REFERENCES accounts(id)
+)`);
+
+  statements.push('');
+
+  // Insert categories
+  if (tables?.categories) {
+    statements.push('-- Insert categories');
+    Object.entries(tables.categories as Record<string, { name: string; icon: string; type: string }>).forEach(([id, data]) => {
+      const name = escapeSqlString(data.name);
+      const icon = escapeSqlString(data.icon);
+      const type = escapeSqlString(data.type);
+      statements.push(`INSERT INTO categories (id, name, icon, type) VALUES ('${id}', '${name}', '${icon}', '${type}')`);
+    });
+    statements.push('');
+  }
+
+  // Insert subcategories
+  if (tables?.subcategories) {
+    statements.push('-- Insert subcategories');
+    Object.entries(tables.subcategories as Record<string, { name: string; categoryId: string }>).forEach(([id, data]) => {
+      const name = escapeSqlString(data.name);
+      const categoryId = escapeSqlString(data.categoryId);
+      statements.push(`INSERT INTO subcategories (id, name, categoryId) VALUES ('${id}', '${name}', '${categoryId}')`);
+    });
+    statements.push('');
+  }
+
+  // Insert accounts
+  if (tables?.accounts) {
+    statements.push('-- Insert accounts');
+    Object.entries(tables.accounts as Record<string, { name: string; icon: string; description: string | null; balance: number; order: number }>).forEach(([id, data]) => {
+      const name = escapeSqlString(data.name);
+      const icon = escapeSqlString(data.icon);
+      const description = data.description ? `'${escapeSqlString(data.description)}'` : 'NULL';
+      statements.push(`INSERT INTO accounts (id, name, icon, description, balance, \`order\`) VALUES ('${id}', '${name}', '${icon}', ${description}, ${data.balance}, ${data.order})`);
+    });
+    statements.push('');
+  }
+
+  // Insert transactions
+  if (tables?.transactions) {
+    statements.push('-- Insert transactions');
+    Object.entries(tables.transactions as Record<string, {
+      type: string;
+      categoryId: string | null;
+      subcategoryId: string | null;
+      subcategoryName: string | null;
+      accountId: string;
+      accountName: string;
+      toAccountId: string | null;
+      toAccountName: string | null;
+      note: string | null;
+      description: string | null;
+      amount: number;
+      date: number;
+    }>).forEach(([id, data]) => {
+      const type = escapeSqlString(data.type);
+      const categoryId = data.categoryId ? `'${escapeSqlString(data.categoryId)}'` : 'NULL';
+      const subcategoryId = data.subcategoryId ? `'${escapeSqlString(data.subcategoryId)}'` : 'NULL';
+      const subcategoryName = data.subcategoryName ? `'${escapeSqlString(data.subcategoryName)}'` : 'NULL';
+      const accountId = escapeSqlString(data.accountId);
+      const accountName = escapeSqlString(data.accountName);
+      const toAccountId = data.toAccountId ? `'${escapeSqlString(data.toAccountId)}'` : 'NULL';
+      const toAccountName = data.toAccountName ? `'${escapeSqlString(data.toAccountName)}'` : 'NULL';
+      const note = data.note ? `'${escapeSqlString(data.note)}'` : 'NULL';
+      const description = data.description ? `'${escapeSqlString(data.description)}'` : 'NULL';
+      statements.push(`INSERT INTO transactions (id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date) VALUES ('${id}', '${type}', ${categoryId}, ${subcategoryId}, ${subcategoryName}, '${accountId}', '${accountName}', ${toAccountId}, ${toAccountName}, ${note}, ${description}, ${data.amount}, ${data.date})`);
+    });
+    statements.push('');
+  }
+
+  return statements;
+}
+
+/**
+ * Escape a string for use in SQL statements
+ */
+function escapeSqlString(str: string): string {
+  return str.replace(/'/g, "''");
 }

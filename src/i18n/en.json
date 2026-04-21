@@ -162,7 +162,12 @@
     "mmbakFormat": "Supported Formats",
     "mmbakFormatDesc": "Money Manager backup files (.mmbak, .db, .sqlite) created from the Money Manager app. The import will replace all your current data.",
     "mmbakSummary": "Imported {{categories}} categories, {{accounts}} accounts, and {{transactions}} transactions from Money Manager.",
-    "mmbakWarning": "Warning: Importing from Money Manager will replace all your current data (categories, accounts, and transactions). Make sure to export a backup of your current data first if you want to keep it."
+    "mmbakWarning": "Warning: Importing from Money Manager will replace all your current data (categories, accounts, and transactions). Make sure to export a backup of your current data first if you want to keep it.",
+    "selectFormat": "Select Export Format",
+    "formatJson": "JSON Format",
+    "formatJsonDesc": "Export as ZIP archive with JSON data file. Recommended for backups.",
+    "formatSql": "SQL Database",
+    "formatSqlDesc": "Export as SQLite database file. For advanced users."
   },
   "stats": {
     "title": "Stats",

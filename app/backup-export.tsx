@@ -3,15 +3,18 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle, XCircle } from 'lucide-react-native';
+import { CheckCircle, XCircle, FileJson, Database } from 'lucide-react-native';
 import { useTheme } from '../src/components/ThemeProvider';
-import { exportDatabaseToZip } from '../src/utils/backup';
+import { exportDatabaseToZip, exportDatabaseToSql } from '../src/utils/backup';
+
+type ExportFormat = 'json' | 'sql';
 
 export default function BackupExportScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const { t } = useTranslation();
 
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('json');
   const [isExporting, setIsExporting] = useState(false);
   const [exportResult, setExportResult] = useState<'success' | 'error' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -22,7 +25,11 @@ export default function BackupExportScreen() {
     setErrorMessage(null);
 
     try {
-      await exportDatabaseToZip();
+      if (selectedFormat === 'json') {
+        await exportDatabaseToZip();
+      } else {
+        await exportDatabaseToSql();
+      }
       setExportResult('success');
     } catch (error) {
       console.error('Export error:', error);
@@ -64,6 +71,92 @@ export default function BackupExportScreen() {
           >
             {t('backup.exportInfo')}
           </Text>
+        </View>
+
+        {/* Format Selection */}
+        <View className="mt-6">
+          <Text
+            className={`text-lg font-semibold mb-3 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+          >
+            {t('backup.selectFormat')}
+          </Text>
+          <View className="space-y-3">
+            {/* JSON Format Option */}
+            <TouchableOpacity
+              className={`flex-row items-center p-4 rounded-xl border-2 ${
+                selectedFormat === 'json'
+                  ? 'border-cheddar-yellow bg-cheddar-yellow/10'
+                  : isDark
+                    ? 'border-gray-700 bg-[#26282D]'
+                    : 'border-gray-200 bg-white'
+              }`}
+              onPress={() => setSelectedFormat('json')}
+              disabled={isExporting}
+            >
+              <View className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
+                selectedFormat === 'json'
+                  ? 'border-cheddar-yellow bg-cheddar-yellow'
+                  : isDark
+                    ? 'border-gray-500'
+                    : 'border-gray-300'
+              }`}>
+                {selectedFormat === 'json' && (
+                  <View className="w-2 h-2 rounded-full bg-cheddar-dark" />
+                )}
+              </View>
+              <FileJson size={24} color={selectedFormat === 'json' ? '#FFB800' : (isDark ? '#9CA3AF' : '#6B7280')} />
+              <View className="flex-1 ml-3">
+                <Text
+                  className={`text-base font-medium ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+                >
+                  {t('backup.formatJson')}
+                </Text>
+                <Text
+                  className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                >
+                  {t('backup.formatJsonDesc')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* SQL Format Option */}
+            <TouchableOpacity
+              className={`flex-row items-center p-4 rounded-xl border-2 ${
+                selectedFormat === 'sql'
+                  ? 'border-cheddar-yellow bg-cheddar-yellow/10'
+                  : isDark
+                    ? 'border-gray-700 bg-[#26282D]'
+                    : 'border-gray-200 bg-white'
+              }`}
+              onPress={() => setSelectedFormat('sql')}
+              disabled={isExporting}
+            >
+              <View className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
+                selectedFormat === 'sql'
+                  ? 'border-cheddar-yellow bg-cheddar-yellow'
+                  : isDark
+                    ? 'border-gray-500'
+                    : 'border-gray-300'
+              }`}>
+                {selectedFormat === 'sql' && (
+                  <View className="w-2 h-2 rounded-full bg-cheddar-dark" />
+                )}
+              </View>
+              <Database size={24} color={selectedFormat === 'sql' ? '#FFB800' : (isDark ? '#9CA3AF' : '#6B7280')} />
+              <View className="flex-1 ml-3">
+                <Text
+                  className={`text-base font-medium ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+                >
+                  {t('backup.formatSql')}
+                </Text>
+                <Text
+                  className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                >
+                  {t('backup.formatSqlDesc')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View className="mt-6">
