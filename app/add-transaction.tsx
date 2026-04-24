@@ -159,6 +159,14 @@ export default function AddTransactionScreen() {
             }
         }
         setLoading(false);
+
+        // Auto-focus account selection for new transactions
+        if (!isEditing && accs.length > 0) {
+            // Small delay to ensure UI is ready
+            setTimeout(() => {
+                setSelectionMode('account');
+            }, 100);
+        }
     };
 
     const filteredCategories = categories.filter(c =>
