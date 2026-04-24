@@ -369,3 +369,210 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
 function escapeSqlString(str: string): string {
   return str.replace(/'/g, "''");
 }
+
+/**
+ * Import database from a JSON file (direct JSON, not ZIP)
+ * Used when user exports as JSON format from web
+ */
+export async function importDatabaseFromJson(jsonContent: string): Promise<ImportResult> {
+  try {
+    const store = getStore();
+    const persister = await getPersister();
+
+    if (!store || !persister) {
+      throw new Error('Database not initialized');
+    }
+
+    // Parse JSON content
+    const backupData = JSON.parse(jsonContent);
+
+    // Validate the backup data
+    const validatedData = await validateBackupFile(backupData);
+
+    // Clear existing data and set new data
+    store.setTables(validatedData.data as Parameters<typeof store.setTables>[0]);
+
+    // Persist changes
+    await persister.save();
+
+    return {
+      categories: Object.keys(validatedData.data.categories).length,
+      accounts: Object.keys(validatedData.data.accounts).length,
+      transactions: Object.keys(validatedData.data.transactions).length,
+      importDate: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('JSON Import failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Import database from SQL statements
+ * Used on web platform where we can't use SQLite directly
+ */
+export async function importDatabaseFromSql(sqlContent: string): Promise<ImportResult> {
+  try {
+    const store = getStore();
+    const persister = await getPersister();
+
+    if (!store || !persister) {
+      throw new Error('Database not initialized');
+    }
+
+    // Parse SQL statements and extract data
+    const data = parseSqlStatements(sqlContent);
+
+    // Set data in store
+    store.setTables(data);
+
+    // Persist changes
+    await persister.save();
+
+    return {
+      categories: Object.keys(data.categories || {}).length,
+      accounts: Object.keys(data.accounts || {}).length,
+      transactions: Object.keys(data.transactions || {}).length,
+      importDate: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('SQL Import failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Parse SQL statements and extract data
+ */
+function parseSqlStatements(sqlContent: string): Tables {
+  const statements = sqlContent.split(';').map(s => s.trim()).filter(s => s.length > 0);
+
+  const data: Tables = {
+    categories: {},
+    accounts: {},
+    transactions: {},
+    subcategories: {},
+  };
+
+  for (const statement of statements) {
+    // Parse INSERT statements
+    if (statement.toUpperCase().startsWith('INSERT INTO')) {
+      const tableMatch = statement.match(/INSERT INTO\s+(\w+)/i);
+      if (!tableMatch) continue;
+
+      const tableName = tableMatch[1].toLowerCase();
+
+      // Extract values using regex for VALUES clause
+      const valuesMatch = statement.match(/VALUES\s*\((.+)\)/is);
+      if (!valuesMatch) continue;
+
+      if (tableName === 'categories') {
+        const parsed = parseInsertValues(statement, ['id', 'name', 'icon', 'type']);
+        if (parsed.id) {
+          data.categories[parsed.id] = {
+            name: parsed.name || '',
+            icon: parsed.icon || 'circle',
+            type: parsed.type || 'expense',
+          };
+        }
+      } else if (tableName === 'subcategories') {
+        const parsed = parseInsertValues(statement, ['id', 'name', 'categoryId']);
+        if (parsed.id) {
+          data.subcategories = data.subcategories || {};
+          data.subcategories[parsed.id] = {
+            name: parsed.name || '',
+            categoryId: parsed.categoryId || '',
+          };
+        }
+      } else if (tableName === 'accounts') {
+        const parsed = parseInsertValues(statement, ['id', 'name', 'icon', 'description', 'balance', 'order']);
+        if (parsed.id) {
+          data.accounts[parsed.id] = {
+            name: parsed.name || '',
+            icon: parsed.icon || 'wallet',
+            description: parsed.description || null,
+            balance: parseFloat(parsed.balance) || 0,
+            order: parseInt(parsed.order) || 0,
+          };
+        }
+      } else if (tableName === 'transactions') {
+        const parsed = parseInsertValues(statement, [
+          'id', 'type', 'categoryId', 'subcategoryId', 'subcategoryName',
+          'accountId', 'accountName', 'toAccountId', 'toAccountName',
+          'note', 'description', 'amount', 'date'
+        ]);
+        if (parsed.id) {
+          data.transactions[parsed.id] = {
+            type: parsed.type || 'expense',
+            categoryId: parsed.categoryId || null,
+            subcategoryId: parsed.subcategoryId || null,
+            subcategoryName: parsed.subcategoryName || null,
+            accountId: parsed.accountId || '',
+            accountName: parsed.accountName || '',
+            toAccountId: parsed.toAccountId || null,
+            toAccountName: parsed.toAccountName || null,
+            note: parsed.note || null,
+            description: parsed.description || null,
+            amount: parseFloat(parsed.amount) || 0,
+            date: parseInt(parsed.date) || Date.now(),
+          };
+        }
+      }
+    }
+  }
+
+  return data;
+}
+
+/**
+ * Parse INSERT VALUES clause and extract fields
+ */
+function parseInsertValues(statement: string, fields: string[]): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  // Extract values between parentheses after VALUES
+  const valuesMatch = statement.match(/VALUES\s*\((.+)\)\s*$/is);
+  if (!valuesMatch) return result;
+
+  const valuesStr = valuesMatch[1];
+
+  // Parse values, handling quoted strings and NULL
+  const values: (string | null)[] = [];
+  let current = '';
+  let inQuotes = false;
+  let quoteChar = '';
+
+  for (let i = 0; i < valuesStr.length; i++) {
+    const char = valuesStr[i];
+
+    if ((char === "'" || char === '"') && !inQuotes) {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (char === quoteChar && inQuotes) {
+      // Check for escaped quote
+      if (valuesStr[i + 1] === quoteChar) {
+        current += quoteChar;
+        i++; // Skip next quote
+      } else {
+        inQuotes = false;
+        quoteChar = '';
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(current.trim() || null);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim() || null);
+
+  // Map values to fields
+  fields.forEach((field, index) => {
+    const value = values[index];
+    if (value !== null && value !== 'NULL') {
+      result[field] = value;
+    }
+  });
+
+  return result;
+}

@@ -1,15 +1,17 @@
 import { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, Upload, FileJson } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../src/components/ThemeProvider';
-import { importFromMMBak, validateMMBakFile, MMBakImportResult } from '../src/utils/mmbakImport';
+import type { MMBakImportResult } from '../src/utils/mmbakImport';
 
-// Web File type reference
-type WebFile = globalThis.File;
+// Platform-specific imports
+// Note: We use require() directly as Metro bundler handles platform resolution
+// Native (.native.ts) reads SQLite via expo-sqlite with URI strings
+// Web (.web.ts) reads SQLite via sql.js with File objects
 
 export default function BackupMMBakScreen() {
   const router = useRouter();
@@ -51,6 +53,8 @@ export default function BackupMMBakScreen() {
       setErrorMessage(null);
 
       // Validate file (throws with detailed error message)
+      // @ts-ignore - Platform-specific module
+      const { validateMMBakFile, importFromMMBak } = require('../src/utils/mmbakImport.native');
       await validateMMBakFile(asset.uri);
 
       // Import data
@@ -77,6 +81,8 @@ export default function BackupMMBakScreen() {
 
     try {
       // Validate file (throws with detailed error message)
+      // @ts-ignore - Platform-specific module
+      const { validateMMBakFile, importFromMMBak } = require('../src/utils/mmbakImport.web');
       await validateMMBakFile(file);
 
       // Import data
@@ -118,7 +124,8 @@ export default function BackupMMBakScreen() {
         </Text>
       </View>
 
-      <View className="flex-1 px-4 pt-6">
+      <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }}>
+        <View className="px-4 pt-6 pb-6">
         <View
           className={`${isDark ? 'bg-[#26282D]' : 'bg-white'} rounded-xl p-4`}
         >
@@ -233,7 +240,8 @@ export default function BackupMMBakScreen() {
             </Text>
           </View>
         </View>
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

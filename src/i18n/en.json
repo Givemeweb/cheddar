@@ -167,7 +167,15 @@
     "formatJson": "JSON Format",
     "formatJsonDesc": "Export as ZIP archive with JSON data file. Recommended for backups.",
     "formatSql": "SQL Database",
-    "formatSqlDesc": "Export as SQLite database file. For advanced users."
+    "formatSqlDesc": "Export as SQLite database file. For advanced users.",
+    "formatZip": "ZIP Archive",
+    "formatZipDesc": "Import from a ZIP archive containing backup.json file.",
+    "formatJsonImport": "JSON File",
+    "formatJsonImportDesc": "Import from a raw JSON backup file.",
+    "formatSqlImport": "SQL Database",
+    "formatSqlImportDesc": "Import from an SQLite database file (.db, .sqlite).",
+    "selectImportFormat": "Select Import Format",
+    "importInfoMulti": "Select a backup file to restore your data. Supported formats: ZIP archive, JSON file, or SQLite database. This will replace all existing data."
   },
   "stats": {
     "title": "Stats",
