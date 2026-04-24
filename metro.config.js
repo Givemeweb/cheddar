@@ -6,4 +6,19 @@ const config = getDefaultConfig(__dirname);
 // Add wasm support for expo-sqlite on web
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'wasm'];
 
+// Block sql.js from native builds (only used for web)
+// sql.js uses Node.js APIs that don't exist in React Native
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Block sql.js and its dependencies from native platforms
+  if (platform !== 'web' && (moduleName === 'sql.js' || moduleName.startsWith('sql.js/'))) {
+    return { type: 'empty' };
+  }
+  // Block node: protocol imports on native platforms
+  if (platform !== 'web' && moduleName.startsWith('node:')) {
+    return { type: 'empty' };
+  }
+  // Use default resolution for everything else
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = withNativeWind(config, { input: "./global.css" });
