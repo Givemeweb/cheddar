@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Alert,
     Platform,
+    Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -32,10 +33,13 @@ import {
     StopCircle,
     Pencil,
     Trash2,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-react-native';
 import { useTheme } from '@/src/components/ThemeProvider';
 
 type TransactionType = 'income' | 'expense' | 'transfer';
+type SelectionMode = 'none' | 'account' | 'category' | 'subcategory' | 'fromAccount' | 'toAccount';
 
 // Map icon names to Lucide components
 const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -90,13 +94,14 @@ export default function AddTransactionScreen() {
     const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
     const [subcategoriesEnabled, setSubcategoriesEnabled] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [showAccountPicker, setShowAccountPicker] = useState(false);
-    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-    const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false);
-    const [showFromPicker, setShowFromPicker] = useState(false);
-    const [showToPicker, setShowToPicker] = useState(false);
+    const [selectionMode, setSelectionMode] = useState<SelectionMode>('none');
     const [previousNotes, setPreviousNotes] = useState<string[]>([]);
     const [showNoteSuggestions, setShowNoteSuggestions] = useState(false);
+
+    // Refs for auto-focus
+    const amountRef = useRef<TextInput>(null);
+    const noteRef = useRef<TextInput>(null);
+    const descRef = useRef<TextInput>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -297,15 +302,62 @@ export default function AddTransactionScreen() {
     const handleCategorySelect = async (categoryId: string) => {
         setSelectedCategoryId(categoryId);
         setSelectedSubcategoryId(null);
-        setShowCategoryPicker(false);
+        setSelectionMode('none');
 
         // Load subcategories for the selected category
         if (subcategoriesEnabled && categoryId) {
             const subs = await getSubcategories(categoryId);
             setSubcategories(subs);
+            // Auto-focus to subcategory if available
+            if (subs.length > 0) {
+                setSelectionMode('subcategory');
+            } else {
+                // Focus on amount input
+                amountRef.current?.focus();
+            }
         } else {
             setSubcategories([]);
+            // Focus on amount input
+            amountRef.current?.focus();
         }
+    };
+
+    const handleAccountSelect = (accountId: string) => {
+        setSelectedAccountId(accountId);
+        setSelectionMode('none');
+        // Focus on category if not selected
+        if (!selectedCategoryId) {
+            setSelectionMode('category');
+        } else if (subcategoriesEnabled && subcategories.length > 0 && !selectedSubcategoryId) {
+            setSelectionMode('subcategory');
+        } else {
+            amountRef.current?.focus();
+        }
+    };
+
+    const handleSubcategorySelect = (subcatId: string) => {
+        setSelectedSubcategoryId(subcatId);
+        setSelectionMode('none');
+        // Focus on amount input
+        amountRef.current?.focus();
+    };
+
+    const handleFromAccountSelect = (accountId: string) => {
+        setFromAccountId(accountId);
+        setSelectionMode('none');
+        // Focus on "to account" if not selected
+        if (!toAccountId) {
+            setSelectionMode('toAccount');
+        } else {
+            amountRef.current?.focus();
+        }
+    };
+
+    const handleToAccountSelect = (accountId: string) => {
+        setToAccountId(accountId);
+        setSelectionMode('none');
+        // Focus on amount input
+        amountRef.current?.focus();
     };
 
     const handleTypeChange = (newType: TransactionType) => {
@@ -313,6 +365,7 @@ export default function AddTransactionScreen() {
         setSelectedCategoryId(null);
         setSelectedSubcategoryId(null);
         setSubcategories([]);
+        setSelectionMode('none');
     };
 
     const validateForm = (): string | null => {
@@ -372,10 +425,13 @@ export default function AddTransactionScreen() {
         );
     }
 
+    const showBottomMenu = selectionMode !== 'none';
+
     return (
       <SafeAreaView
         className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       >
+        {/* Header */}
         <View
           className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"}`}
         >
@@ -406,7 +462,8 @@ export default function AddTransactionScreen() {
           )}
         </View>
 
-        <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+        {/* Main Content Area - Scrollable */}
+        <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Type Selector */}
           <View
             className={`flex-row mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-700" : "bg-gray-200"}`}
@@ -459,48 +516,43 @@ export default function AddTransactionScreen() {
             />
           </View>
 
-          {/* Account Selector for Income/Expense */}
+          {/* Account Selector for Income/Expense - Tap to open bottom menu */}
           {type !== "transfer" && (
             <>
               <Pressable
-                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                onPress={() => setShowAccountPicker(true)}
+                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"} ${selectionMode === 'account' ? 'border-2 border-cheddar-yellow' : ''}`}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setSelectionMode(selectionMode === 'account' ? 'none' : 'account');
+                }}
               >
-                <Text
-                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  {t("transactions.account")}
-                </Text>
-                <Text
-                  className={`text-base ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                >
-                  {getAccountName(selectedAccountId)}
-                </Text>
-              </Pressable>
-              {showAccountPicker && (
-                <View
-                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                >
-                  {accounts.map((acc) => (
-                    <Pressable
-                      key={acc.id}
-                      className={`p-4 border-b ${selectedAccountId === acc.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
-                      onPress={() => {
-                        setSelectedAccountId(acc.id);
-                        setShowAccountPicker(false);
-                      }}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text
+                      className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
                     >
+                      {t("transactions.account")}
+                    </Text>
+                    <View className="flex-row items-center">
                       <Text
-                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                        className={`text-base ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
                       >
-                        {acc.name}
+                        {getAccountName(selectedAccountId)}
                       </Text>
-                    </Pressable>
-                  ))}
+                    </View>
+                  </View>
+                  <View className="ml-2">
+                    {selectionMode === 'account' ? (
+                      <ChevronUp size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    ) : (
+                      <ChevronDown size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    )}
+                  </View>
                 </View>
-              )}
+              </Pressable>
 
-              <View className={`rounded-xl mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}>
+              {/* Category Selector */}
+              <View className={`rounded-xl mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"} ${selectionMode === 'category' ? 'border-2 border-cheddar-yellow' : ''}`}>
                 <View className="flex-row items-center justify-between px-4 pt-4 pb-1">
                   <Text
                     className={`text-xs font-medium uppercase ${isDark ? "text-gray-400" : "text-gray-500"}`}
@@ -515,10 +567,13 @@ export default function AddTransactionScreen() {
                   </Pressable>
                 </View>
                 <Pressable
-                  className="px-4 pb-4"
-                  onPress={() => setShowCategoryPicker(true)}
+                  className="px-4 pb-4 flex-row items-center justify-between"
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setSelectionMode(selectionMode === 'category' ? 'none' : 'category');
+                  }}
                 >
-                  <View className="flex-row items-center">
+                  <View className="flex-row items-center flex-1">
                     {getCategoryIcon(selectedCategoryId) && showIcons && (
                       <View className="mr-2">
                         {renderIcon(
@@ -535,77 +590,47 @@ export default function AddTransactionScreen() {
                       {getCategoryLabel(selectedCategoryId)}
                     </Text>
                   </View>
+                  <View className="ml-2">
+                    {selectionMode === 'category' ? (
+                      <ChevronUp size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    ) : (
+                      <ChevronDown size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    )}
+                  </View>
                 </Pressable>
               </View>
-              {showCategoryPicker && (
-                <View
-                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                >
-                  {filteredCategories.map((cat) => (
-                    <Pressable
-                      key={cat.id}
-                      className={`p-4 border-b flex-row items-center ${selectedCategoryId === cat.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
-                      onPress={() => handleCategorySelect(cat.id)}
-                    >
-                      {showIcons && (
-                        <View className="mr-3">
-                          {renderIcon(
-                            cat.icon,
-                            18,
-                            type === "income" ? "#10B981" : "#EF4444",
-                            showIcons,
-                          )}
-                        </View>
-                      )}
-                      <Text
-                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                      >
-                        {cat.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
 
-              {/* Subcategory Selector - shown when subcategories are enabled and a category is selected */}
+              {/* Subcategory Selector */}
               {subcategoriesEnabled && selectedCategoryId && subcategories.length > 0 && (
                 <Pressable
-                  className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                  onPress={() => setShowSubcategoryPicker(!showSubcategoryPicker)}
+                  className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"} ${selectionMode === 'subcategory' ? 'border-2 border-cheddar-yellow' : ''}`}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setSelectionMode(selectionMode === 'subcategory' ? 'none' : 'subcategory');
+                  }}
                 >
-                  <Text
-                    className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                  >
-                    {t('transactions.subcategory') || 'Subcategory'}
-                  </Text>
-                  <Text
-                    className={`text-base ${isDark ? "text-cheddar-light" : "text-cheddar-dark"} ${!selectedSubcategoryId ? "opacity-60" : ""}`}
-                  >
-                    {getSubcategoryLabel(selectedSubcategoryId)}
-                  </Text>
-                </Pressable>
-              )}
-              {showSubcategoryPicker && subcategories.length > 0 && (
-                <View
-                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                >
-                  {subcategories.map((sub) => (
-                    <Pressable
-                      key={sub.id}
-                      className={`p-4 border-b ${selectedSubcategoryId === sub.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
-                      onPress={() => {
-                        setSelectedSubcategoryId(sub.id);
-                        setShowSubcategoryPicker(false);
-                      }}
-                    >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1">
                       <Text
-                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                        className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
                       >
-                        {sub.name}
+                        {t('transactions.subcategory') || 'Subcategory'}
                       </Text>
-                    </Pressable>
-                  ))}
-                </View>
+                      <Text
+                        className={`text-base ${isDark ? "text-cheddar-light" : "text-cheddar-dark"} ${!selectedSubcategoryId ? "opacity-60" : ""}`}
+                      >
+                        {getSubcategoryLabel(selectedSubcategoryId)}
+                      </Text>
+                    </View>
+                    <View className="ml-2">
+                      {selectionMode === 'subcategory' ? (
+                        <ChevronUp size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                      ) : (
+                        <ChevronDown size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                      )}
+                    </View>
+                  </View>
+                </Pressable>
               )}
             </>
           )}
@@ -614,80 +639,64 @@ export default function AddTransactionScreen() {
           {type === "transfer" && (
             <>
               <Pressable
-                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                onPress={() => setShowFromPicker(true)}
+                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"} ${selectionMode === 'fromAccount' ? 'border-2 border-cheddar-yellow' : ''}`}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setSelectionMode(selectionMode === 'fromAccount' ? 'none' : 'fromAccount');
+                }}
               >
-                <Text
-                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  {t("transactions.from")}
-                </Text>
-                <Text
-                  className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                >
-                  {getAccountName(fromAccountId)}
-                </Text>
-              </Pressable>
-              {showFromPicker && (
-                <View
-                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                >
-                  {accounts.map((acc) => (
-                    <Pressable
-                      key={acc.id}
-                      className={`p-4 border-b ${fromAccountId === acc.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
-                      onPress={() => {
-                        setFromAccountId(acc.id);
-                        setShowFromPicker(false);
-                      }}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text
+                      className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
                     >
-                      <Text
-                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                      >
-                        {acc.name}
-                      </Text>
-                    </Pressable>
-                  ))}
+                      {t("transactions.from")}
+                    </Text>
+                    <Text
+                      className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                    >
+                      {getAccountName(fromAccountId)}
+                    </Text>
+                  </View>
+                  <View className="ml-2">
+                    {selectionMode === 'fromAccount' ? (
+                      <ChevronUp size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    ) : (
+                      <ChevronDown size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    )}
+                  </View>
                 </View>
-              )}
+              </Pressable>
 
               <Pressable
-                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                onPress={() => setShowToPicker(true)}
+                className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"} ${selectionMode === 'toAccount' ? 'border-2 border-cheddar-yellow' : ''}`}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setSelectionMode(selectionMode === 'toAccount' ? 'none' : 'toAccount');
+                }}
               >
-                <Text
-                  className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  {t("transactions.to")}
-                </Text>
-                <Text
-                  className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                >
-                  {getAccountName(toAccountId)}
-                </Text>
-              </Pressable>
-              {showToPicker && (
-                <View
-                  className={`rounded-xl mb-3 overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-                >
-                  {accounts.map((acc) => (
-                    <Pressable
-                      key={acc.id}
-                      className={`p-4 border-b ${toAccountId === acc.id ? (isDark ? "bg-gray-700" : "bg-yellow-50") : ""} ${isDark ? "border-gray-700" : "border-gray-100"}`}
-                      onPress={() => {
-                        setToAccountId(acc.id);
-                        setShowToPicker(false);
-                      }}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text
+                      className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
                     >
-                      <Text
-                        className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                      >
-                        {acc.name}
-                      </Text>
-                    </Pressable>
-                  ))}
+                      {t("transactions.to")}
+                    </Text>
+                    <Text
+                      className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                    >
+                      {getAccountName(toAccountId)}
+                    </Text>
+                  </View>
+                  <View className="ml-2">
+                    {selectionMode === 'toAccount' ? (
+                      <ChevronUp size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    ) : (
+                      <ChevronDown size={20} color={isDark ? "#F9FAFB" : "#212226"} />
+                    )}
+                  </View>
                 </View>
-              )}
+              </Pressable>
             </>
           )}
 
@@ -701,12 +710,14 @@ export default function AddTransactionScreen() {
               {t("transactions.amount")}
             </Text>
             <TextInput
+              ref={amountRef}
               className={`text-2xl font-semibold py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
               placeholder="0.00"
               placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+              onFocus={() => setSelectionMode('none')}
             />
           </View>
 
@@ -720,6 +731,7 @@ export default function AddTransactionScreen() {
               {t("transactions.note")}
             </Text>
             <TextInput
+              ref={noteRef}
               className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
               value={note}
               onChangeText={(text) => {
@@ -731,6 +743,7 @@ export default function AddTransactionScreen() {
                 setTimeout(() => setShowNoteSuggestions(false), 200);
               }}
               onFocus={() => {
+                setSelectionMode('none');
                 if (note.trim().length > 0 && getMatchingNotes(note).length > 0) {
                     setShowNoteSuggestions(true);
                 }
@@ -741,12 +754,12 @@ export default function AddTransactionScreen() {
             {/* Autocomplete Dropdown */}
             {showNoteSuggestions && getMatchingNotes(note).length > 0 && (
               <View
-                className={`mt-2 rounded-xl overflow-hidden ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+                className={`mt-2 rounded-xl overflow-hidden ${isDark ? "bg-gray-700" : "bg-gray-100"}`}
               >
                 {getMatchingNotes(note).map((suggestion, index) => (
                   <Pressable
                     key={index}
-                    className={`p-3 border-b ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                    className={`p-3 border-b ${isDark ? "border-gray-600" : "border-gray-200"}`}
                     onPress={() => {
                       setNote(suggestion);
                       setShowNoteSuggestions(false);
@@ -769,6 +782,7 @@ export default function AddTransactionScreen() {
               {t("transactions.description")}
             </Text>
             <TextInput
+              ref={descRef}
               className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
               style={{ minHeight: 80 }}
               value={description}
@@ -777,12 +791,148 @@ export default function AddTransactionScreen() {
               placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
               multiline
               textAlignVertical="top"
+              onFocus={() => setSelectionMode('none')}
             />
           </View>
+
+          {/* Spacer for bottom menu */}
+          <View className="h-4" />
         </ScrollView>
 
+        {/* Bottom Selection Menu */}
+        {showBottomMenu && (
+          <View
+            className={`${isDark ? "bg-[#1a1b1e]" : "bg-gray-50"} border-t ${isDark ? "border-gray-700" : "border-gray-200"}`}
+            style={{ maxHeight: '50%' }}
+          >
+            <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-700">
+              <Text className={`font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}>
+                {selectionMode === 'account' && t("transactions.selectAccount")}
+                {selectionMode === 'category' && t("transactions.selectCategory")}
+                {selectionMode === 'subcategory' && (t('transactions.subcategory') || 'Select subcategory')}
+                {selectionMode === 'fromAccount' && t("transactions.from")}
+                {selectionMode === 'toAccount' && t("transactions.to")}
+              </Text>
+              <Pressable
+                onPress={() => setSelectionMode('none')}
+                className="p-1"
+              >
+                <Text className="text-cheddar-yellow text-sm">{t('common.cancel') || 'Cancel'}</Text>
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 8 }}>
+              <View className="flex-row flex-wrap">
+                {selectionMode === 'account' && accounts.map((acc) => (
+                  <Pressable
+                    key={acc.id}
+                    className={`w-1/3 p-2`}
+                    onPress={() => handleAccountSelect(acc.id)}
+                  >
+                    <View
+                      className={`rounded-xl p-3 items-center justify-center min-h-[60px] ${selectedAccountId === acc.id ? "bg-cheddar-yellow" : (isDark ? "bg-[#26282D]" : "bg-white")}`}
+                    >
+                      <Text
+                        className={`text-center text-sm ${selectedAccountId === acc.id ? "text-cheddar-dark font-semibold" : (isDark ? "text-cheddar-light" : "text-cheddar-dark")}`}
+                        numberOfLines={2}
+                      >
+                        {acc.name}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+
+                {selectionMode === 'category' && filteredCategories.map((cat) => (
+                  <Pressable
+                    key={cat.id}
+                    className={`w-1/3 p-2`}
+                    onPress={() => handleCategorySelect(cat.id)}
+                  >
+                    <View
+                      className={`rounded-xl p-3 items-center justify-center min-h-[70px] ${selectedCategoryId === cat.id ? "bg-cheddar-yellow" : (isDark ? "bg-[#26282D]" : "bg-white")}`}
+                    >
+                      {showIcons && (
+                        <View className="mb-1">
+                          {renderIcon(
+                            cat.icon,
+                            22,
+                            selectedCategoryId === cat.id ? "#212226" : (type === "income" ? "#10B981" : "#EF4444"),
+                            showIcons,
+                          )}
+                        </View>
+                      )}
+                      <Text
+                        className={`text-center text-sm ${selectedCategoryId === cat.id ? "text-cheddar-dark font-semibold" : (isDark ? "text-cheddar-light" : "text-cheddar-dark")}`}
+                        numberOfLines={2}
+                      >
+                        {cat.name}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+
+                {selectionMode === 'subcategory' && subcategories.map((sub) => (
+                  <Pressable
+                    key={sub.id}
+                    className={`w-1/3 p-2`}
+                    onPress={() => handleSubcategorySelect(sub.id)}
+                  >
+                    <View
+                      className={`rounded-xl p-3 items-center justify-center min-h-[60px] ${selectedSubcategoryId === sub.id ? "bg-cheddar-yellow" : (isDark ? "bg-[#26282D]" : "bg-white")}`}
+                    >
+                      <Text
+                        className={`text-center text-sm ${selectedSubcategoryId === sub.id ? "text-cheddar-dark font-semibold" : (isDark ? "text-cheddar-light" : "text-cheddar-dark")}`}
+                        numberOfLines={2}
+                      >
+                        {sub.name}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+
+                {selectionMode === 'fromAccount' && accounts.map((acc) => (
+                  <Pressable
+                    key={acc.id}
+                    className={`w-1/3 p-2`}
+                    onPress={() => handleFromAccountSelect(acc.id)}
+                  >
+                    <View
+                      className={`rounded-xl p-3 items-center justify-center min-h-[60px] ${fromAccountId === acc.id ? "bg-cheddar-yellow" : (isDark ? "bg-[#26282D]" : "bg-white")}`}
+                    >
+                      <Text
+                        className={`text-center text-sm ${fromAccountId === acc.id ? "text-cheddar-dark font-semibold" : (isDark ? "text-cheddar-light" : "text-cheddar-dark")}`}
+                        numberOfLines={2}
+                      >
+                        {acc.name}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+
+                {selectionMode === 'toAccount' && accounts.map((acc) => (
+                  <Pressable
+                    key={acc.id}
+                    className={`w-1/3 p-2`}
+                    onPress={() => handleToAccountSelect(acc.id)}
+                  >
+                    <View
+                      className={`rounded-xl p-3 items-center justify-center min-h-[60px] ${toAccountId === acc.id ? "bg-cheddar-yellow" : (isDark ? "bg-[#26282D]" : "bg-white")}`}
+                    >
+                      <Text
+                        className={`text-center text-sm ${toAccountId === acc.id ? "text-cheddar-dark font-semibold" : (isDark ? "text-cheddar-light" : "text-cheddar-dark")}`}
+                        numberOfLines={2}
+                      >
+                        {acc.name}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
         {/* Save Button */}
-        <View className="p-4 pb-8">
+        <View className={`p-4 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"} ${showBottomMenu ? 'pb-4' : 'pb-8'}`}>
           <Pressable
             className="bg-cheddar-yellow rounded-xl py-4 items-center"
             onPress={handleSave}
