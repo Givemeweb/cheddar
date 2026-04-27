@@ -52,12 +52,14 @@ async function getSqlJs(): Promise<SqlJsStatic> {
     // @ts-ignore - sql.js doesn't have proper types for browser build
     const initSqlJs = (await import('sql.js')).default;
 
-    // Initialize with WASM loaded from CDN
+    // Load WASM file from CDN
+    const wasmBinary = await loadWasmFromCdn(
+      'https://cdn.jsdelivr.net/npm/sql.js@1.14.1/dist/sql-wasm.wasm'
+    );
+
+    // Initialize with WASM binary
     const SQL = await initSqlJs({
-      locateFile: (file: string) => {
-        // Return CDN URL for WASM file
-        return `https://cdn.jsdelivr.net/npm/sql.js@1.14.1/dist/${file}`;
-      },
+      wasmBinary,
     });
 
     return SQL;
@@ -103,6 +105,7 @@ interface CheddarTransaction {
   description: string | null;
   amount: number;
   date: number;
+  imagePath: string | null;
 }
 
 export interface SqlImportResult {
@@ -179,7 +182,7 @@ async function parseSqlFileWeb(file: WebFile): Promise<{
     }
 
     // Query transactions
-    const txResult = db.exec('SELECT id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date FROM transactions');
+    const txResult = db.exec('SELECT id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date, imagePath FROM transactions');
     const transactions: CheddarTransaction[] = [];
     if (txResult.length > 0) {
       const { columns, values } = txResult[0];

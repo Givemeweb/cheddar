@@ -34,6 +34,7 @@ export interface Transaction {
   description: string | null;
   amount: number;
   date: Date;
+  imagePath: string | null;
 }
 
 // Categories
@@ -132,6 +133,7 @@ export async function getTransactions(): Promise<Transaction[]> {
       description: data.description as string | null,
       amount: data.amount as number,
       date: new Date(data.date as number),
+      imagePath: data.imagePath as string | null,
     }))
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 }
@@ -152,6 +154,7 @@ export async function addTransaction(tx: {
   description?: string | null;
   amount: number;
   date: Date;
+  imagePath?: string | null;
 }): Promise<Transaction> {
   if (!isDatabaseReady()) {
     throw new Error('Database not initialized');
@@ -175,6 +178,7 @@ export async function addTransaction(tx: {
     description: tx.description ?? null,
     amount: tx.amount,
     date: tx.date.getTime(),
+    imagePath: tx.imagePath ?? null,
   });
 
   // Update account balance(s)
@@ -209,6 +213,7 @@ export async function addTransaction(tx: {
     description: tx.description ?? null,
     amount: tx.amount,
     date: tx.date,
+    imagePath: tx.imagePath ?? null,
   };
 }
 
@@ -235,6 +240,7 @@ export async function getTransactionById(id: string): Promise<Transaction | unde
     description: row.description as string | null,
     amount: row.amount as number,
     date: new Date(row.date as number),
+    imagePath: row.imagePath as string | null,
   };
 }
 
@@ -254,6 +260,7 @@ export async function updateTransaction(id: string, updates: {
   description?: string | null;
   amount?: number;
   date?: Date;
+  imagePath?: string | null;
 }): Promise<Transaction | undefined> {
   if (!isDatabaseReady()) return undefined;
   const store = getStore();
@@ -303,6 +310,7 @@ export async function updateTransaction(id: string, updates: {
     description: updates.description ?? currentTx.description,
     amount: newAmount,
     date: (updates.date ?? currentTx.date).getTime(),
+    imagePath: updates.imagePath ?? currentTx.imagePath,
   });
 
   // Apply new balance changes

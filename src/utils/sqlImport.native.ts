@@ -43,6 +43,7 @@ interface CheddarTransaction {
   description: string | null;
   amount: number;
   date: number;
+  imagePath: string | null;
 }
 
 export interface SqlImportResult {
@@ -159,7 +160,7 @@ export async function parseSqlFile(uri: string): Promise<{
 
     // Get all transactions
     const transactions = db.getAllSync<CheddarTransaction>(
-      'SELECT id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date FROM transactions'
+      'SELECT id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date, imagePath FROM transactions'
     );
 
     return { categories, subcategories, accounts, transactions };
@@ -224,6 +225,7 @@ export async function importFromSql(uri: string): Promise<SqlImportResult> {
     description: string | null;
     amount: number;
     date: number;
+    imagePath: string | null;
   }> = {};
   for (const tx of transactions) {
     transactionsRecord[tx.id] = {
@@ -239,6 +241,7 @@ export async function importFromSql(uri: string): Promise<SqlImportResult> {
       description: tx.description,
       amount: tx.amount,
       date: tx.date,
+      imagePath: tx.imagePath,
     };
   }
 

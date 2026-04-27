@@ -40,6 +40,7 @@ export interface Transaction {
   description: string | null;
   amount: number;
   date: number; // timestamp
+  imagePath: string | null; // relative path to attached image
 }
 
 // TinyBase schema types
@@ -61,6 +62,7 @@ export interface TablesSchema {
       description: string | null;
       amount: number;
       date: number;
+      imagePath: string | null;
     };
   };
 }
@@ -223,6 +225,11 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
         }
         if (data.subcategoryName === undefined) {
           store!.setCell('transactions', id, 'subcategoryName', null);
+          needsSave = true;
+        }
+        // Ensure imagePath field exists (migration)
+        if (data.imagePath === undefined) {
+          store!.setCell('transactions', id, 'imagePath', null);
           needsSave = true;
         }
       });

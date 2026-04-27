@@ -9,13 +9,17 @@ import {
     Alert,
     Platform,
     Keyboard,
+    Image,
+    ActionSheetIOS,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import * as ImagePicker from 'expo-image-picker';
 import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account } from '@/src/db/storage';
 import { getSubcategoriesEnabled, getSubcategories, type Subcategory } from '@/src/db';
+import { saveImage, deleteImage, getImageUri } from '@/src/utils/imageStorage';
 import DateTimePicker from '@/src/components/DateTimePicker';
 import {
     TrendingUp,
@@ -35,6 +39,9 @@ import {
     Trash2,
     ChevronDown,
     ChevronUp,
+    Camera,
+    Image as ImageIcon,
+    X,
 } from 'lucide-react-native';
 import { useTheme } from '@/src/components/ThemeProvider';
 
@@ -97,6 +104,9 @@ export default function AddTransactionScreen() {
     const [selectionMode, setSelectionMode] = useState<SelectionMode>('none');
     const [previousNotes, setPreviousNotes] = useState<string[]>([]);
     const [showNoteSuggestions, setShowNoteSuggestions] = useState(false);
+    const [imagePath, setImagePath] = useState<string | null>(null);
+    const [displayImageUri, setDisplayImageUri] = useState<string | null>(null);
+    const [imageLoading, setImageLoading] = useState(false);
 
     // Refs for auto-focus
     const amountRef = useRef<TextInput>(null);
@@ -132,6 +142,10 @@ export default function AddTransactionScreen() {
                 setNote(existingTx.note || '');
                 setDescription(existingTx.description || '');
                 setAmount(Math.abs(existingTx.amount).toString());
+                setImagePath(existingTx.imagePath || null);
+                if (existingTx.imagePath) {
+                    setDisplayImageUri(getImageUri(existingTx.imagePath));
+                }
 
                 if (existingTx.type === 'transfer') {
                     setFromAccountId(existingTx.accountId);
@@ -202,6 +216,7 @@ export default function AddTransactionScreen() {
                     description: description || null,
                     amount: -Math.abs(parsedAmount),
                     date,
+                    imagePath: imagePath,
                 });
             } else {
                 await addTransaction({
@@ -214,6 +229,7 @@ export default function AddTransactionScreen() {
                     description: description || null,
                     amount: -Math.abs(parsedAmount),
                     date,
+                    imagePath: imagePath,
                 });
             }
         } else {
@@ -236,6 +252,7 @@ export default function AddTransactionScreen() {
                     description: description || null,
                     amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
                     date,
+                    imagePath: imagePath,
                 });
             } else {
                 await addTransaction({
@@ -252,6 +269,7 @@ export default function AddTransactionScreen() {
                     description: description || null,
                     amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
                     date,
+                    imagePath: imagePath,
                 });
             }
         }
@@ -263,6 +281,10 @@ export default function AddTransactionScreen() {
         if (!isEditing || !transactionId) return;
 
         const performDelete = async () => {
+            // Delete associated image if exists
+            if (imagePath) {
+                await deleteImage(imagePath);
+            }
             await deleteTransaction(transactionId);
             router.back();
         };
@@ -286,6 +308,132 @@ export default function AddTransactionScreen() {
                     },
                 ]
             );
+        }
+    };
+
+    const pickImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                if (Platform.OS === 'web') {
+                    window.alert(t('transactions.imagePermissionRequired') || 'Permission required to access photos');
+                } else {
+                    Alert.alert(
+                        t('transactions.permissionRequired') || 'Permission Required',
+                        t('transactions.imagePermissionRequired') || 'Please grant photo library access to attach images'
+                    );
+                }
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                setImageLoading(true);
+                // Delete old image if exists
+                if (imagePath) {
+                    await deleteImage(imagePath);
+                }
+                const savedPath = await saveImage(result.assets[0].uri);
+                if (savedPath) {
+                    setImagePath(savedPath);
+                    // For display, use the constructed path for saved images
+                    setDisplayImageUri(getImageUri(savedPath));
+                }
+                setImageLoading(false);
+            }
+        } catch (error) {
+            console.error('Error picking image:', error);
+            setImageLoading(false);
+        }
+    };
+
+    const takePhoto = async () => {
+        try {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+                if (Platform.OS === 'web') {
+                    window.alert(t('transactions.cameraPermissionRequired') || 'Permission required to access camera');
+                } else {
+                    Alert.alert(
+                        t('transactions.permissionRequired') || 'Permission Required',
+                        t('transactions.cameraPermissionRequired') || 'Please grant camera access to take photos'
+                    );
+                }
+                return;
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                setImageLoading(true);
+                // Delete old image if exists
+                if (imagePath) {
+                    await deleteImage(imagePath);
+                }
+                const savedPath = await saveImage(result.assets[0].uri);
+                if (savedPath) {
+                    setImagePath(savedPath);
+                    // For display, use the constructed path for saved images
+                    setDisplayImageUri(getImageUri(savedPath));
+                }
+                setImageLoading(false);
+            }
+        } catch (error) {
+            console.error('Error taking photo:', error);
+            setImageLoading(false);
+        }
+    };
+
+    const showImagePicker = () => {
+        Keyboard.dismiss();
+
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options: [
+                        t('transactions.takePhoto') || 'Take Photo',
+                        t('transactions.chooseFromLibrary') || 'Choose from Library',
+                        t('common.cancel') || 'Cancel'
+                    ],
+                    cancelButtonIndex: 2,
+                },
+                (buttonIndex) => {
+                    if (buttonIndex === 0) {
+                        takePhoto();
+                    } else if (buttonIndex === 1) {
+                        pickImage();
+                    }
+                }
+            );
+        } else if (Platform.OS === 'web') {
+            // For web, show a simple prompt
+            const choice = window.confirm(t('transactions.useCamera') || 'Use camera? (Cancel to choose from library)');
+            if (choice) {
+                takePhoto();
+            } else {
+                pickImage();
+            }
+        } else {
+            // For Android, default to picker (camera requires additional native configuration)
+            pickImage();
+        }
+    };
+
+    const removeImage = async () => {
+        if (imagePath) {
+            await deleteImage(imagePath);
+            setImagePath(null);
+            setDisplayImageUri(null);
         }
     };
 
@@ -801,6 +949,49 @@ export default function AddTransactionScreen() {
               textAlignVertical="top"
               onFocus={() => setSelectionMode('none')}
             />
+          </View>
+
+          {/* Image Attachment */}
+          <View
+            className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`text-xs font-medium uppercase mb-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            >
+              {t("transactions.image") || "Image (Optional)"}
+            </Text>
+
+            {imageLoading ? (
+              <View className="items-center justify-center py-6">
+                <ActivityIndicator size="large" color="#FFB800" />
+              </View>
+            ) : displayImageUri ? (
+              <View className="relative">
+                <Image
+                  source={{ uri: displayImageUri }}
+                  className="w-full h-48 rounded-lg"
+                  resizeMode="cover"
+                />
+                <Pressable
+                  onPress={removeImage}
+                  className="absolute top-2 right-2 bg-black/60 rounded-full p-1"
+                >
+                  <X size={18} color="#fff" />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={showImagePicker}
+                className={`flex-row items-center justify-center py-6 rounded-lg border-2 border-dashed ${isDark ? "border-gray-600" : "border-gray-300"}`}
+              >
+                <View className="items-center">
+                  <ImageIcon size={28} color={isDark ? "#9CA3AF" : "#6B7280"} />
+                  <Text className={`mt-2 text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    {t("transactions.addImage") || "Add Image"}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
           </View>
 
           {/* Spacer for bottom menu */}

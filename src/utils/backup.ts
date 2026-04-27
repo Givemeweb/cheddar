@@ -13,7 +13,54 @@ export interface BackupData {
   data: Tables;
 }
 
-const BACKUP_VERSION = '1.0.0';
+const BACKUP_VERSION = '1.1.0';
+
+/**
+ * Collect all image paths from transactions
+ * For native: returns relative file paths
+ * For web: returns base64 data URIs
+ */
+function collectImagePaths(tables: Tables | undefined): string[] {
+  const paths: string[] = [];
+  if (tables?.transactions) {
+    Object.values(tables.transactions as Record<string, { imagePath?: string | null }>).forEach((tx) => {
+      if (tx.imagePath) {
+        paths.push(tx.imagePath);
+      }
+    });
+  }
+  return paths;
+}
+
+/**
+ * Generate a filename for an image from its path or data URI
+ */
+function generateImageFilename(imagePath: string): string {
+  // Check if it's a base64 data URI
+  if (imagePath.startsWith('data:')) {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    // Try to extract extension from mime type
+    const mimeMatch = imagePath.match(/data:image\/(\w+);/);
+    const ext = mimeMatch ? mimeMatch[1] : 'jpg';
+    return `${timestamp}_${random}.${ext}`;
+  }
+  // For native paths, extract filename from path
+  return imagePath.split('/').pop() || `image_${Date.now()}.jpg`;
+}
+
+/**
+ * Convert base64 data URI to Uint8Array
+ */
+function dataUriToBytes(dataUri: string): Uint8Array {
+  const base64 = dataUri.split(',')[1];
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
 
 export async function exportDatabaseToZip(): Promise<string | null> {
   try {
@@ -40,6 +87,50 @@ export async function exportDatabaseToZip(): Promise<string | null> {
 
     // Create ZIP file
     const zip = new JSZip();
+
+    // Add transaction images to ZIP and build mapping
+    const imagePaths = collectImagePaths(tables);
+    const imageDataMap: Record<string, string> = {}; // Maps original path to new filename
+
+    for (const imagePath of imagePaths) {
+      try {
+        if (Platform.OS === 'web') {
+          // For web: imagePath is a base64 data URI
+          // Convert to binary and store as separate file in ZIP
+          const filename = generateImageFilename(imagePath);
+          const imageBytes = dataUriToBytes(imagePath);
+          zip.file(`images/${filename}`, imageBytes);
+          imageDataMap[imagePath] = filename;
+        } else {
+          // For native: imagePath is a relative file path
+          const imageFile = new File(Paths.document, imagePath);
+          if (imageFile.exists) {
+            const imageBytes = await imageFile.bytes();
+            // Store images with filename in zip
+            const filename = imagePath.split('/').pop() || imagePath;
+            zip.file(`images/${filename}`, imageBytes);
+            imageDataMap[imagePath] = filename;
+          }
+        }
+      } catch (err) {
+        console.warn(`Failed to include image ${imagePath}:`, err);
+      }
+    }
+
+    // Update transaction data with new image filenames before creating JSON
+    if (Object.keys(imageDataMap).length > 0) {
+      const updatedTransactions = { ...backupData.data.transactions } as Record<string, Record<string, unknown>>;
+      for (const [txId, txData] of Object.entries(updatedTransactions)) {
+        const tx = txData as { imagePath?: string | null };
+        if (tx.imagePath && imageDataMap[tx.imagePath]) {
+          // Store just the filename in the backup
+          updatedTransactions[txId] = { ...tx, imagePath: imageDataMap[tx.imagePath] };
+        }
+      }
+      backupData.data.transactions = updatedTransactions as typeof backupData.data.transactions;
+    }
+
+    // Now add the JSON to the ZIP (after updating image paths)
     zip.file('backup.json', JSON.stringify(backupData, null, 2));
 
     // Generate zip blob
@@ -155,7 +246,51 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
     // Validate the backup data
     const validatedData = await validateBackupFile(backupData);
 
-    // Clear existing data and set new data
+    // Extract images from ZIP first
+    const imageFolder = zipContent.folder('images');
+    const imageMap: Record<string, string> = {}; // Maps filename to stored path/data URI
+
+    if (imageFolder) {
+      for (const [relativePath, file] of Object.entries(imageFolder.files)) {
+        if (file.dir) continue;
+        const filename = relativePath.split('/').pop() || relativePath;
+        try {
+          if (Platform.OS === 'web') {
+            // For web: convert image back to base64 data URI
+            const imageBytes = await file.async('uint8array');
+            // Detect image type from filename extension
+            const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+            const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+            const base64 = arrayBufferToBase64(imageBytes);
+            const dataUri = `data:${mimeType};base64,${base64}`;
+            imageMap[filename] = dataUri;
+          } else {
+            // For native: extract to document directory (directory is auto-created)
+            const imageBytes = await file.async('uint8array');
+            const imagePath = `transaction_images/${filename}`;
+            const imageFile = new File(Paths.document, imagePath);
+            await imageFile.write(imageBytes);
+            imageMap[filename] = imagePath;
+          }
+        } catch (err) {
+          console.warn(`Failed to extract image ${filename}:`, err);
+        }
+      }
+    }
+
+    // Update transaction data with correct image paths before storing
+    if (Object.keys(imageMap).length > 0) {
+      const updatedTransactions = { ...validatedData.data.transactions } as Record<string, Record<string, unknown>>;
+      for (const [txId, txData] of Object.entries(updatedTransactions)) {
+        const tx = txData as { imagePath?: string | null };
+        if (tx.imagePath && imageMap[tx.imagePath]) {
+          updatedTransactions[txId] = { ...tx, imagePath: imageMap[tx.imagePath] };
+        }
+      }
+      validatedData.data.transactions = updatedTransactions as typeof validatedData.data.transactions;
+    }
+
+    // Now set the data with correct image paths
     store.setTables(validatedData.data as Parameters<typeof store.setTables>[0]);
 
     // Persist changes
@@ -287,6 +422,7 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
   description TEXT,
   amount REAL NOTNULL,
   date INTEGER NOTNULL,
+  imagePath TEXT,
   FOREIGN KEY (categoryId) REFERENCES categories(id),
   FOREIGN KEY (accountId) REFERENCES accounts(id)
 )`);
@@ -344,6 +480,7 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
       description: string | null;
       amount: number;
       date: number;
+      imagePath: string | null;
     }>).forEach(([id, data]) => {
       const type = escapeSqlString(data.type);
       const categoryId = data.categoryId ? `'${escapeSqlString(data.categoryId)}'` : 'NULL';
@@ -355,7 +492,8 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
       const toAccountName = data.toAccountName ? `'${escapeSqlString(data.toAccountName)}'` : 'NULL';
       const note = data.note ? `'${escapeSqlString(data.note)}'` : 'NULL';
       const description = data.description ? `'${escapeSqlString(data.description)}'` : 'NULL';
-      statements.push(`INSERT INTO transactions (id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date) VALUES ('${id}', '${type}', ${categoryId}, ${subcategoryId}, ${subcategoryName}, '${accountId}', '${accountName}', ${toAccountId}, ${toAccountName}, ${note}, ${description}, ${data.amount}, ${data.date})`);
+      const imagePath = data.imagePath ? `'${escapeSqlString(data.imagePath)}'` : 'NULL';
+      statements.push(`INSERT INTO transactions (id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date, imagePath) VALUES ('${id}', '${type}', ${categoryId}, ${subcategoryId}, ${subcategoryName}, '${accountId}', '${accountName}', ${toAccountId}, ${toAccountName}, ${note}, ${description}, ${data.amount}, ${data.date}, ${imagePath})`);
     });
     statements.push('');
   }
@@ -368,6 +506,17 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
  */
 function escapeSqlString(str: string): string {
   return str.replace(/'/g, "''");
+}
+
+/**
+ * Convert Uint8Array to base64 string
+ */
+function arrayBufferToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 /**
@@ -499,7 +648,7 @@ function parseSqlStatements(sqlContent: string): Tables {
         const parsed = parseInsertValues(statement, [
           'id', 'type', 'categoryId', 'subcategoryId', 'subcategoryName',
           'accountId', 'accountName', 'toAccountId', 'toAccountName',
-          'note', 'description', 'amount', 'date'
+          'note', 'description', 'amount', 'date', 'imagePath'
         ]);
         if (parsed.id) {
           data.transactions[parsed.id] = {
@@ -515,6 +664,7 @@ function parseSqlStatements(sqlContent: string): Tables {
             description: parsed.description || null,
             amount: parseFloat(parsed.amount) || 0,
             date: parseInt(parsed.date) || Date.now(),
+            imagePath: parsed.imagePath || null,
           };
         }
       }

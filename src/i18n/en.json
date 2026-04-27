@@ -46,7 +46,15 @@
     "deleteConfirm": "Are you sure you want to delete this transaction?",
     "error": "Error",
     "invalidAmount": "Please enter a valid amount",
-    "categoryRequired": "Please select a category"
+    "categoryRequired": "Please select a category",
+    "image": "Image (Optional)",
+    "addImage": "Add Image",
+    "takePhoto": "Take Photo",
+    "chooseFromLibrary": "Choose from Library",
+    "permissionRequired": "Permission Required",
+    "imagePermissionRequired": "Please grant photo library access to attach images",
+    "cameraPermissionRequired": "Please grant camera access to take photos",
+    "useCamera": "Use camera? (Cancel to choose from library)"
   },
   "accounts": {
     "title": "Accounts",
