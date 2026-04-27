@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+
 import {
     View,
     Text,
@@ -53,17 +54,20 @@ export default function DateTimePicker({
     const [showPicker, setShowPicker] = useState(false);
     const [tempDate, setTempDate] = useState(new Date(value));
 
+    // Keep onChange stable so the Android native dialog isn't dismissed on parent re-renders
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+
     // Web implementation using native HTML inputs
     if (Platform.OS === 'web') {
         const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const newDate = new Date(e.target.value);
             if (!isNaN(newDate.getTime())) {
-                // Preserve the time from the current value
                 const updated = new Date(value);
                 updated.setFullYear(newDate.getFullYear());
                 updated.setMonth(newDate.getMonth());
                 updated.setDate(newDate.getDate());
-                onChange(updated);
+                onChangeRef.current(updated);
             }
         };
 
@@ -73,7 +77,7 @@ export default function DateTimePicker({
                 const updated = new Date(value);
                 updated.setHours(hours);
                 updated.setMinutes(minutes);
-                onChange(updated);
+                onChangeRef.current(updated);
             }
         };
 
@@ -91,13 +95,13 @@ export default function DateTimePicker({
         };
 
         const webInputStyle: React.CSSProperties = {
-          fontSize: 16,
-          padding: 12,
-          borderWidth: 1,
-          borderColor: "#E5E7EB",
-          borderRadius: 12,
-          backgroundColor: "#FFFFFF",
-          color: "#212226",
+            fontSize: 16,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: "#E5E7EB",
+            borderRadius: 12,
+            backgroundColor: "#FFFFFF",
+            color: "#212226",
         };
 
         const webDateInputStyle: React.CSSProperties = {
@@ -178,7 +182,7 @@ export default function DateTimePicker({
                                     <Text style={styles.cancelButton}>Cancel</Text>
                                 </Pressable>
                                 <Pressable onPress={() => {
-                                    onChange(tempDate);
+                                    onChangeRef.current(tempDate);
                                     setShowPicker(false);
                                 }}>
                                     <Text style={styles.doneButton}>Done</Text>
@@ -199,25 +203,66 @@ export default function DateTimePicker({
         );
     }
 
-    // Android implementation - native picker
+    // Android implementation - native picker dialog
+    // Android does not support mode="datetime", so we use two sequential pickers.
+    // The onChange callback MUST be stable (via ref) so parent re-renders don't
+    // dismiss the dialog. The library's Android component re-opens the native
+    // dialog whenever onChange changes (it's in a useEffect dep array).
+    const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time' | null>(null);
+    const [androidDate, setAndroidDate] = useState<Date>(new Date(value));
+
+    // Stable callback that never changes - calls the latest ref implementation
+    const stableOnChange = useCallback((event: any, selectedDate?: Date) => {
+        if (!selectedDate) {
+            setAndroidPickerMode(null);
+            return;
+        }
+
+        if (mode === 'datetime' && androidPickerMode === 'date') {
+            // Date selected, preserve time and open time picker
+            const updated = new Date(selectedDate);
+            updated.setHours(value.getHours());
+            updated.setMinutes(value.getMinutes());
+            setAndroidDate(updated);
+            setAndroidPickerMode('time');
+        } else {
+            // Time selected (or single-mode picker)
+            setAndroidPickerMode(null);
+            if (mode === 'datetime') {
+                const final = new Date(androidDate);
+                final.setHours(selectedDate.getHours());
+                final.setMinutes(selectedDate.getMinutes());
+                onChangeRef.current(final);
+            } else {
+                onChangeRef.current(selectedDate);
+            }
+        }
+    }, [mode, androidPickerMode, value, androidDate]);
+
+    const openAndroidPicker = useCallback(() => {
+        setAndroidDate(new Date(value));
+        if (mode === 'datetime') {
+            setAndroidPickerMode('date');
+        } else {
+            setAndroidPickerMode(mode);
+        }
+    }, [mode, value]);
+
     return (
         <>
-            <Pressable style={styles.trigger} onPress={() => setShowPicker(true)}>
+            <Pressable style={styles.trigger} onPress={openAndroidPicker}>
                 <Text style={styles.triggerText}>
                     {mode === 'date' && formatDateShort(value)}
                     {mode === 'time' && formatTimeShort(value)}
                     {mode === 'datetime' && formatDateTime(value)}
                 </Text>
             </Pressable>
-            {showPicker && (
+            {androidPickerMode && (
                 <DateTimePickerNative
-                    value={value}
-                    mode={mode}
+                    value={androidDate}
+                    mode={androidPickerMode}
                     display={display}
-                    onChange={(event, selectedDate) => {
-                        setShowPicker(false);
-                        if (selectedDate) onChange(selectedDate);
-                    }}
+                    onChange={stableOnChange}
                 />
             )}
         </>
