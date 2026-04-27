@@ -14,7 +14,8 @@ import {
   HeartPulse,
   Laptop,
   ArrowRightLeft,
-} from 'lucide-react-native';
+  Image as ImageIcon,
+} from "lucide-react-native";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './ThemeProvider';
 
@@ -50,7 +51,7 @@ export const renderIcon = (
 
 export type TransactionWithDetails = {
   id: string;
-  type: 'income' | 'expense' | 'transfer';
+  type: "income" | "expense" | "transfer";
   categoryId: string | null;
   subcategoryId?: string | null;
   subcategoryName?: string | null;
@@ -63,6 +64,7 @@ export type TransactionWithDetails = {
   category?: { name: string; icon: string; type: "income" | "expense" } | null;
   account: { name: string; description: string | null };
   toAccount?: { name: string; description: string | null } | null;
+  imagePath?: string | null;
 };
 
 export type GroupedTransactions = {
@@ -148,14 +150,21 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
             {transaction.note}
           </Text>
         )}
-        <Text
-          className={`text-sm ${transaction.note ? "mt-0.5" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}
-        >
-          {transaction.account.name}
-          {isTransfer &&
-            transaction.toAccount &&
-            ` → ${transaction.toAccount.name}`}
-        </Text>
+        <View className="flex-row items-center">
+          <Text
+            className={`text-sm ${transaction.note ? "mt-0.5" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}
+          >
+            {transaction.account.name}
+            {isTransfer &&
+              transaction.toAccount &&
+              ` → ${transaction.toAccount.name}`}
+          </Text>
+          {transaction.imagePath && (
+            <View className="ml-1">
+              <ImageIcon size={14} color={isDark ? "#6B7280" : "#9CA3AF"} />
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Column 3 - Amount */}

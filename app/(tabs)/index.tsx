@@ -106,6 +106,7 @@ export default function TransactionsScreen() {
             toAccount: tx.toAccountName
               ? { name: tx.toAccountName, description: null }
               : null,
+            imagePath: tx.imagePath,
           };
         },
       );
