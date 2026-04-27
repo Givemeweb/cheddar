@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 
 const IMAGES_DIR = 'transaction_images';
 
@@ -10,7 +10,7 @@ function getImagesDirectory(): string {
   if (Platform.OS === 'web') {
     return 'transaction_images';
   }
-  return `${Paths.document}/${IMAGES_DIR}`;
+  return `${Paths.document.uri}/${IMAGES_DIR}`;
 }
 
 /**
@@ -18,13 +18,14 @@ function getImagesDirectory(): string {
  */
 async function ensureImagesDirectory(): Promise<void> {
   if (Platform.OS === 'web') {
-    // Web uses IndexedDB/File storage differently, no directory creation needed
     return;
   }
 
   try {
-    const tempFile = new File(Paths.document, `${IMAGES_DIR}/.gitkeep`);
-    tempFile.write(new Uint8Array(0));
+    const imagesDir = new Directory(Paths.document, IMAGES_DIR);
+    if (!imagesDir.exists) {
+      imagesDir.create({ intermediates: true });
+    }
   } catch (error) {
     console.error('Error creating images directory:', error);
   }
@@ -75,6 +76,7 @@ export async function saveImage(uri: string): Promise<string | null> {
 
     // Write to destination
     const destFile = new File(Paths.document, relativePath);
+    destFile.create({ intermediates: true });
     await destFile.write(bytes);
 
     return relativePath;
@@ -120,7 +122,7 @@ export function getImageUri(imagePath: string | null): string | null {
   }
 
   // For native, construct the file:// path
-  return `file://${Paths.document}/${imagePath}`;
+  return `file://${Paths.document.uri}/${imagePath}`;
 }
 
 /**
@@ -159,6 +161,7 @@ export async function copyImageToStorage(
   }
 
   const destFile = new File(Paths.document, relativePath);
+  destFile.create({ intermediates: true });
   await destFile.write(imageData);
 
   return relativePath;
