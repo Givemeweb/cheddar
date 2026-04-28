@@ -1,6 +1,8 @@
 import { View, Text } from "react-native";
 import { GroupedTransactions, TransactionItem } from "./TransactionItem";
-import { useTheme } from "./ThemeProvider";import { useTranslation } from "react-i18next";
+import { useTheme } from "./ThemeProvider";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../utils/formatNumber";
 
 interface TransactionGroupProps {
   group: GroupedTransactions;
@@ -8,7 +10,7 @@ interface TransactionGroupProps {
 }
 
 function formatCurrencyShort(amount: number, currency: string): string {
-  return `${currency} ${amount.toFixed(2)}`;
+  return `${currency} ${formatNumber(amount)}`;
 }
 
 function getDayBadgeStyle(dayOfWeek: number, isDark: boolean) {

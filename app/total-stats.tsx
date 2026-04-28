@@ -7,6 +7,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
+import { formatNumber } from "../src/utils/formatNumber";
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
 
@@ -210,7 +211,7 @@ export default function TotalStatsScreen() {
             {t("totalStats.balance")}
           </Text>
           <Text className="text-cheddar-dark text-xl font-bold mt-1">
-            {currencySymbol} {selectedMonthBalance.toFixed(2)}
+            {currencySymbol} {formatNumber(selectedMonthBalance)}
           </Text>
         </View>
       </View>

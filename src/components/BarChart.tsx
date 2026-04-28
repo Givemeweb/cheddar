@@ -16,22 +16,22 @@ type BarChartProps = {
 
 function formatCurrency(value: number, symbol: string): string {
   if (Math.abs(value) >= 1000000) {
-    return `${symbol}${(value / 1000000).toFixed(1)}M`;
+    return `${symbol}${(value / 1000000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
   }
   if (Math.abs(value) >= 1000) {
-    return `${symbol}${(value / 1000).toFixed(1)}K`;
+    return `${symbol}${(value / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K`;
   }
-  return `${symbol}${value.toFixed(0)}`;
+  return `${symbol}${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
 function formatShort(value: number): string {
   if (Math.abs(value) >= 1000000) {
-    return `${(value / 1000000).toFixed(1)}M`;
+    return `${(value / 1000000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
   }
   if (Math.abs(value) >= 1000) {
-    return `${(value / 1000).toFixed(1)}K`;
+    return `${(value / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K`;
   }
-  return value.toFixed(0);
+  return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
 export default function BarChart({ data, width = 400, height = 300, currencySymbol = '$' }: BarChartProps) {

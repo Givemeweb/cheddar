@@ -23,6 +23,8 @@ import {
 import { FAB } from "../../src/components/FAB";
 import { useTheme } from "../../src/components/ThemeProvider";
 
+import { formatNumber } from "../../src/utils/formatNumber";
+
 export default function TransactionsScreen() {
   const [groupedTransactions, setGroupedTransactions] = useState<
     GroupedTransactions[]
@@ -235,7 +237,7 @@ export default function TransactionsScreen() {
       >
         <View className="flex-1 items-center">
           <Text className="text-cheddar-income font-semibold text-lg">
-            {currencySymbol} {totalIncome.toFixed(2)}
+            {currencySymbol} {formatNumber(totalIncome)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
@@ -245,7 +247,7 @@ export default function TransactionsScreen() {
         </View>
         <View className="flex-1 items-center">
           <Text className="text-cheddar-expense font-semibold text-lg">
-            {currencySymbol} {totalExpense.toFixed(2)}
+            {currencySymbol} {formatNumber(totalExpense)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}
@@ -257,7 +259,7 @@ export default function TransactionsScreen() {
           <Text
             className={`font-semibold text-lg ${total >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
           >
-            {currencySymbol} {total.toFixed(2)}
+            {currencySymbol} {formatNumber(total)}
           </Text>
           <Text
             className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm`}

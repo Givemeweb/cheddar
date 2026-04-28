@@ -18,6 +18,7 @@ import {
 } from "lucide-react-native";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './ThemeProvider';
+import { formatNumber } from '../utils/formatNumber';
 
 // Map icon names to Lucide components
 const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -83,7 +84,7 @@ interface TransactionItemProps {
 
 export function formatCurrency(amount: number, currency: string = '€'): string {
   const absAmount = Math.abs(amount);
-  const formatted = `${currency} ${absAmount.toFixed(2)}`;
+  const formatted = `${currency} ${formatNumber(absAmount)}`;
   return formatted;
 }
 

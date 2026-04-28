@@ -7,6 +7,7 @@ import PieChart from "../../src/components/PieChart";
 import { getCategories, getTransactions } from "../../src/db/storage";
 import { renderIcon } from "../../src/components/TransactionItem";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { formatNumber } from "../../src/utils/formatNumber";
 
 type CategoryStat = {
   id: string;
@@ -234,7 +235,7 @@ export default function StatsScreen() {
                 <Text
                   className={`text-center text-2xl font-bold mt-2 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
                 >
-                  {currencySymbol} {total.toFixed(2)}
+                  {currencySymbol} {formatNumber(total)}
                 </Text>
               </View>
 
@@ -254,7 +255,7 @@ export default function StatsScreen() {
                       style={{ backgroundColor: stat.color }}
                     >
                       <Text className="text-xs font-medium text-cheddar-dark">
-                        {((stat.total / total) * 100).toFixed(0)}%
+                        {formatNumber((stat.total / total) * 100, 0)}%
                       </Text>
                     </View>
                     <View className="mr-2">
@@ -275,7 +276,7 @@ export default function StatsScreen() {
                     <Text
                       className={`font-medium ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
                     >
-                      {currencySymbol} {stat.total.toFixed(2)}
+                      {currencySymbol} {formatNumber(stat.total)}
                     </Text>
                   </View>
                 ))}

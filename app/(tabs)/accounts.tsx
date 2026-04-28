@@ -24,6 +24,7 @@ import {
 } from "lucide-react-native";
 import { getAccounts, Account } from "../../src/db/storage";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { formatNumber } from "../../src/utils/formatNumber";
 
 const iconMap: Record<string, LucideIcon> = {
   'wallet': Wallet,
@@ -162,7 +163,7 @@ export default function AccountsScreen() {
             {t("accounts.totalAssets")}
           </Text>
           <Text className="text-cheddar-dark text-3xl font-bold mt-1">
-            {currencySymbol} {totalAssets.toFixed(2)}
+            {currencySymbol} {formatNumber(totalAssets)}
           </Text>
         </View>
       </View>
@@ -210,7 +211,7 @@ export default function AccountsScreen() {
               <Text
                 className={`text-lg font-semibold ${item.balance >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
               >
-                {currencySymbol} {item.balance.toFixed(2)}
+                {currencySymbol} {formatNumber(item.balance)}
               </Text>
             </Pressable>
           );
