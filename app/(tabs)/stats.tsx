@@ -266,18 +266,20 @@ export default function StatsScreen() {
                       : "bg-white border-gray-200"
                 }`}
               >
-                <View className="mr-1.5">
-                  {renderAccountIcon(
-                    account.icon,
-                    14,
-                    isAccountSelected(account.id)
-                      ? "#212226"
-                      : isDark
-                        ? "#9CA3AF"
-                        : "#6B7280",
-                    showIcons
-                  )}
-                </View>
+                {showIcons && (
+                  <View className="mr-1.5">
+                    {renderAccountIcon(
+                      account.icon,
+                      14,
+                      isAccountSelected(account.id)
+                        ? "#212226"
+                        : isDark
+                          ? "#9CA3AF"
+                          : "#6B7280",
+                      true
+                    )}
+                  </View>
+                )}
                 <Text
                   className={`text-sm font-medium ${
                     isAccountSelected(account.id)
