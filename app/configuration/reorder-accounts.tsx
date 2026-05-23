@@ -14,29 +14,10 @@ import {
   reorderAccounts,
   Account,
 } from '@/src/db/storage';
-import {
-  GripVertical,
-  Wallet,
-  PiggyBank,
-  CreditCard,
-  Landmark,
-  Building2,
-  CircleDollarSign,
-  Banknote,
-  LucideIcon,
-} from 'lucide-react-native';
+import { GripVertical } from 'lucide-react-native';
+import { renderAccountIcon } from '@/src/components/accountIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
-
-const iconMap: Record<string, LucideIcon> = {
-  'wallet': Wallet,
-  'piggy-bank': PiggyBank,
-  'credit-card': CreditCard,
-  'landmark': Landmark,
-  'building-2': Building2,
-  'circle-dollar-sign': CircleDollarSign,
-  'banknote': Banknote,
-};
 
 export default function ReorderAccountsScreen() {
   const router = useRouter();
@@ -91,12 +72,7 @@ export default function ReorderAccountsScreen() {
         <View
           className={`w-10 h-10 rounded-full items-center justify-center mx-3 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
         >
-          {(() => {
-            const IconComponent = iconMap[item.icon || 'wallet'];
-            return IconComponent ? (
-              <IconComponent size={20} color={isDark ? "#F9FAFB" : "#212226"} />
-            ) : null;
-          })()}
+          {renderAccountIcon(item.icon || 'wallet', 20, isDark ? "#F9FAFB" : "#212226", showIcons)}
         </View>
       )}
       <View className="flex-1">

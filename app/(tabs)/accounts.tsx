@@ -11,30 +11,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import {
-  Wallet,
-  PiggyBank,
-  CreditCard,
-  Landmark,
-  Building2,
-  CircleDollarSign,
-  Banknote,
-  LucideIcon,
-  BarChart3,
-} from "lucide-react-native";
+import { BarChart3 } from "lucide-react-native";
 import { getAccounts, Account } from "../../src/db/storage";
+import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
-
-const iconMap: Record<string, LucideIcon> = {
-  'wallet': Wallet,
-  'piggy-bank': PiggyBank,
-  'credit-card': CreditCard,
-  'landmark': Landmark,
-  'building-2': Building2,
-  'circle-dollar-sign': CircleDollarSign,
-  'banknote': Banknote,
-};
 
 export default function AccountsScreen() {
   const router = useRouter();
@@ -174,9 +155,6 @@ export default function AccountsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerClassName="px-4"
         renderItem={({ item }) => {
-          const IconComponent = showIcons
-            ? iconMap[item.icon || "wallet"]
-            : null;
           return (
             <Pressable
               onPress={() =>
@@ -184,14 +162,11 @@ export default function AccountsScreen() {
               }
               className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
             >
-              {IconComponent && (
+              {showIcons && (
                 <View
                   className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
                 >
-                  <IconComponent
-                    size={24}
-                    color={isDark ? "#F9FAFB" : "#212226"}
-                  />
+                  {renderAccountIcon(item.icon || "wallet", 24, isDark ? "#F9FAFB" : "#212226", showIcons)}
                 </View>
               )}
               <View className="flex-1">

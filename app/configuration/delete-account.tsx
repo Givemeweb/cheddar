@@ -11,29 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  Wallet,
-  PiggyBank,
-  CreditCard,
-  Landmark,
-  Building2,
-  CircleDollarSign,
-  Banknote,
-  LucideIcon,
-} from 'lucide-react-native';
 import { getAccounts, deleteAccount, Account } from '@/src/db/storage';
+import { renderAccountIcon } from '@/src/components/accountIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
-
-const iconMap: Record<string, LucideIcon> = {
-  'wallet': Wallet,
-  'piggy-bank': PiggyBank,
-  'credit-card': CreditCard,
-  'landmark': Landmark,
-  'building-2': Building2,
-  'circle-dollar-sign': CircleDollarSign,
-  'banknote': Banknote,
-};
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -141,12 +122,7 @@ export default function DeleteAccountScreen() {
                 <View className="flex-row items-center flex-1">
                   {showIcons && (
                     <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isDark ? 'bg-gray-700' : 'bg-cheddar-light'}`}>
-                      {(() => {
-                        const IconComponent = iconMap[account.icon || 'wallet'];
-                        return IconComponent ? (
-                          <IconComponent size={20} color={isDark ? "#F9FAFB" : "#212226"} />
-                        ) : null;
-                      })()}
+                      {renderAccountIcon(account.icon || 'wallet', 20, isDark ? "#F9FAFB" : "#212226", showIcons)}
                     </View>
                   )}
                   <View>

@@ -18,6 +18,7 @@ import {
   getAccounts,
 } from "../../src/db/storage";
 import { renderIcon } from "../../src/components/TransactionItem";
+import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
 
@@ -266,7 +267,7 @@ export default function StatsScreen() {
                 }`}
               >
                 <View className="mr-1.5">
-                  {renderIcon(
+                  {renderAccountIcon(
                     account.icon,
                     14,
                     isAccountSelected(account.id)
