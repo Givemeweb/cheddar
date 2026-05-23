@@ -9,22 +9,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import {
-  TrendingUp,
-  Gift,
-  Briefcase,
-  Wallet,
-  PiggyBank,
-  Utensils,
-  Car,
-  ShoppingCart,
-  Film,
-  Receipt,
-  HeartPulse,
-  Laptop,
-  LucideIcon,
-} from 'lucide-react-native';
+import { LucideIcon } from 'lucide-react-native';
 import { addCategory } from '@/src/db/storage';
+import { categoryIconOptions } from '@/src/components/categoryIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 
@@ -32,22 +19,6 @@ type IconOption = {
   name: string;
   icon: LucideIcon;
 };
-
-// All available icons for categories
-const iconOptions: IconOption[] = [
-  { name: 'trending-up', icon: TrendingUp },
-  { name: 'gift', icon: Gift },
-  { name: 'briefcase', icon: Briefcase },
-  { name: 'wallet', icon: Wallet },
-  { name: 'piggy-bank', icon: PiggyBank },
-  { name: 'utensils', icon: Utensils },
-  { name: 'car', icon: Car },
-  { name: 'shopping-cart', icon: ShoppingCart },
-  { name: 'film', icon: Film },
-  { name: 'receipt', icon: Receipt },
-  { name: 'heart-pulse', icon: HeartPulse },
-  { name: 'laptop', icon: Laptop },
-];
 
 export default function AddExpenseCategoryScreen() {
   const router = useRouter();
@@ -141,7 +112,7 @@ export default function AddExpenseCategoryScreen() {
               {t('categories.icon')}
             </Text>
             <View className="flex-row flex-wrap">
-              {iconOptions.map(renderIconOption)}
+              {categoryIconOptions.map(renderIconOption)}
             </View>
           </View>
         )}

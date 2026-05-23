@@ -21,19 +21,8 @@ import { getCategories, getAccounts, getTransactions, addTransaction, updateTran
 import { getSubcategoriesEnabled, getSubcategories, type Subcategory } from '@/src/db';
 import { saveImage, deleteImage, getImageUri } from '@/src/utils/imageStorage';
 import DateTimePicker from '@/src/components/DateTimePicker';
+import { categoryIconMap } from '@/src/components/categoryIcons';
 import {
-    TrendingUp,
-    Gift,
-    Briefcase,
-    Wallet,
-    PiggyBank,
-    Utensils,
-    Car,
-    ShoppingCart,
-    Film,
-    Receipt,
-    HeartPulse,
-    Laptop,
     StopCircle,
     Pencil,
     Trash2,
@@ -48,22 +37,6 @@ import { useTheme } from '@/src/components/ThemeProvider';
 type TransactionType = 'income' | 'expense' | 'transfer';
 type SelectionMode = 'none' | 'account' | 'category' | 'subcategory' | 'fromAccount' | 'toAccount';
 
-// Map icon names to Lucide components
-const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
-    'trending-up': TrendingUp,
-    'gift': Gift,
-    'briefcase': Briefcase,
-    'wallet': Wallet,
-    'piggy-bank': PiggyBank,
-    'utensils': Utensils,
-    'car': Car,
-    'shopping-cart': ShoppingCart,
-    'film': Film,
-    'receipt': Receipt,
-    'heart-pulse': HeartPulse,
-    'laptop': Laptop,
-};
-
 const renderIcon = (
   iconName: string,
   size: number = 16,
@@ -71,7 +44,7 @@ const renderIcon = (
   showIcons: boolean = true,
 ) => {
   if (!showIcons) return null;
-  const IconComponent = iconMap[iconName];
+  const IconComponent = categoryIconMap[iconName];
   if (IconComponent) {
     return <IconComponent size={size} color={color} />;
   }

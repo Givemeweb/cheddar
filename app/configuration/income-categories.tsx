@@ -16,20 +16,9 @@ import {
   Plus,
   Trash2,
   Circle,
-  TrendingUp,
-  Gift,
-  Briefcase,
-  Wallet,
-  PiggyBank,
-  Utensils,
-  Car,
-  ShoppingCart,
-  Film,
-  Receipt,
-  HeartPulse,
-  Laptop,
   ChevronRight,
 } from 'lucide-react-native';
+import { categoryIconMap } from '@/src/components/categoryIcons';
 import {
   getCategoriesByType,
   deleteCategory,
@@ -38,22 +27,6 @@ import {
 import { useTheme } from '@/src/components/ThemeProvider';
 import { ToggleSwitch } from '@/src/components/ToggleSwitch';
 import { useTranslation } from 'react-i18next';
-
-// Map icon names to Lucide components
-const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
-  'trending-up': TrendingUp,
-  'gift': Gift,
-  'briefcase': Briefcase,
-  'wallet': Wallet,
-  'piggy-bank': PiggyBank,
-  'utensils': Utensils,
-  'car': Car,
-  'shopping-cart': ShoppingCart,
-  'film': Film,
-  'receipt': Receipt,
-  'heart-pulse': HeartPulse,
-  'laptop': Laptop,
-};
 
 export default function IncomeCategoriesScreen() {
   const router = useRouter();
@@ -108,7 +81,7 @@ export default function IncomeCategoriesScreen() {
 
   const renderIcon = (iconName: string, color: string = "#10B981") => {
     if (!showIcons) return null;
-    const IconComponent = iconMap[iconName];
+    const IconComponent = categoryIconMap[iconName];
     if (IconComponent) {
       return <IconComponent size={22} color={color} />;
     }

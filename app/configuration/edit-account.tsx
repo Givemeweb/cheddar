@@ -10,17 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  Wallet,
-  PiggyBank,
-  CreditCard,
-  Landmark,
-  Building2,
-  CircleDollarSign,
-  Banknote,
-  LucideIcon,
-} from 'lucide-react-native';
+import { LucideIcon } from 'lucide-react-native';
 import { getAccountById, updateAccount } from '@/src/db/storage';
+import { accountIconOptions } from '@/src/components/accountIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 
@@ -28,17 +20,6 @@ type IconOption = {
   name: string;
   icon: LucideIcon;
 };
-
-// All available icons for accounts
-const iconOptions: IconOption[] = [
-  { name: 'wallet', icon: Wallet },
-  { name: 'piggy-bank', icon: PiggyBank },
-  { name: 'credit-card', icon: CreditCard },
-  { name: 'landmark', icon: Landmark },
-  { name: 'building-2', icon: Building2 },
-  { name: 'circle-dollar-sign', icon: CircleDollarSign },
-  { name: 'banknote', icon: Banknote },
-];
 
 export default function EditAccountScreen() {
   const router = useRouter();
@@ -157,7 +138,7 @@ export default function EditAccountScreen() {
               {t('accounts.icon')}
             </Text>
             <View className="flex-row flex-wrap">
-              {iconOptions.map(renderIconOption)}
+              {accountIconOptions.map(renderIconOption)}
             </View>
           </View>
         )}

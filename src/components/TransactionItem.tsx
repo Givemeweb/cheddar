@@ -1,54 +1,15 @@
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from 'expo-router';
 import {
-  TrendingUp,
-  Gift,
-  Briefcase,
-  Wallet,
-  PiggyBank,
-  Utensils,
-  Car,
-  ShoppingCart,
-  Film,
-  Receipt,
-  HeartPulse,
-  Laptop,
   ArrowRightLeft,
   Image as ImageIcon,
 } from "lucide-react-native";
+import { renderCategoryIcon } from './categoryIcons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './ThemeProvider';
 import { formatNumber } from '../utils/formatNumber';
 
-// Map icon names to Lucide components
-const iconMap: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
-  'trending-up': TrendingUp,
-  'gift': Gift,
-  'briefcase': Briefcase,
-  'wallet': Wallet,
-  'piggy-bank': PiggyBank,
-  'utensils': Utensils,
-  'car': Car,
-  'shopping-cart': ShoppingCart,
-  'film': Film,
-  'receipt': Receipt,
-  'heart-pulse': HeartPulse,
-  'laptop': Laptop,
-};
-
-export const renderIcon = (
-  iconName: string,
-  size: number = 18,
-  color: string = "#212226",
-  showIcons: boolean = true,
-) => {
-  if (!showIcons) return null;
-  const IconComponent = iconMap[iconName];
-  if (IconComponent) {
-    return <IconComponent size={size} color={color} />;
-  }
-  return null;
-};
+export const renderIcon = renderCategoryIcon;
 
 export type TransactionWithDetails = {
   id: string;
