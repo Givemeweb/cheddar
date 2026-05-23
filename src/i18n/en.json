@@ -4,7 +4,8 @@
     "save": "Save",
     "delete": "Delete",
     "back": "Back",
-    "add": "Add"
+    "add": "Add",
+    "all": "All"
   },
   "tabs": {
     "index": "Transactions",

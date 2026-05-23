@@ -1,10 +1,22 @@
-import { useEffect, useState } from "react";
-import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from "react-native";
+import { useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  useWindowDimensions,
+  ScrollView,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { useFocusEffect } from "@react-navigation/native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import PieChart from "../../src/components/PieChart";
-import { getCategories, getTransactions } from "../../src/db/storage";
+import {
+  getCategories,
+  getTransactions,
+  getAccounts,
+} from "../../src/db/storage";
 import { renderIcon } from "../../src/components/TransactionItem";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
@@ -15,6 +27,12 @@ type CategoryStat = {
   icon: string;
   total: number;
   color: string;
+};
+
+type Account = {
+  id: string;
+  name: string;
+  icon: string;
 };
 
 const COLORS = [
@@ -35,8 +53,15 @@ export default function StatsScreen() {
   const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [chartSize, setChartSize] = useState<{ width: number; height: number } | null>(null);
+  const [chartSize, setChartSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+    null
+  );
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol } = useTheme();
@@ -63,84 +88,111 @@ export default function StatsScreen() {
     });
   };
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const allCategories = await getCategories();
-        const allTransactions = await getTransactions();
+  useFocusEffect(
+    useCallback(() => {
+      async function fetchStats() {
+        try {
+          const allCategories = await getCategories();
+          const allTransactions = await getTransactions();
+          const allAccounts = await getAccounts();
 
-        const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
+          setAccounts(
+            allAccounts.map((acc) => ({
+              id: acc.id,
+              name: acc.name,
+              icon: acc.icon,
+            }))
+          );
 
-        // Filter by selected month
-        const startOfMonth = new Date(
-          currentDate.getFullYear(),
-          currentDate.getMonth(),
-          1,
-        );
-        const endOfMonth = new Date(
-          currentDate.getFullYear(),
-          currentDate.getMonth() + 1,
-          0,
-          23,
-          59,
-          59,
-          999,
-        );
+          const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
 
-        const monthTransactions = allTransactions.filter((tx) => {
-          const txDate = new Date(tx.date);
-          return txDate >= startOfMonth && txDate <= endOfMonth;
-        });
+          // Filter by selected month
+          const startOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            1
+          );
+          const endOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999
+          );
 
-        // Filter by income or expense (exclude transfers which have no category)
-        const filteredTransactions = monthTransactions.filter((tx) => {
-          if (!tx.categoryId) return false;
-          const cat = categoryMap.get(tx.categoryId);
-          return cat?.type === activeTab;
-        });
+          let monthTransactions = allTransactions.filter((tx) => {
+            const txDate = new Date(tx.date);
+            return txDate >= startOfMonth && txDate <= endOfMonth;
+          });
 
-        // Calculate totals per category
-        const categoryTotals = new Map<string, number>();
-        filteredTransactions.forEach((tx) => {
-          if (!tx.categoryId) return;
-          const current = categoryTotals.get(tx.categoryId) || 0;
-          categoryTotals.set(tx.categoryId, current + Math.abs(tx.amount));
-        });
-
-        // Build stats with colors
-        const stats: CategoryStat[] = [];
-        let totalAmount = 0;
-        let colorIndex = 0;
-
-        categoryTotals.forEach((amount, categoryId) => {
-          const cat = categoryMap.get(categoryId);
-          if (cat && amount > 0) {
-            stats.push({
-              id: categoryId,
-              name: cat.name,
-              icon: cat.icon,
-              total: amount,
-              color: COLORS[colorIndex % COLORS.length],
+          // Filter by selected account if not "all"
+          if (selectedAccountId) {
+            monthTransactions = monthTransactions.filter((tx) => {
+              if (tx.type === "transfer") {
+                return (
+                  tx.accountId === selectedAccountId ||
+                  tx.toAccountId === selectedAccountId
+                );
+              }
+              return tx.accountId === selectedAccountId;
             });
-            totalAmount += amount;
-            colorIndex++;
           }
-        });
 
-        // Sort by total descending
-        stats.sort((a, b) => b.total - a.total);
-        setCategoryStats(stats);
-        setTotal(totalAmount);
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-      } finally {
-        setLoading(false);
+          // Filter by income or expense (exclude transfers which have no category)
+          const filteredTransactions = monthTransactions.filter((tx) => {
+            if (!tx.categoryId) return false;
+            const cat = categoryMap.get(tx.categoryId);
+            return cat?.type === activeTab;
+          });
+
+          // Calculate totals per category
+          const categoryTotals = new Map<string, number>();
+          filteredTransactions.forEach((tx) => {
+            if (!tx.categoryId) return;
+            const current = categoryTotals.get(tx.categoryId) || 0;
+            categoryTotals.set(tx.categoryId, current + Math.abs(tx.amount));
+          });
+
+          // Build stats with colors
+          const stats: CategoryStat[] = [];
+          let totalAmount = 0;
+          let colorIndex = 0;
+
+          categoryTotals.forEach((amount, categoryId) => {
+            const cat = categoryMap.get(categoryId);
+            if (cat && amount > 0) {
+              stats.push({
+                id: categoryId,
+                name: cat.name,
+                icon: cat.icon,
+                total: amount,
+                color: COLORS[colorIndex % COLORS.length],
+              });
+              totalAmount += amount;
+              colorIndex++;
+            }
+          });
+
+          // Sort by total descending
+          stats.sort((a, b) => b.total - a.total);
+          setCategoryStats(stats);
+          setTotal(totalAmount);
+        } catch (error) {
+          console.error("Error fetching stats:", error);
+        } finally {
+          setLoading(false);
+        }
       }
-    }
 
-    setLoading(true);
-    fetchStats();
-  }, [activeTab, currentDate]);
+      setLoading(true);
+      fetchStats();
+    }, [activeTab, currentDate, selectedAccountId])
+  );
+
+  const isAccountSelected = (accountId: string | null) =>
+    selectedAccountId === accountId;
 
   return (
     <SafeAreaView
@@ -170,6 +222,77 @@ export default function StatsScreen() {
             <ChevronRight size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
           </Pressable>
         </View>
+
+        {/* Account Filter */}
+        {accounts.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mb-3"
+            contentContainerStyle={{ paddingRight: 16 }}
+          >
+            <Pressable
+              onPress={() => setSelectedAccountId(null)}
+              className={`flex-row items-center mr-2 px-3 py-2 rounded-full border ${
+                isAccountSelected(null)
+                  ? "bg-cheddar-yellow border-cheddar-yellow"
+                  : isDark
+                    ? "bg-[#26282D] border-gray-600"
+                    : "bg-white border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-sm font-medium ${
+                  isAccountSelected(null)
+                    ? "text-cheddar-dark"
+                    : isDark
+                      ? "text-gray-300"
+                      : "text-cheddar-gray"
+                }`}
+              >
+                {t("common.all")}
+              </Text>
+            </Pressable>
+            {accounts.map((account) => (
+              <Pressable
+                key={account.id}
+                onPress={() => setSelectedAccountId(account.id)}
+                className={`flex-row items-center mr-2 px-3 py-2 rounded-full border ${
+                  isAccountSelected(account.id)
+                    ? "bg-cheddar-yellow border-cheddar-yellow"
+                    : isDark
+                      ? "bg-[#26282D] border-gray-600"
+                      : "bg-white border-gray-200"
+                }`}
+              >
+                <View className="mr-1.5">
+                  {renderIcon(
+                    account.icon,
+                    14,
+                    isAccountSelected(account.id)
+                      ? "#212226"
+                      : isDark
+                        ? "#9CA3AF"
+                        : "#6B7280",
+                    showIcons
+                  )}
+                </View>
+                <Text
+                  className={`text-sm font-medium ${
+                    isAccountSelected(account.id)
+                      ? "text-cheddar-dark"
+                      : isDark
+                        ? "text-gray-300"
+                        : "text-cheddar-gray"
+                  }`}
+                  numberOfLines={1}
+                >
+                  {account.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Tab Buttons */}
         <View
@@ -263,7 +386,7 @@ export default function StatsScreen() {
                         stat.icon,
                         18,
                         isDark ? "#F9FAFB" : "#212226",
-                        showIcons,
+                        showIcons
                       )}
                     </View>
                     <View className="flex-1">
