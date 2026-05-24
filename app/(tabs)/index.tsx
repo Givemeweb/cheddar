@@ -10,10 +10,12 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Search, X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   getTransactions,
+  getCategories,
 } from "../../src/db/storage";
 import { TransactionGroup } from "../../src/components/TransactionGroup";
 import {
@@ -32,10 +34,15 @@ export default function TransactionsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [filterCategoryName, setFilterCategoryName] = useState<string | null>(
+    null,
+  );
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol } = useTheme();
   const { t } = useTranslation();
+  const router = useRouter();
+  const { categoryId } = useLocalSearchParams<{ categoryId?: string }>();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
     month: "short",
@@ -78,10 +85,22 @@ export default function TransactionsScreen() {
         999,
       );
 
-      const filteredTransactions = allTransactions.filter((tx) => {
+      let filteredTransactions = allTransactions.filter((tx) => {
         const txDate = new Date(tx.date);
         return txDate >= startOfMonth && txDate <= endOfMonth;
       });
+
+      // Filter by category if provided via deep link
+      if (categoryId) {
+        const allCategories = await getCategories();
+        const category = allCategories.find((c) => c.id === categoryId);
+        setFilterCategoryName(category?.name || null);
+        filteredTransactions = filteredTransactions.filter(
+          (tx) => tx.categoryId === categoryId,
+        );
+      } else {
+        setFilterCategoryName(null);
+      }
 
       const txWithDetails: TransactionWithDetails[] = filteredTransactions.map(
         (tx) => {
@@ -164,7 +183,7 @@ export default function TransactionsScreen() {
     useCallback(() => {
       setLoading(true);
       fetchTransactions();
-    }, [currentDate]),
+    }, [currentDate, categoryId]),
   );
 
   const onRefresh = () => {
@@ -268,6 +287,42 @@ export default function TransactionsScreen() {
           </Text>
         </View>
       </View>
+      {/* Category Filter Chip */}
+      {categoryId && filterCategoryName && (
+        <View className="items-center py-2">
+          <View
+            className={`flex-row items-center px-3 py-1.5 rounded-full ${
+              isDark ? "bg-[#2A2C32]" : "bg-gray-50"
+            }`}
+          >
+            <View
+              className="w-1.5 h-1.5 rounded-full mr-2"
+              style={{ backgroundColor: "#FFB800" }}
+            />
+            <Text
+              className={`text-xs font-medium ${
+                isDark ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
+              {filterCategoryName}
+            </Text>
+            <View
+              className={`mx-2 w-px h-3 ${
+                isDark ? "bg-gray-700" : "bg-gray-200"
+              }`}
+            />
+            <Pressable
+              onPress={() => {
+                router.setParams({ categoryId: undefined });
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={13} color={isDark ? "#9CA3AF" : "#9CA3AF"} />
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       <FlatList
         data={groupedTransactions}
         keyExtractor={(item) => item.date.toISOString().split("T")[0]}

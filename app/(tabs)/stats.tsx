@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import PieChart from "../../src/components/PieChart";
 import {
@@ -67,6 +68,7 @@ export default function StatsScreen() {
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol } = useTheme();
   const { t } = useTranslation();
+  const router = useRouter();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
     month: "short",
@@ -375,7 +377,13 @@ export default function StatsScreen() {
                   {t("stats.categories")}
                 </Text>
                 {categoryStats.map((stat) => (
-                  <View key={stat.id} className="flex-row items-center py-2">
+                  <Pressable
+                    key={stat.id}
+                    className="flex-row items-center py-2"
+                    onPress={() =>
+                      router.push(`/?categoryId=${stat.id}` as never)
+                    }
+                  >
                     <View
                       className="px-2 py-0.5 rounded-full mr-3"
                       style={{ backgroundColor: stat.color }}
@@ -404,7 +412,7 @@ export default function StatsScreen() {
                     >
                       {currencySymbol} {formatNumber(stat.total)}
                     </Text>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
             </>

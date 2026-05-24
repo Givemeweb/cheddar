@@ -20,6 +20,7 @@
     "expenses": "Expenses",
     "total": "Total",
     "noTransactions": "No transactions yet",
+    "filteredBy": "Filtered by: {{category}}",
     "newTransaction": "New Transaction",
     "date": "Date",
     "account": "Account",
