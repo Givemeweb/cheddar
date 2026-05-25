@@ -3,18 +3,19 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle, XCircle, FileJson, Database } from 'lucide-react-native';
+import { CheckCircle, XCircle } from 'lucide-react-native';
 import { useTheme } from '../src/components/ThemeProvider';
-import { exportDatabaseToZip, exportDatabaseToSql } from '../src/utils/backup';
+import { exportDatabaseToZip } from '../src/utils/backup';
 
-type ExportFormat = 'json' | 'sql';
+// Previous format selection state (preserved for future restoration)
+// type ExportFormat = 'json' | 'sql';
 
 export default function BackupExportScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const { t } = useTranslation();
 
-  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('json');
+  // const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('json');
   const [isExporting, setIsExporting] = useState(false);
   const [exportResult, setExportResult] = useState<'success' | 'error' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -25,11 +26,7 @@ export default function BackupExportScreen() {
     setErrorMessage(null);
 
     try {
-      if (selectedFormat === 'json') {
-        await exportDatabaseToZip();
-      } else {
-        await exportDatabaseToSql();
-      }
+      await exportDatabaseToZip();
       setExportResult('success');
     } catch (error) {
       console.error('Export error:', error);
@@ -73,7 +70,8 @@ export default function BackupExportScreen() {
           </Text>
         </View>
 
-        {/* Format Selection */}
+        {/* Format Selection — hidden for unified ZIP+SQL export */}
+        {/*
         <View className="mt-6">
           <Text
             className={`text-lg font-semibold mb-3 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
@@ -81,7 +79,6 @@ export default function BackupExportScreen() {
             {t('backup.selectFormat')}
           </Text>
           <View className="space-y-3">
-            {/* JSON Format Option */}
             <TouchableOpacity
               className={`flex-row items-center p-4 rounded-xl border-2 ${
                 selectedFormat === 'json'
@@ -119,7 +116,6 @@ export default function BackupExportScreen() {
               </View>
             </TouchableOpacity>
 
-            {/* SQL Format Option */}
             <TouchableOpacity
               className={`flex-row items-center p-4 rounded-xl border-2 ${
                 selectedFormat === 'sql'
@@ -158,6 +154,7 @@ export default function BackupExportScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        */}
 
         <View className="mt-6">
           <TouchableOpacity

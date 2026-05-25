@@ -3,78 +3,47 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle, XCircle, Upload, FileArchive, Database, FileJson } from 'lucide-react-native';
+import { CheckCircle, XCircle, Upload } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useTheme } from '../src/components/ThemeProvider';
-import { importDatabaseFromZip, importDatabaseFromJson, ImportResult } from '../src/utils/backup';
-import type { SqlImportResult } from '../src/utils/sqlImport';
+import { importDatabaseFromZip, ImportResult } from '../src/utils/backup';
 
-// Platform-specific imports
-// Note: We use require() directly as Metro bundler handles platform resolution
-// Native (.native.ts) reads SQLite via expo-sqlite with URI strings
-// Web (.web.ts) reads SQLite via sql.js with File objects
-
-type ImportFormat = 'zip' | 'sql' | 'json';
-
-interface FormatOption {
-  value: ImportFormat;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-  accept: string;
-}
+// Previous format selection types and options (preserved for future restoration)
+// type ImportFormat = 'zip' | 'sql' | 'json';
+//
+// interface FormatOption {
+//   value: ImportFormat;
+//   label: string;
+//   description: string;
+//   icon: React.ReactNode;
+//   accept: string;
+// }
 
 export default function BackupImportScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const { t } = useTranslation();
 
-  const [selectedFormat, setSelectedFormat] = useState<ImportFormat>('zip');
+  // const [selectedFormat, setSelectedFormat] = useState<ImportFormat>('zip');
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<'success' | 'error' | null>(null);
-  const [importData, setImportData] = useState<ImportResult | SqlImportResult | null>(null);
+  const [importData, setImportData] = useState<ImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const iconColor = isDark ? '#F9FAFB' : '#212226';
-
-  const formatOptions: FormatOption[] = [
-    {
-      value: 'zip',
-      label: t('backup.formatZip'),
-      description: t('backup.formatZipDesc'),
-      icon: <FileArchive size={24} color={selectedFormat === 'zip' ? '#FFB800' : (isDark ? '#9CA3AF' : '#6B7280')} />,
-      accept: '.zip',
-    },
-    {
-      value: 'json',
-      label: t('backup.formatJsonImport'),
-      description: t('backup.formatJsonImportDesc'),
-      icon: <FileJson size={24} color={selectedFormat === 'json' ? '#FFB800' : (isDark ? '#9CA3AF' : '#6B7280')} />,
-      accept: '.json',
-    },
-    {
-      value: 'sql',
-      label: t('backup.formatSqlImport'),
-      description: t('backup.formatSqlImportDesc'),
-      icon: <Database size={24} color={selectedFormat === 'sql' ? '#FFB800' : (isDark ? '#9CA3AF' : '#6B7280')} />,
-      accept: Platform.OS === 'web' ? '.sql,.db,.sqlite,.sqlite3' : '.db,.sqlite,.sqlite3',
-    },
-  ];
-
   const handleImport = async () => {
     if (Platform.OS === 'web') {
-      // On web, trigger file input
+      // On web, trigger file input for ZIP files only
       if (fileInputRef.current) {
-        fileInputRef.current.accept = formatOptions.find(f => f.value === selectedFormat)?.accept || '*';
+        fileInputRef.current.accept = '.zip';
         fileInputRef.current.click();
       }
     } else {
-      // On native, use document picker
+      // On native, use document picker for ZIP files only
       try {
         const result = await DocumentPicker.getDocumentAsync({
-          type: selectedFormat === 'zip' ? 'application/zip' : '*/*',
+          type: 'application/zip',
           copyToCacheDirectory: true,
         });
 
@@ -101,25 +70,10 @@ export default function BackupImportScreen() {
     setErrorMessage(null);
 
     try {
-      let result: ImportResult | SqlImportResult;
-
-      if (selectedFormat === 'zip') {
-        // Read the file as base64 using the File API
-        const file = new File(uri);
-        const base64 = await file.base64();
-        result = await importDatabaseFromZip(base64);
-      } else if (selectedFormat === 'sql') {
-        // Validate and import SQLite database (native)
-        // @ts-ignore - Platform-specific module
-        const { validateSqlFile, importFromSql } = require('../src/utils/sqlImport.native');
-        await validateSqlFile(uri);
-        result = await importFromSql(uri);
-      } else {
-        // JSON format - read as text
-        const file = new File(uri);
-        const text = await file.text();
-        result = await importDatabaseFromJson(text);
-      }
+      // Read the file as base64 using the File API
+      const file = new File(uri);
+      const base64 = await file.base64();
+      const result = await importDatabaseFromZip(base64);
 
       setImportData(result);
       setImportResult('success');
@@ -132,6 +86,41 @@ export default function BackupImportScreen() {
     }
   };
 
+  // Previous multi-format processFileNative (preserved for future restoration)
+  // const processFileNative = async (uri: string, fileName?: string) => {
+  //   setIsImporting(true);
+  //   setImportResult(null);
+  //   setImportData(null);
+  //   setErrorMessage(null);
+  //
+  //   try {
+  //     let result: ImportResult | SqlImportResult;
+  //
+  //     if (selectedFormat === 'zip') {
+  //       const file = new File(uri);
+  //       const base64 = await file.base64();
+  //       result = await importDatabaseFromZip(base64);
+  //     } else if (selectedFormat === 'sql') {
+  //       const { validateSqlFile, importFromSql } = require('../src/utils/sqlImport.native');
+  //       await validateSqlFile(uri);
+  //       result = await importFromSql(uri);
+  //     } else {
+  //       const file = new File(uri);
+  //       const text = await file.text();
+  //       result = await importDatabaseFromJson(text);
+  //     }
+  //
+  //     setImportData(result);
+  //     setImportResult('success');
+  //   } catch (error) {
+  //     console.error('Import error:', error);
+  //     setImportResult('error');
+  //     setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+  //   } finally {
+  //     setIsImporting(false);
+  //   }
+  // };
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -142,22 +131,9 @@ export default function BackupImportScreen() {
     setErrorMessage(null);
 
     try {
-      let result: ImportResult | SqlImportResult;
-
-      if (selectedFormat === 'zip') {
-        const arrayBuffer = await file.arrayBuffer();
-        const base64 = arrayBufferToBase64(arrayBuffer);
-        result = await importDatabaseFromZip(base64);
-      } else if (selectedFormat === 'sql') {
-        // For web, use sql.js with File object
-        // @ts-ignore - Platform-specific module
-        const { importFromSql } = require('../src/utils/sqlImport.web');
-        result = await importFromSql(file);
-      } else {
-        // JSON format
-        const text = await file.text();
-        result = await importDatabaseFromJson(text);
-      }
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = arrayBufferToBase64(arrayBuffer);
+      const result = await importDatabaseFromZip(base64);
 
       setImportData(result);
       setImportResult('success');
@@ -173,6 +149,45 @@ export default function BackupImportScreen() {
       }
     }
   };
+
+  // Previous multi-format handleFileSelect (preserved for future restoration)
+  // const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event.target.files?.[0];
+  //   if (!file) return;
+  //
+  //   setIsImporting(true);
+  //   setImportResult(null);
+  //   setImportData(null);
+  //   setErrorMessage(null);
+  //
+  //   try {
+  //     let result: ImportResult | SqlImportResult;
+  //
+  //     if (selectedFormat === 'zip') {
+  //       const arrayBuffer = await file.arrayBuffer();
+  //       const base64 = arrayBufferToBase64(arrayBuffer);
+  //       result = await importDatabaseFromZip(base64);
+  //     } else if (selectedFormat === 'sql') {
+  //       const { importFromSql } = require('../src/utils/sqlImport.web');
+  //       result = await importFromSql(file);
+  //     } else {
+  //       const text = await file.text();
+  //       result = await importDatabaseFromJson(text);
+  //     }
+  //
+  //     setImportData(result);
+  //     setImportResult('success');
+  //   } catch (error) {
+  //     console.error('Import error:', error);
+  //     setImportResult('error');
+  //     setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+  //   } finally {
+  //     setIsImporting(false);
+  //     if (event.target) {
+  //       event.target.value = '';
+  //     }
+  //   }
+  // };
 
   const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
     const bytes = new Uint8Array(buffer);
@@ -217,7 +232,8 @@ export default function BackupImportScreen() {
           </Text>
         </View>
 
-        {/* Format Selection */}
+        {/* Format Selection — hidden for unified ZIP+SQL import */}
+        {/*
         <View className="mt-6">
           <Text
             className={`text-lg font-semibold mb-3 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
@@ -266,6 +282,7 @@ export default function BackupImportScreen() {
             ))}
           </View>
         </View>
+        */}
 
         <View className="mt-6">
           <TouchableOpacity
@@ -290,12 +307,12 @@ export default function BackupImportScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Hidden file input for web */}
+          {/* Hidden file input for web — accepts ZIP only */}
           {Platform.OS === 'web' && (
             <input
               ref={fileInputRef as React.RefObject<HTMLInputElement>}
               type="file"
-              accept={formatOptions.find(f => f.value === selectedFormat)?.accept}
+              accept=".zip"
               style={{ display: 'none' }}
               onChange={handleFileSelect as unknown as React.ChangeEventHandler<HTMLInputElement>}
             />

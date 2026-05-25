@@ -296,6 +296,7 @@ export async function importFromSql(file: WebFile): Promise<SqlImportResult> {
     description: string | null;
     amount: number;
     date: number;
+    imagePath: string | null;
   }> = {};
   for (const tx of transactions) {
     transactionsRecord[tx.id] = {
@@ -311,6 +312,7 @@ export async function importFromSql(file: WebFile): Promise<SqlImportResult> {
       description: tx.description,
       amount: tx.amount,
       date: tx.date,
+      imagePath: tx.imagePath,
     };
   }
 

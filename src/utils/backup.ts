@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
 import * as SQLite from 'expo-sqlite';
@@ -74,17 +74,6 @@ export async function exportDatabaseToZip(): Promise<string | null> {
     // Get all data from store
     const tables = store.getTables();
 
-    const backupData: BackupData = {
-      version: BACKUP_VERSION,
-      exportDate: new Date().toISOString(),
-      platform: Platform.OS as 'ios' | 'android' | 'web',
-      data: {
-        categories: tables?.categories || {},
-        accounts: tables?.accounts || {},
-        transactions: tables?.transactions || {},
-      },
-    };
-
     // Create ZIP file
     const zip = new JSZip();
 
@@ -117,21 +106,12 @@ export async function exportDatabaseToZip(): Promise<string | null> {
       }
     }
 
-    // Update transaction data with new image filenames before creating JSON
-    if (Object.keys(imageDataMap).length > 0) {
-      const updatedTransactions = { ...backupData.data.transactions } as Record<string, Record<string, unknown>>;
-      for (const [txId, txData] of Object.entries(updatedTransactions)) {
-        const tx = txData as { imagePath?: string | null };
-        if (tx.imagePath && imageDataMap[tx.imagePath]) {
-          // Store just the filename in the backup
-          updatedTransactions[txId] = { ...tx, imagePath: imageDataMap[tx.imagePath] };
-        }
-      }
-      backupData.data.transactions = updatedTransactions as typeof backupData.data.transactions;
-    }
+    // Build SQL statements with image filenames (not full paths)
+    const sqlStatements = generateSqlFromTables(tables, imageDataMap);
+    const sqlContent = sqlStatements.join(';\n') + ';\n';
 
-    // Now add the JSON to the ZIP (after updating image paths)
-    zip.file('backup.json', JSON.stringify(backupData, null, 2));
+    // Add SQL to the ZIP
+    zip.file('backup.sql', sqlContent);
 
     // Generate zip blob
     const zipBlob = await zip.generateAsync({
@@ -234,17 +214,14 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
     const zip = new JSZip();
     const zipContent = await zip.loadAsync(zipBase64, { base64: true });
 
-    // Find and extract the backup.json file
-    const backupFile = zipContent.file('backup.json');
+    // Find and extract the backup.sql file
+    const backupFile = zipContent.file('backup.sql');
     if (!backupFile) {
-      throw new Error('Invalid backup file: missing backup.json');
+      throw new Error('Invalid backup file: missing backup.sql');
     }
 
-    const backupJson = await backupFile.async('string');
-    const backupData = JSON.parse(backupJson);
-
-    // Validate the backup data
-    const validatedData = await validateBackupFile(backupData);
+    const sqlContent = await backupFile.async('string');
+    const data = parseSqlStatements(sqlContent);
 
     // Extract images from ZIP first
     const imageFolder = zipContent.folder('images');
@@ -265,9 +242,14 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
             const dataUri = `data:${mimeType};base64,${base64}`;
             imageMap[filename] = dataUri;
           } else {
-            // For native: extract to document directory (directory is auto-created)
+            // For native: extract to document directory
             const imageBytes = await file.async('uint8array');
             const imagePath = `transaction_images/${filename}`;
+            // Ensure parent directory exists before writing
+            const imagesDir = new Directory(Paths.document, 'transaction_images');
+            if (!imagesDir.exists) {
+              imagesDir.create({ intermediates: true });
+            }
             const imageFile = new File(Paths.document, imagePath);
             await imageFile.write(imageBytes);
             imageMap[filename] = imagePath;
@@ -279,27 +261,27 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
     }
 
     // Update transaction data with correct image paths before storing
-    if (Object.keys(imageMap).length > 0) {
-      const updatedTransactions = { ...validatedData.data.transactions } as Record<string, Record<string, unknown>>;
+    if (Object.keys(imageMap).length > 0 && data.transactions) {
+      const updatedTransactions = { ...data.transactions } as Record<string, Record<string, unknown>>;
       for (const [txId, txData] of Object.entries(updatedTransactions)) {
         const tx = txData as { imagePath?: string | null };
         if (tx.imagePath && imageMap[tx.imagePath]) {
           updatedTransactions[txId] = { ...tx, imagePath: imageMap[tx.imagePath] };
         }
       }
-      validatedData.data.transactions = updatedTransactions as typeof validatedData.data.transactions;
+      data.transactions = updatedTransactions as typeof data.transactions;
     }
 
     // Now set the data with correct image paths
-    store.setTables(validatedData.data as Parameters<typeof store.setTables>[0]);
+    store.setTables(data as Parameters<typeof store.setTables>[0]);
 
     // Persist changes
     await persister.save();
 
     return {
-      categories: Object.keys(validatedData.data.categories).length,
-      accounts: Object.keys(validatedData.data.accounts).length,
-      transactions: Object.keys(validatedData.data.transactions).length,
+      categories: Object.keys(data.categories || {}).length,
+      accounts: Object.keys(data.accounts || {}).length,
+      transactions: Object.keys(data.transactions || {}).length,
       importDate: new Date().toISOString(),
     };
   } catch (error) {
@@ -374,7 +356,7 @@ export async function exportDatabaseToSql(): Promise<string | null> {
  * Generate SQL statements from TinyBase tables
  * Used for web platform where we use IndexedDB instead of SQLite
  */
-function generateSqlFromTables(tables: Tables | undefined): string[] {
+function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record<string, string>): string[] {
   const statements: string[] = [];
 
   // Add header
@@ -414,6 +396,9 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
   categoryId TEXT,
   subcategoryId TEXT,
   subcategoryName TEXT,
+  categoryName TEXT,
+  categoryIcon TEXT,
+  categoryType TEXT,
   accountId TEXT NOTNULL,
   accountName TEXT NOTNULL,
   toAccountId TEXT,
@@ -472,6 +457,9 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
       categoryId: string | null;
       subcategoryId: string | null;
       subcategoryName: string | null;
+      categoryName: string | null;
+      categoryIcon: string | null;
+      categoryType: string | null;
       accountId: string;
       accountName: string;
       toAccountId: string | null;
@@ -486,14 +474,21 @@ function generateSqlFromTables(tables: Tables | undefined): string[] {
       const categoryId = data.categoryId ? `'${escapeSqlString(data.categoryId)}'` : 'NULL';
       const subcategoryId = data.subcategoryId ? `'${escapeSqlString(data.subcategoryId)}'` : 'NULL';
       const subcategoryName = data.subcategoryName ? `'${escapeSqlString(data.subcategoryName)}'` : 'NULL';
+      const categoryName = data.categoryName ? `'${escapeSqlString(data.categoryName)}'` : 'NULL';
+      const categoryIcon = data.categoryIcon ? `'${escapeSqlString(data.categoryIcon)}'` : 'NULL';
+      const categoryType = data.categoryType ? `'${escapeSqlString(data.categoryType)}'` : 'NULL';
       const accountId = escapeSqlString(data.accountId);
       const accountName = escapeSqlString(data.accountName);
       const toAccountId = data.toAccountId ? `'${escapeSqlString(data.toAccountId)}'` : 'NULL';
       const toAccountName = data.toAccountName ? `'${escapeSqlString(data.toAccountName)}'` : 'NULL';
       const note = data.note ? `'${escapeSqlString(data.note)}'` : 'NULL';
       const description = data.description ? `'${escapeSqlString(data.description)}'` : 'NULL';
-      const imagePath = data.imagePath ? `'${escapeSqlString(data.imagePath)}'` : 'NULL';
-      statements.push(`INSERT INTO transactions (id, type, categoryId, subcategoryId, subcategoryName, accountId, accountName, toAccountId, toAccountName, note, description, amount, date, imagePath) VALUES ('${id}', '${type}', ${categoryId}, ${subcategoryId}, ${subcategoryName}, '${accountId}', '${accountName}', ${toAccountId}, ${toAccountName}, ${note}, ${description}, ${data.amount}, ${data.date}, ${imagePath})`);
+      // Use mapped filename if available, otherwise keep original value
+      const rawImagePath = imagePathMap && data.imagePath && imagePathMap[data.imagePath]
+        ? imagePathMap[data.imagePath]
+        : data.imagePath;
+      const imagePath = rawImagePath ? `'${escapeSqlString(rawImagePath)}'` : 'NULL';
+      statements.push(`INSERT INTO transactions (id, type, categoryId, subcategoryId, subcategoryName, categoryName, categoryIcon, categoryType, accountId, accountName, toAccountId, toAccountName, note, description, amount, date, imagePath) VALUES ('${id}', '${type}', ${categoryId}, ${subcategoryId}, ${subcategoryName}, ${categoryName}, ${categoryIcon}, ${categoryType}, '${accountId}', '${accountName}', ${toAccountId}, ${toAccountName}, ${note}, ${description}, ${data.amount}, ${data.date}, ${imagePath})`);
     });
     statements.push('');
   }
@@ -616,7 +611,7 @@ function parseSqlStatements(sqlContent: string): Tables {
       if (!valuesMatch) continue;
 
       if (tableName === 'categories') {
-        const parsed = parseInsertValues(statement, ['id', 'name', 'icon', 'type']);
+        const parsed = parseInsertValues(statement);
         if (parsed.id) {
           data.categories[parsed.id] = {
             name: parsed.name || '',
@@ -625,7 +620,7 @@ function parseSqlStatements(sqlContent: string): Tables {
           };
         }
       } else if (tableName === 'subcategories') {
-        const parsed = parseInsertValues(statement, ['id', 'name', 'categoryId']);
+        const parsed = parseInsertValues(statement);
         if (parsed.id) {
           data.subcategories = data.subcategories || {};
           data.subcategories[parsed.id] = {
@@ -634,7 +629,7 @@ function parseSqlStatements(sqlContent: string): Tables {
           };
         }
       } else if (tableName === 'accounts') {
-        const parsed = parseInsertValues(statement, ['id', 'name', 'icon', 'description', 'balance', 'order']);
+        const parsed = parseInsertValues(statement);
         if (parsed.id) {
           data.accounts[parsed.id] = {
             name: parsed.name || '',
@@ -645,17 +640,16 @@ function parseSqlStatements(sqlContent: string): Tables {
           };
         }
       } else if (tableName === 'transactions') {
-        const parsed = parseInsertValues(statement, [
-          'id', 'type', 'categoryId', 'subcategoryId', 'subcategoryName',
-          'accountId', 'accountName', 'toAccountId', 'toAccountName',
-          'note', 'description', 'amount', 'date', 'imagePath'
-        ]);
+        const parsed = parseInsertValues(statement);
         if (parsed.id) {
           data.transactions[parsed.id] = {
             type: parsed.type || 'expense',
             categoryId: parsed.categoryId || null,
             subcategoryId: parsed.subcategoryId || null,
             subcategoryName: parsed.subcategoryName || null,
+            categoryName: parsed.categoryName || null,
+            categoryIcon: parsed.categoryIcon || null,
+            categoryType: parsed.categoryType || null,
             accountId: parsed.accountId || '',
             accountName: parsed.accountName || '',
             toAccountId: parsed.toAccountId || null,
@@ -675,10 +669,17 @@ function parseSqlStatements(sqlContent: string): Tables {
 }
 
 /**
- * Parse INSERT VALUES clause and extract fields
+ * Parse INSERT statement and extract fields by reading the actual column list.
+ * Handles INSERT INTO table (col1, col2, ...) VALUES (val1, val2, ...).
  */
-function parseInsertValues(statement: string, fields: string[]): Record<string, string> {
+function parseInsertValues(statement: string): Record<string, string> {
   const result: Record<string, string> = {};
+
+  // Extract column names from INSERT INTO table (col1, col2, ...)
+  const columnsMatch = statement.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
+  if (!columnsMatch) return result;
+
+  const columns = columnsMatch[1].split(',').map(c => c.trim());
 
   // Extract values between parentheses after VALUES
   const valuesMatch = statement.match(/VALUES\s*\((.+)\)\s*$/is);
@@ -716,8 +717,8 @@ function parseInsertValues(statement: string, fields: string[]): Record<string, 
   }
   values.push(current.trim() || null);
 
-  // Map values to fields
-  fields.forEach((field, index) => {
+  // Map values to columns dynamically
+  columns.forEach((field, index) => {
     const value = values[index];
     if (value !== null && value !== 'NULL') {
       result[field] = value;
