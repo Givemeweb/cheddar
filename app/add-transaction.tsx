@@ -392,8 +392,25 @@ export default function AddTransactionScreen() {
             // On web, go directly to image library (no camera prompt)
             pickImage();
         } else {
-            // For Android, default to picker (camera requires additional native configuration)
-            pickImage();
+            // Android: show alert with camera + library options
+            Alert.alert(
+                t('transactions.image') || 'Image',
+                '',
+                [
+                    {
+                        text: t('transactions.takePhoto') || 'Take Photo',
+                        onPress: takePhoto,
+                    },
+                    {
+                        text: t('transactions.chooseFromLibrary') || 'Choose from Library',
+                        onPress: pickImage,
+                    },
+                    {
+                        text: t('common.cancel') || 'Cancel',
+                        style: 'cancel',
+                    },
+                ]
+            );
         }
     };
 
