@@ -389,13 +389,8 @@ export default function AddTransactionScreen() {
                 }
             );
         } else if (Platform.OS === 'web') {
-            // For web, show a simple prompt
-            const choice = window.confirm(t('transactions.useCamera') || 'Use camera? (Cancel to choose from library)');
-            if (choice) {
-                takePhoto();
-            } else {
-                pickImage();
-            }
+            // On web, go directly to image library (no camera prompt)
+            pickImage();
         } else {
             // For Android, default to picker (camera requires additional native configuration)
             pickImage();
