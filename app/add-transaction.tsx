@@ -53,7 +53,20 @@ const renderIcon = (
 
 export default function AddTransactionScreen() {
     const router = useRouter();
-    const params = useLocalSearchParams<{ transactionId?: string }>();
+    const params = useLocalSearchParams<{
+        transactionId?: string;
+        type?: string;
+        amount?: string;
+        note?: string;
+        description?: string;
+        date?: string;
+        accountId?: string;
+        categoryId?: string;
+        subcategoryId?: string;
+        fromAccountId?: string;
+        toAccountId?: string;
+        imagePath?: string;
+    }>();
     const transactionId = params.transactionId;
     const isEditing = !!transactionId;
 
@@ -138,17 +151,55 @@ export default function AddTransactionScreen() {
         } else {
             // Default account selections for new transaction
             if (accs.length > 0) {
-                setSelectedAccountId(accs[0].id);
-                setFromAccountId(accs[0].id);
+                setSelectedAccountId(params.accountId || accs[0].id);
+                setFromAccountId(params.fromAccountId || accs[0].id);
                 if (accs.length > 1) {
-                    setToAccountId(accs[1].id);
+                    setToAccountId(params.toAccountId || accs[1].id);
+                } else {
+                    setToAccountId(params.toAccountId || null);
                 }
+            }
+
+            // Apply search params for new transactions
+            if (params.type === 'income' || params.type === 'expense' || params.type === 'transfer') {
+                setType(params.type);
+            }
+            if (params.amount) {
+                setAmount(params.amount);
+            }
+            if (params.note) {
+                setNote(params.note);
+            }
+            if (params.description) {
+                setDescription(params.description);
+            }
+            if (params.date) {
+                const parsedDate = new Date(params.date);
+                if (!isNaN(parsedDate.getTime())) {
+                    setDate(parsedDate);
+                }
+            }
+            if (params.categoryId) {
+                setSelectedCategoryId(params.categoryId);
+                // Load subcategories if needed
+                if (subEnabled) {
+                    const subs = await getSubcategories(params.categoryId);
+                    setSubcategories(subs);
+                }
+            }
+            if (params.subcategoryId) {
+                setSelectedSubcategoryId(params.subcategoryId);
+            }
+            if (params.imagePath) {
+                setImagePath(params.imagePath);
+                setDisplayImageUri(getImageUri(params.imagePath));
             }
         }
         setLoading(false);
 
-        // Auto-focus account selection for new transactions
-        if (!isEditing && accs.length > 0) {
+        // Auto-focus account selection for new transactions only if no relevant params provided
+        const hasPreselectedValues = params.type || params.accountId || params.fromAccountId || params.categoryId || params.amount;
+        if (!isEditing && accs.length > 0 && !hasPreselectedValues) {
             // Small delay to ensure UI is ready
             setTimeout(() => {
                 setSelectionMode('account');
