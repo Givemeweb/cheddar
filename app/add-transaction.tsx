@@ -485,13 +485,7 @@ export default function AddTransactionScreen() {
 
     const handleFromAccountSelect = (accountId: string) => {
         setFromAccountId(accountId);
-        setSelectionMode('none');
-        // Focus on "to account" if not selected
-        if (!toAccountId) {
-            setSelectionMode('toAccount');
-        } else {
-            amountRef.current?.focus();
-        }
+        setSelectionMode('toAccount');
     };
 
     const handleToAccountSelect = (accountId: string) => {
@@ -506,7 +500,11 @@ export default function AddTransactionScreen() {
         setSelectedCategoryId(null);
         setSelectedSubcategoryId(null);
         setSubcategories([]);
-        setSelectionMode('none');
+        if (newType === 'transfer') {
+            setSelectionMode('fromAccount');
+        } else {
+            setSelectionMode('account');
+        }
     };
 
     const validateForm = (): string | null => {
@@ -631,7 +629,7 @@ export default function AddTransactionScreen() {
             </Pressable>
             <Pressable
               className={`flex-1 py-3 items-center ${type === "transfer" ? "bg-cheddar-yellow" : ""}`}
-              onPress={() => setType("transfer")}
+              onPress={() => handleTypeChange("transfer")}
             >
               <Text
                 className={`font-medium ${type === "transfer" ? "text-cheddar-dark" : isDark ? "text-gray-400" : "text-cheddar-gray"}`}
