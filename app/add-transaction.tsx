@@ -1090,24 +1090,28 @@ export default function AddTransactionScreen() {
                   </Pressable>
                 ))}
 
-                {selectionMode === 'toAccount' && accounts.map((acc) => (
-                  <Pressable
-                    key={acc.id}
-                    className={`w-1/3 p-2`}
-                    onPress={() => handleToAccountSelect(acc.id)}
-                  >
-                    <View
-                      className={`rounded-xl p-3 items-center justify-center min-h-[60px] ${toAccountId === acc.id ? "bg-cheddar-yellow" : (isDark ? "bg-[#26282D]" : "bg-white")}`}
+                {selectionMode === 'toAccount' && accounts.map((acc) => {
+                  const isDisabled = acc.id === fromAccountId;
+                  return (
+                    <Pressable
+                      key={acc.id}
+                      className={`w-1/3 p-2`}
+                      disabled={isDisabled}
+                      onPress={() => handleToAccountSelect(acc.id)}
                     >
-                      <Text
-                        className={`text-center text-sm ${toAccountId === acc.id ? "text-cheddar-dark font-semibold" : (isDark ? "text-cheddar-light" : "text-cheddar-dark")}`}
-                        numberOfLines={2}
+                      <View
+                        className={`rounded-xl p-3 items-center justify-center min-h-[60px] ${toAccountId === acc.id ? "bg-cheddar-yellow" : isDisabled ? "bg-gray-500/20" : (isDark ? "bg-[#26282D]" : "bg-white")}`}
                       >
-                        {acc.name}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
+                        <Text
+                          className={`text-center text-sm ${toAccountId === acc.id ? "text-cheddar-dark font-semibold" : isDisabled ? "text-gray-500" : (isDark ? "text-cheddar-light" : "text-cheddar-dark")}`}
+                          numberOfLines={2}
+                        >
+                          {acc.name}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
             </ScrollView>
           </View>
