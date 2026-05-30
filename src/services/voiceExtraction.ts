@@ -28,21 +28,39 @@ export async function extractTransaction(
 ): Promise<ExtractionResponse> {
   const { audioUri, accounts, categories, recentNotes, recordedAt } = request;
 
+  console.log("[voiceExtraction] Starting extraction, uri:", audioUri);
+  console.log("[voiceExtraction] Endpoint:", EXTRACTION_ENDPOINT);
+
   const file = new File(audioUri);
+  console.log("[voiceExtraction] File exists:", file.exists, "size:", file.size);
   if (!file.exists) {
     throw new Error(`Audio file not found at: ${audioUri}`);
   }
 
   const formData = new FormData();
 
-  // Attach audio file (File implements Blob, so FormData accepts it directly)
-  formData.append("audio", file);
+  // Attach audio file — React Native FormData expects { uri, name, type }
+  formData.append("file", {
+    uri: audioUri,
+    name: "recording.m4a",
+    type: "audio/mp4",
+  } as unknown as Blob);
 
   // Attach JSON context fields
   formData.append("accounts", JSON.stringify(accounts));
   formData.append("categories", JSON.stringify(categories));
   formData.append("recentNotes", JSON.stringify(recentNotes));
   formData.append("recordedAt", recordedAt.toISOString());
+
+  // Log what we're sending
+  console.log("[voiceExtraction] FormData fields:");
+  console.log("  - file:", audioUri);
+  console.log("  - accounts:", JSON.stringify(accounts));
+  console.log("  - categories:", JSON.stringify(categories));
+  console.log("  - recentNotes:", JSON.stringify(recentNotes));
+  console.log("  - recordedAt:", recordedAt.toISOString());
+
+  console.log("[voiceExtraction] Sending POST request...");
 
   let response: Response;
   try {
@@ -51,6 +69,7 @@ export async function extractTransaction(
       body: formData,
     });
   } catch (networkError) {
+    console.error("[voiceExtraction] Network error:", networkError);
     const message =
       networkError instanceof Error
         ? networkError.message
@@ -58,18 +77,36 @@ export async function extractTransaction(
     throw new Error(`Network error: ${message}`);
   }
 
+  console.log(
+    "[voiceExtraction] Response status:",
+    response.status,
+    response.statusText
+  );
+
   if (!response.ok) {
-    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+    let errorBody = "";
+    try {
+      errorBody = await response.text();
+    } catch {
+      // ignore
+    }
+    console.error("[voiceExtraction] HTTP error body:", errorBody);
+    throw new Error(
+      `HTTP error ${response.status}: ${response.statusText} — ${errorBody}`
+    );
   }
 
   let rawJson: unknown;
   try {
     rawJson = await response.json();
   } catch (parseError) {
+    console.error("[voiceExtraction] JSON parse error:", parseError);
     const message =
       parseError instanceof Error ? parseError.message : "Unknown parse error";
     throw new Error(`Failed to parse JSON response: ${message}`);
   }
+
+  console.log("[voiceExtraction] Raw response:", JSON.stringify(rawJson, null, 2));
 
   if (typeof rawJson !== "object" || rawJson === null) {
     throw new Error("Invalid response: expected JSON object");
@@ -98,6 +135,11 @@ export async function extractTransaction(
     note: typeof rawTransaction.note === "string" ? rawTransaction.note : "",
     date: typeof rawTransaction.date === "string" ? rawTransaction.date : "",
   };
+
+  console.log(
+    "[voiceExtraction] Parsed transaction:",
+    JSON.stringify(transaction, null, 2)
+  );
 
   return { transcription, transaction };
 }

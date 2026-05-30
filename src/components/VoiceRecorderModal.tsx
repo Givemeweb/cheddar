@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Mic, X } from "lucide-react-native";
-import * as FileSystem from "expo-file-system";
+import { File } from "expo-file-system";
 import { Linking } from "react-native";
 import {
   requestMicrophonePermission,
@@ -245,7 +245,10 @@ export function VoiceRecorderModal({
 
   const deleteAudioFile = useCallback(async (uri: string) => {
     try {
-      await FileSystem.deleteAsync(uri, { idempotent: true });
+      const file = new File(uri);
+      if (file.exists) {
+        await file.delete();
+      }
     } catch {
       // Ignore deletion errors
     }
@@ -253,6 +256,7 @@ export function VoiceRecorderModal({
 
   const processAudio = useCallback(
     async (uri: string) => {
+      console.log("[VoiceRecorder] Starting processing, uri:", uri);
       setPhase("loading");
       setLoadingStatus("uploading");
 
@@ -263,17 +267,24 @@ export function VoiceRecorderModal({
 
       try {
         // Fetch context data for the extraction
+        console.log("[VoiceRecorder] Fetching context data...");
         const [categories, accounts, transactions] = await Promise.all([
           getCategories(),
           getAccounts(),
           getTransactions(),
         ]);
+        console.log("[VoiceRecorder] Context fetched:", {
+          categoriesCount: categories.length,
+          accountsCount: accounts.length,
+          transactionsCount: transactions.length,
+        });
 
         const recentNotes = transactions
           .slice(0, 20)
           .map((tx) => ({ id: tx.id, text: tx.note || "" }))
           .filter((n) => n.text.length > 0);
 
+        console.log("[VoiceRecorder] Calling extractTransaction...");
         const response = await extractTransaction({
           audioUri: uri,
           accounts: accounts.map((a) => ({ id: a.id, name: a.name })),
@@ -281,6 +292,7 @@ export function VoiceRecorderModal({
           recentNotes,
           recordedAt: new Date(),
         });
+        console.log("[VoiceRecorder] Extraction response:", JSON.stringify(response, null, 2));
 
         // Delete audio file after extraction attempt
         await deleteAudioFile(uri);
@@ -318,11 +330,13 @@ export function VoiceRecorderModal({
 
         // Map extraction response to transaction params
         const params = mapExtractionToParams(response, accounts, categories);
+        console.log("[VoiceRecorder] Mapped params:", JSON.stringify(params, null, 2));
 
         onResult(params);
         resetState();
         onClose();
       } catch (error) {
+        console.error("[VoiceRecorder] processAudio error:", error);
         // Delete audio file even on error
         await deleteAudioFile(uri);
 

@@ -1,10 +1,4 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
-import {
-  AndroidAudioEncoder,
-  AndroidOutputFormat,
-  IOSAudioQuality,
-  IOSOutputFormat,
-} from "expo-av/build/Audio/RecordingConstants";
 import { AppState, AppStateStatus } from "react-native";
 
 const MAX_RECORDING_DURATION_MS = 30000;
@@ -57,35 +51,6 @@ export async function requestMicrophonePermission(): Promise<boolean> {
   return status === "granted";
 }
 
-function getRecordingOptions(): Audio.RecordingOptions {
-  return {
-    isMeteringEnabled: true,
-    android: {
-      extension: ".webm",
-      outputFormat: AndroidOutputFormat.WEBM,
-      audioEncoder: AndroidAudioEncoder.AAC,
-      sampleRate: 48000,
-      numberOfChannels: 1,
-      bitRate: 128000,
-    },
-    ios: {
-      extension: ".m4a",
-      outputFormat: IOSOutputFormat.MPEG4AAC,
-      audioQuality: IOSAudioQuality.HIGH,
-      sampleRate: 44100,
-      numberOfChannels: 2,
-      bitRate: 128000,
-      linearPCMBitDepth: 16,
-      linearPCMIsBigEndian: false,
-      linearPCMIsFloat: false,
-    },
-    web: {
-      mimeType: "audio/webm",
-      bitsPerSecond: 128000,
-    },
-  };
-}
-
 export async function startRecording(): Promise<void> {
   // Clean up any existing recording first to prevent orphaned instances
   if (recording) {
@@ -106,7 +71,7 @@ export async function startRecording(): Promise<void> {
   });
 
   const { recording: newRecording } = await Audio.Recording.createAsync(
-    getRecordingOptions()
+    Audio.RecordingOptionsPresets.HIGH_QUALITY
   );
 
   recording = newRecording;

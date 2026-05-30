@@ -10,7 +10,7 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, ChevronRight, Search, X, Mic } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Search, X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -23,7 +23,6 @@ import {
   TransactionWithDetails,
 } from "../../src/components/TransactionItem";
 import { FAB } from "../../src/components/FAB";
-import { VoiceRecorderModal, AddTransactionParams } from "../../src/components/VoiceRecorderModal";
 import { useTheme } from "../../src/components/ThemeProvider";
 
 import { formatNumber } from "../../src/utils/formatNumber";
@@ -38,7 +37,6 @@ export default function TransactionsScreen() {
   const [filterCategoryName, setFilterCategoryName] = useState<string | null>(
     null,
   );
-  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol } = useTheme();
@@ -191,25 +189,6 @@ export default function TransactionsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchTransactions();
-  };
-
-  const handleVoiceResult = (params: AddTransactionParams | null) => {
-    if (!params) return;
-    // Navigate to add-transaction with pre-filled params
-    const queryParams = new URLSearchParams();
-    if (params.type) queryParams.set("type", params.type);
-    if (params.amount) queryParams.set("amount", params.amount);
-    if (params.note) queryParams.set("note", params.note);
-    if (params.description) queryParams.set("description", params.description);
-    if (params.date) queryParams.set("date", params.date);
-    if (params.accountId) queryParams.set("accountId", params.accountId);
-    if (params.categoryId) queryParams.set("categoryId", params.categoryId);
-    if (params.subcategoryId) queryParams.set("subcategoryId", params.subcategoryId);
-    if (params.fromAccountId) queryParams.set("fromAccountId", params.fromAccountId);
-    if (params.toAccountId) queryParams.set("toAccountId", params.toAccountId);
-    if (params.imagePath) queryParams.set("imagePath", params.imagePath);
-
-    router.push(`/add-transaction?${queryParams.toString()}` as never);
   };
 
   // Calculate totals
@@ -368,38 +347,6 @@ export default function TransactionsScreen() {
         }
       />
       <FAB isDark={isDark} />
-
-      {/* Voice Recording FAB */}
-      <Pressable
-        onPress={() => setVoiceModalVisible(true)}
-        style={{
-          position: "absolute",
-          bottom: 84,
-          right: 16,
-          width: 48,
-          height: 48,
-          borderRadius: 24,
-          backgroundColor: isDark ? "#26282D" : "#FFFFFF",
-          justifyContent: "center",
-          alignItems: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-          elevation: 4,
-          borderWidth: 1,
-          borderColor: isDark ? "#374151" : "#E5E7EB",
-        }}
-        android_ripple={{ color: "#E5A600", borderless: true }}
-      >
-        <Mic size={22} color="#FFB800" />
-      </Pressable>
-
-      <VoiceRecorderModal
-        visible={voiceModalVisible}
-        onResult={handleVoiceResult}
-        onClose={() => setVoiceModalVisible(false)}
-      />
     </SafeAreaView>
   );
 }
