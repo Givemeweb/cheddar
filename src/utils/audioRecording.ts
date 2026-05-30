@@ -1,19 +1,48 @@
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
+import {
+  AudioModule,
+  IOSOutputFormat,
+  AudioQuality,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from "expo-audio";
+import type { AudioRecorder, RecordingOptions } from "expo-audio";
 import { AppState, AppStateStatus } from "react-native";
 
-const MAX_RECORDING_DURATION_MS = 30000;
+const MAX_RECORDING_DURATION_S = 30;
 
-let recording: Audio.Recording | null = null;
-let autoStopTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * WAV (Linear PCM) recording options for maximum STT API compatibility.
+ * iOS uses native AVAudioRecorder with Linear PCM.
+ * Android falls back to AAC/M4A since MediaRecorder doesn't support WAV natively.
+ */
+const WAV_RecordingOptions: RecordingOptions = {
+  extension: ".wav",
+  sampleRate: 16000, // 16kHz is optimal for speech recognition
+  numberOfChannels: 1, // Mono is sufficient for voice
+  bitRate: 256000,
+  ios: {
+    extension: ".wav",
+    sampleRate: 16000,
+    outputFormat: IOSOutputFormat.LINEARPCM,
+    audioQuality: AudioQuality.HIGH,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  android: {
+    extension: ".m4a",
+    outputFormat: "mpeg4",
+    audioEncoder: "aac",
+  },
+  web: {
+    mimeType: "audio/webm",
+    bitsPerSecond: 128000,
+  },
+};
+
+let recorder: AudioRecorder | null = null;
 let appStateSubscription: { remove: () => void } | null = null;
 let startTime = 0;
-
-function clearAutoStopTimer(): void {
-  if (autoStopTimer) {
-    clearTimeout(autoStopTimer);
-    autoStopTimer = null;
-  }
-}
 
 function removeAppStateListener(): void {
   if (appStateSubscription) {
@@ -22,72 +51,60 @@ function removeAppStateListener(): void {
   }
 }
 
-async function unloadRecording(): Promise<void> {
-  if (recording) {
+async function cleanupRecorder(): Promise<void> {
+  if (recorder) {
     try {
-      await recording.stopAndUnloadAsync();
+      if (recorder.isRecording) {
+        await recorder.stop();
+      }
     } catch {
-      // Ignore errors during cleanup — recording may already be stopped
+      // Ignore errors during cleanup
     }
+    recorder = null;
   }
 }
 
 async function handleAppStateChange(nextAppState: AppStateStatus): Promise<void> {
-  if ((nextAppState === "background" || nextAppState === "inactive") && recording) {
+  if (
+    (nextAppState === "background" || nextAppState === "inactive") &&
+    recorder?.isRecording
+  ) {
     try {
       await stopRecording();
     } catch {
-      // Force cleanup if graceful stop fails
-      clearAutoStopTimer();
       removeAppStateListener();
-      await unloadRecording();
-      recording = null;
+      await cleanupRecorder();
     }
   }
 }
 
 export async function requestMicrophonePermission(): Promise<boolean> {
-  const { status } = await Audio.requestPermissionsAsync();
+  const { status } = await requestRecordingPermissionsAsync();
   return status === "granted";
 }
 
 export async function startRecording(): Promise<void> {
   // Clean up any existing recording first to prevent orphaned instances
-  if (recording) {
-    clearAutoStopTimer();
+  if (recorder) {
     removeAppStateListener();
-    await unloadRecording();
-    recording = null;
+    await cleanupRecorder();
   }
 
   // Configure audio session for recording
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-    interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-    interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
+  await setAudioModeAsync({
+    allowsRecording: true,
+    playsInSilentMode: true,
+    interruptionMode: "doNotMix",
+    shouldRouteThroughEarpiece: false,
   });
 
-  const { recording: newRecording } = await Audio.Recording.createAsync(
-    Audio.RecordingOptionsPresets.HIGH_QUALITY
-  );
+  recorder = new AudioModule.AudioRecorder(WAV_RecordingOptions);
+  await recorder.prepareToRecordAsync();
 
-  recording = newRecording;
+  // Start recording with auto-stop after max duration
+  recorder.record({ forDuration: MAX_RECORDING_DURATION_S });
+
   startTime = Date.now();
-
-  // Set up auto-stop timer
-  autoStopTimer = setTimeout(() => {
-    stopRecording().catch(() => {
-      // Force cleanup if auto-stop fails
-      clearAutoStopTimer();
-      removeAppStateListener();
-      unloadRecording().finally(() => {
-        recording = null;
-      });
-    });
-  }, MAX_RECORDING_DURATION_MS);
 
   // Listen for app backgrounding
   appStateSubscription = AppState.addEventListener("change", (nextAppState) => {
@@ -96,37 +113,35 @@ export async function startRecording(): Promise<void> {
 }
 
 export async function stopRecording(): Promise<{ uri: string; duration: number }> {
-  if (!recording) {
+  if (!recorder) {
     throw new Error("No active recording to stop");
   }
 
-  clearAutoStopTimer();
   removeAppStateListener();
 
-  const currentRecording = recording;
-  recording = null;
+  const currentRecorder = recorder;
+  recorder = null;
 
-  await currentRecording.stopAndUnloadAsync();
+  await currentRecorder.stop();
 
-  const uri = currentRecording.getURI() ?? "";
+  const uri = currentRecorder.uri ?? "";
   const duration = Date.now() - startTime;
 
   return { uri, duration };
 }
 
 export async function cancelRecording(): Promise<void> {
-  if (!recording) {
+  if (!recorder) {
     return;
   }
 
-  clearAutoStopTimer();
   removeAppStateListener();
 
-  const currentRecording = recording;
-  recording = null;
+  const currentRecorder = recorder;
+  recorder = null;
 
   try {
-    await currentRecording.stopAndUnloadAsync();
+    await currentRecorder.stop();
   } catch {
     // Ignore errors during cancellation — file is discarded anyway
   }

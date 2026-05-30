@@ -40,10 +40,13 @@ export async function extractTransaction(
   const formData = new FormData();
 
   // Attach audio file — React Native FormData expects { uri, name, type }
+  // Use audio/x-wav instead of audio/wav because some servers detect WAV as audio/vnd.wave
+  // which isn't in their allowlist, but audio/x-wav is.
+  const mimeType = audioUri.endsWith(".wav") ? "audio/x-wav" : "audio/mp4";
   formData.append("file", {
     uri: audioUri,
-    name: "recording.m4a",
-    type: "audio/mp4",
+    name: mimeType === "audio/x-wav" ? "recording.wav" : "recording.m4a",
+    type: mimeType,
   } as unknown as Blob);
 
   // Attach JSON context fields
