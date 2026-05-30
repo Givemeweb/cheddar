@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Mic, X } from "lucide-react-native";
 import { File } from "expo-file-system";
@@ -57,6 +57,7 @@ export function VoiceRecorderModal({
   onClose,
 }: VoiceRecorderModalProps) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>("idle");
   const [loadingStatus, setLoadingStatus] = useState<"uploading" | "extracting">(
     "uploading"
@@ -462,7 +463,10 @@ export function VoiceRecorderModal({
           {/* Cancel button */}
           <Pressable
             onPress={handleCancel}
-            style={styles.cancelButton}
+            style={[
+              styles.cancelButton,
+              { top: 16 + insets.top, right: 16 + insets.right },
+            ]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <X size={24} color="#9CA3AF" />
@@ -625,8 +629,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     position: "absolute",
-    top: 16,
-    right: 16,
     zIndex: 10,
     padding: 8,
   },
