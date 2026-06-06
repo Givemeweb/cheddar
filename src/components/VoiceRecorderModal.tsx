@@ -579,7 +579,7 @@ export function VoiceRecorderModal({
                       { transform: [{ scale: micScaleAnim }] },
                     ]}
                   >
-                    <Pressable onPress={handleStopRecording}>
+                    <Pressable testID="stop-mic-button" onPress={handleStopRecording}>
                       <Mic size={40} color="#212226" />
                     </Pressable>
                   </Animated.View>
