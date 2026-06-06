@@ -47,6 +47,7 @@ export interface AddTransactionParams {
 
 interface VoiceRecorderModalProps {
   visible: boolean;
+  autoStart?: boolean;
   onResult: (params: AddTransactionParams | null) => void;
   onClose: () => void;
 }
@@ -57,6 +58,7 @@ const BAR_COUNT = 7;
 
 export function VoiceRecorderModal({
   visible,
+  autoStart = false,
   onResult,
   onClose,
 }: VoiceRecorderModalProps) {
@@ -135,7 +137,7 @@ export function VoiceRecorderModal({
     }
   }, [visible, fadeAnim]);
 
-  // Check permission when modal opens
+  // Check permission when modal opens and auto-start recording if enabled
   useEffect(() => {
     if (!visible) return;
 
@@ -160,11 +162,14 @@ export function VoiceRecorderModal({
             },
           },
         ]);
+      } else if (autoStart) {
+        // Permission granted and auto-start enabled — begin recording
+        handleStartRecording();
       }
     };
 
     checkPermission();
-  }, [visible, t, onClose]);
+  }, [visible, t, onClose, autoStart, handleStartRecording]);
 
   // Start recording animation
   const startRecordingAnimation = useCallback(() => {

@@ -53,6 +53,7 @@ export function FAB({ isDark = false }: FABProps) {
 
       <VoiceRecorderModal
         visible={modalVisible}
+        autoStart={true}
         onResult={handleResult}
         onClose={() => setModalVisible(false)}
       />
