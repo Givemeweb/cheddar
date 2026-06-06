@@ -25,6 +25,7 @@ import {
   extractTransaction,
   ExtractionResponse,
 } from "@/src/services/voiceExtraction";
+import { transcribeAudio } from "@/src/services/transcription";
 import { getCategories, getAccounts, getTransactions } from "@/src/db/storage";
 
 export interface AddTransactionParams {
@@ -267,8 +268,20 @@ export function VoiceRecorderModal({
       }, 1500);
 
       try {
-        // Fetch context data for the extraction
-        console.log("[VoiceRecorder] Fetching context data...");
+        // Step 1: Transcribe audio
+        console.log("[VoiceRecorder] Step 1: Transcribing audio...");
+        const transcription = await transcribeAudio(uri);
+        console.log("[VoiceRecorder] Transcription:", transcription);
+
+        // Delete audio file after transcription
+        await deleteAudioFile(uri);
+
+        if (!transcription.trim()) {
+          throw new Error("No speech detected in the recording");
+        }
+
+        // Step 2: Fetch context data for extraction
+        console.log("[VoiceRecorder] Step 2: Fetching context data...");
         const [categories, accounts, transactions] = await Promise.all([
           getCategories(),
           getAccounts(),
@@ -287,7 +300,7 @@ export function VoiceRecorderModal({
 
         console.log("[VoiceRecorder] Calling extractTransaction...");
         const response = await extractTransaction({
-          audioUri: uri,
+          transcription,
           accounts: accounts.map((a) => ({ id: a.id, name: a.name })),
           categories: categories.map((c) => ({ id: c.id, name: c.name })),
           recentNotes,

@@ -1,8 +1,7 @@
-import { File } from "expo-file-system";
 import { EXTRACTION_ENDPOINT } from "@/src/config/api";
 
 export interface ExtractionRequest {
-  audioUri: string;
+  transcription: string;
   accounts: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string }>;
   recentNotes: Array<{ id: string; text: string }>;
@@ -26,28 +25,15 @@ export interface ExtractionResponse {
 export async function extractTransaction(
   request: ExtractionRequest
 ): Promise<ExtractionResponse> {
-  const { audioUri, accounts, categories, recentNotes, recordedAt } = request;
+  const { transcription, accounts, categories, recentNotes, recordedAt } = request;
 
-  console.log("[voiceExtraction] Starting extraction, uri:", audioUri);
+  console.log("[voiceExtraction] Starting extraction");
   console.log("[voiceExtraction] Endpoint:", EXTRACTION_ENDPOINT);
-
-  const file = new File(audioUri);
-  console.log("[voiceExtraction] File exists:", file.exists, "size:", file.size);
-  if (!file.exists) {
-    throw new Error(`Audio file not found at: ${audioUri}`);
-  }
 
   const formData = new FormData();
 
-  // Attach audio file — React Native FormData expects { uri, name, type }
-  // Use audio/x-wav instead of audio/wav because some servers detect WAV as audio/vnd.wave
-  // which isn't in their allowlist, but audio/x-wav is.
-  const mimeType = audioUri.endsWith(".wav") ? "audio/x-wav" : "audio/mp4";
-  formData.append("file", {
-    uri: audioUri,
-    name: mimeType === "audio/x-wav" ? "recording.wav" : "recording.m4a",
-    type: mimeType,
-  } as unknown as Blob);
+  // Attach transcription as a plain string field
+  formData.append("transcription", transcription);
 
   // Attach JSON context fields
   formData.append("accounts", JSON.stringify(accounts));
@@ -57,7 +43,7 @@ export async function extractTransaction(
 
   // Log what we're sending
   console.log("[voiceExtraction] FormData fields:");
-  console.log("  - file:", audioUri);
+  console.log("  - transcription:", transcription);
   console.log("  - accounts:", JSON.stringify(accounts));
   console.log("  - categories:", JSON.stringify(categories));
   console.log("  - recentNotes:", JSON.stringify(recentNotes));
@@ -117,7 +103,7 @@ export async function extractTransaction(
 
   const data = rawJson as Record<string, unknown>;
 
-  const transcription =
+  const responseTranscription =
     typeof data.transcription === "string" ? data.transcription : "";
 
   const rawTransaction =
@@ -144,5 +130,5 @@ export async function extractTransaction(
     JSON.stringify(transaction, null, 2)
   );
 
-  return { transcription, transaction };
+  return { transcription: responseTranscription, transaction };
 }
