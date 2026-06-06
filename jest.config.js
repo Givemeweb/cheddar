@@ -1,14 +1,11 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
+  preset: 'jest-expo/ios',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/*.test.ts'],
+  testMatch: ['**/*.test.{ts,tsx}'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^test-renderer$': '<rootDir>/node_modules/react-test-renderer',
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(expo-file-system)/)',
-  ],
   setupFiles: ['<rootDir>/jest.setup.js'],
 };

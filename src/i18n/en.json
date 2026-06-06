@@ -272,12 +272,14 @@
   "voice": {
     "tapToRecord": "Tap to record",
     "listening": "Listening...",
-    "uploading": "Uploading...",
+    "transcribing": "Transcribing...",
     "extracting": "Extracting...",
     "cancel": "Cancel",
     "stop": "Stop",
     "noTransactionDetected": "No transaction detected",
     "processingError": "Something went wrong. Please try again.",
+    "transcriptionFailed": "Transcription failed. Please try again.",
+    "extractionFailed": "Extraction failed. Please try again.",
     "retry": "Retry",
     "microphonePermissionRequired": "Microphone permission is required to record audio.",
     "openSettings": "Open Settings"

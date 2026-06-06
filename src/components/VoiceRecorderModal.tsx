@@ -10,7 +10,10 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Mic, X } from "lucide-react-native";
 import { File } from "expo-file-system";
@@ -48,7 +51,7 @@ interface VoiceRecorderModalProps {
   onClose: () => void;
 }
 
-type Phase = "idle" | "recording" | "loading" | "error";
+type Phase = "idle" | "recording" | "loading" | "transcribed" | "error";
 
 const BAR_COUNT = 7;
 
@@ -60,9 +63,10 @@ export function VoiceRecorderModal({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>("idle");
-  const [loadingStatus, setLoadingStatus] = useState<"uploading" | "extracting">(
-    "uploading"
-  );
+  const [loadingStatus, setLoadingStatus] = useState<
+    "transcribing" | "extracting"
+  >("transcribing");
+  const [transcriptionText, setTranscriptionText] = useState<string>("");
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -70,7 +74,7 @@ export function VoiceRecorderModal({
   const ringScaleAnim = useRef(new Animated.Value(1)).current;
   const ringOpacityAnim = useRef(new Animated.Value(0.6)).current;
   const barAnims = useRef(
-    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3))
+    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3)),
   ).current;
 
   // Ref to hold the latest stop handler for auto-stop timer
@@ -99,13 +103,20 @@ export function VoiceRecorderModal({
 
   const resetState = useCallback(() => {
     setPhase("idle");
-    setLoadingStatus("uploading");
+    setLoadingStatus("transcribing");
+    setTranscriptionText("");
     micScaleAnim.setValue(0.8);
     ringScaleAnim.setValue(1);
     ringOpacityAnim.setValue(0.6);
     barAnims.forEach((anim) => anim.setValue(0.3));
     cleanupAnimations();
-  }, [cleanupAnimations, micScaleAnim, ringScaleAnim, ringOpacityAnim, barAnims]);
+  }, [
+    cleanupAnimations,
+    micScaleAnim,
+    ringScaleAnim,
+    ringOpacityAnim,
+    barAnims,
+  ]);
 
   // Fade in/out on visibility change
   useEffect(() => {
@@ -131,28 +142,24 @@ export function VoiceRecorderModal({
     const checkPermission = async () => {
       const granted = await requestMicrophonePermission();
       if (!granted) {
-        Alert.alert(
-          t("voice.microphonePermissionRequired"),
-          "",
-          [
-            {
-              text: t("common.cancel"),
-              style: "cancel",
-              onPress: onClose,
+        Alert.alert(t("voice.microphonePermissionRequired"), "", [
+          {
+            text: t("common.cancel"),
+            style: "cancel",
+            onPress: onClose,
+          },
+          {
+            text: t("voice.openSettings"),
+            onPress: () => {
+              if (Platform.OS === "ios") {
+                Linking.openURL("app-settings:");
+              } else {
+                Linking.openSettings();
+              }
+              onClose();
             },
-            {
-              text: t("voice.openSettings"),
-              onPress: () => {
-                if (Platform.OS === "ios") {
-                  Linking.openURL("app-settings:");
-                } else {
-                  Linking.openSettings();
-                }
-                onClose();
-              },
-            },
-          ]
-        );
+          },
+        ]);
       }
     };
 
@@ -196,7 +203,7 @@ export function VoiceRecorderModal({
             useNativeDriver: true,
           }),
         ]),
-      ])
+      ]),
     );
     ringAnim.start();
     ringAnimationRef.current = ringAnim;
@@ -215,7 +222,7 @@ export function VoiceRecorderModal({
             duration: 300 + Math.random() * 200,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
       // Stagger start times
       setTimeout(() => {
@@ -237,11 +244,9 @@ export function VoiceRecorderModal({
       }, 30000);
     } catch (error) {
       console.error("Failed to start recording:", error);
-      Alert.alert(
-        t("transactions.error"),
-        t("voice.processingError"),
-        [{ text: t("common.cancel"), onPress: onClose }]
-      );
+      Alert.alert(t("transactions.error"), t("voice.processingError"), [
+        { text: t("common.cancel"), onPress: onClose },
+      ]);
     }
   }, [startRecordingAnimation, t, onClose]);
 
@@ -259,28 +264,88 @@ export function VoiceRecorderModal({
   const processAudio = useCallback(
     async (uri: string) => {
       console.log("[VoiceRecorder] Starting processing, uri:", uri);
+
+      // Step 1: Transcribe audio
       setPhase("loading");
-      setLoadingStatus("uploading");
+      setLoadingStatus("transcribing");
 
-      // Transition loading text after a delay
-      loadingTimerRef.current = setTimeout(() => {
-        setLoadingStatus("extracting");
-      }, 1500);
-
+      let transcription: string;
       try {
-        // Step 1: Transcribe audio
         console.log("[VoiceRecorder] Step 1: Transcribing audio...");
-        const transcription = await transcribeAudio(uri);
+        transcription = await transcribeAudio(uri);
         console.log("[VoiceRecorder] Transcription:", transcription);
 
-        // Delete audio file after transcription
+        // Delete audio file immediately after successful transcription
+        await deleteAudioFile(uri);
+      } catch (error) {
+        console.error("[VoiceRecorder] Transcription error:", error);
         await deleteAudioFile(uri);
 
-        if (!transcription.trim()) {
-          throw new Error("No speech detected in the recording");
-        }
+        const errorMessage =
+          error instanceof Error ? error.message : t("voice.processingError");
 
-        // Step 2: Fetch context data for extraction
+        if (Platform.OS === "web") {
+          const confirmed = window.confirm(
+            `${t("voice.transcriptionFailed")}\n\n${errorMessage}\n\n${t("voice.retry")}?`,
+          );
+          if (confirmed) {
+            setPhase("idle");
+          } else {
+            resetState();
+            onClose();
+          }
+        } else {
+          Alert.alert(
+            t("transactions.error"),
+            `${t("voice.transcriptionFailed")}\n\n${errorMessage}`,
+            [
+              {
+                text: t("common.cancel"),
+                style: "cancel",
+                onPress: () => {
+                  resetState();
+                  onClose();
+                },
+              },
+              {
+                text: t("voice.retry"),
+                onPress: () => {
+                  setPhase("idle");
+                },
+              },
+            ],
+          );
+        }
+        return;
+      }
+
+      if (!transcription.trim()) {
+        if (Platform.OS === "web") {
+          window.alert(t("voice.noTransactionDetected"));
+          onResult(null);
+          resetState();
+          onClose();
+        } else {
+          Alert.alert("", t("voice.noTransactionDetected"), [
+            {
+              text: "OK",
+              onPress: () => {
+                onResult(null);
+                resetState();
+                onClose();
+              },
+            },
+          ]);
+        }
+        return;
+      }
+
+      // Show transcription text and begin extraction
+      setTranscriptionText(transcription);
+      setPhase("transcribed");
+
+      // Step 2: Extract transaction
+      try {
         console.log("[VoiceRecorder] Step 2: Fetching context data...");
         const [categories, accounts, transactions] = await Promise.all([
           getCategories(),
@@ -306,67 +371,50 @@ export function VoiceRecorderModal({
           recentNotes,
           recordedAt: new Date(),
         });
-        console.log("[VoiceRecorder] Extraction response:", JSON.stringify(response, null, 2));
-
-        // Delete audio file after extraction attempt
-        await deleteAudioFile(uri);
-
-        if (loadingTimerRef.current) {
-          clearTimeout(loadingTimerRef.current);
-          loadingTimerRef.current = null;
-        }
+        console.log(
+          "[VoiceRecorder] Extraction response:",
+          JSON.stringify(response, null, 2),
+        );
 
         if (response.transaction.type === "unknown") {
-          // Show toast-like alert for unknown transaction
           if (Platform.OS === "web") {
             window.alert(t("voice.noTransactionDetected"));
             onResult(null);
             resetState();
             onClose();
           } else {
-            Alert.alert(
-              "",
-              t("voice.noTransactionDetected"),
-              [
-                {
-                  text: "OK",
-                  onPress: () => {
-                    onResult(null);
-                    resetState();
-                    onClose();
-                  },
+            Alert.alert("", t("voice.noTransactionDetected"), [
+              {
+                text: "OK",
+                onPress: () => {
+                  onResult(null);
+                  resetState();
+                  onClose();
                 },
-              ]
-            );
+              },
+            ]);
           }
           return;
         }
 
-        // Map extraction response to transaction params
         const params = mapExtractionToParams(response, accounts, categories);
-        console.log("[VoiceRecorder] Mapped params:", JSON.stringify(params, null, 2));
+        console.log(
+          "[VoiceRecorder] Mapped params:",
+          JSON.stringify(params, null, 2),
+        );
 
         onResult(params);
         resetState();
         onClose();
       } catch (error) {
-        console.error("[VoiceRecorder] processAudio error:", error);
-        // Delete audio file even on error
-        await deleteAudioFile(uri);
-
-        if (loadingTimerRef.current) {
-          clearTimeout(loadingTimerRef.current);
-          loadingTimerRef.current = null;
-        }
-
-        setPhase("error");
+        console.error("[VoiceRecorder] Extraction error:", error);
 
         const errorMessage =
           error instanceof Error ? error.message : t("voice.processingError");
 
         if (Platform.OS === "web") {
           const confirmed = window.confirm(
-            `${t("voice.processingError")}\n\n${errorMessage}\n\n${t("voice.retry")}?`
+            `${t("voice.extractionFailed")}\n\n${errorMessage}\n\n${t("voice.retry")}?`,
           );
           if (confirmed) {
             setPhase("idle");
@@ -377,7 +425,7 @@ export function VoiceRecorderModal({
         } else {
           Alert.alert(
             t("transactions.error"),
-            `${t("voice.processingError")}\n\n${errorMessage}`,
+            `${t("voice.extractionFailed")}\n\n${errorMessage}`,
             [
               {
                 text: t("common.cancel"),
@@ -393,12 +441,12 @@ export function VoiceRecorderModal({
                   setPhase("idle");
                 },
               },
-            ]
+            ],
           );
         }
       }
     },
-    [t, onResult, onClose, resetState, deleteAudioFile]
+    [t, onResult, onClose, resetState, deleteAudioFile],
   );
 
   const handleStopRecording = useCallback(async () => {
@@ -466,12 +514,7 @@ export function VoiceRecorderModal({
       statusBarTranslucent
       onRequestClose={handleCancel}
     >
-      <Animated.View
-        style={[
-          styles.overlay,
-          { opacity: fadeAnim },
-        ]}
-      >
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         <SafeAreaView style={styles.container}>
           {/* Cancel button */}
           <Pressable
@@ -496,6 +539,7 @@ export function VoiceRecorderModal({
 
                 {/* Mic button */}
                 <Pressable
+                  testID="mic-button"
                   onPress={handleStartRecording}
                   style={styles.micButtonContainer}
                 >
@@ -504,9 +548,7 @@ export function VoiceRecorderModal({
                   </View>
                 </Pressable>
 
-                <Text style={styles.statusText}>
-                  {t("voice.tapToRecord")}
-                </Text>
+                <Text style={styles.statusText}>{t("voice.tapToRecord")}</Text>
               </View>
             )}
 
@@ -543,9 +585,7 @@ export function VoiceRecorderModal({
                   </Animated.View>
                 </View>
 
-                <Text style={styles.statusText}>
-                  {t("voice.listening")}
-                </Text>
+                <Text style={styles.statusText}>{t("voice.listening")}</Text>
               </View>
             )}
 
@@ -553,10 +593,24 @@ export function VoiceRecorderModal({
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#FFB800" />
                 <Text style={styles.loadingText}>
-                  {loadingStatus === "uploading"
-                    ? t("voice.uploading")
+                  {loadingStatus === "transcribing"
+                    ? t("voice.transcribing")
                     : t("voice.extracting")}
                 </Text>
+              </View>
+            )}
+
+            {phase === "transcribed" && (
+              <View style={styles.transcribedContainer}>
+                <Text style={styles.transcriptionText}>
+                  "{transcriptionText}"
+                </Text>
+                <View style={styles.extractingRow}>
+                  <ActivityIndicator size="small" color="#FFB800" />
+                  <Text style={styles.extractingText}>
+                    {t("voice.extracting")}
+                  </Text>
+                </View>
               </View>
             )}
 
@@ -578,7 +632,7 @@ export function VoiceRecorderModal({
 function mapExtractionToParams(
   response: ExtractionResponse,
   accounts: Array<{ id: string; name: string }>,
-  categories: Array<{ id: string; name: string }>
+  categories: Array<{ id: string; name: string }>,
 ): AddTransactionParams {
   const { transaction } = response;
   const params: AddTransactionParams = {
@@ -592,7 +646,7 @@ function mapExtractionToParams(
   // Map account name to ID
   if (transaction.account) {
     const account = accounts.find(
-      (a) => a.name.toLowerCase() === transaction.account.toLowerCase()
+      (a) => a.name.toLowerCase() === transaction.account.toLowerCase(),
     );
     if (account) {
       params.accountId = account.id;
@@ -602,7 +656,7 @@ function mapExtractionToParams(
   // Map category name to ID
   if (transaction.category) {
     const category = categories.find(
-      (c) => c.name.toLowerCase() === transaction.category.toLowerCase()
+      (c) => c.name.toLowerCase() === transaction.category.toLowerCase(),
     );
     if (category) {
       params.categoryId = category.id;
@@ -613,7 +667,7 @@ function mapExtractionToParams(
   if (transaction.type === "transfer") {
     if (transaction.from) {
       const fromAccount = accounts.find(
-        (a) => a.name.toLowerCase() === transaction.from.toLowerCase()
+        (a) => a.name.toLowerCase() === transaction.from.toLowerCase(),
       );
       if (fromAccount) {
         params.fromAccountId = fromAccount.id;
@@ -621,7 +675,7 @@ function mapExtractionToParams(
     }
     if (transaction.to) {
       const toAccount = accounts.find(
-        (a) => a.name.toLowerCase() === transaction.to.toLowerCase()
+        (a) => a.name.toLowerCase() === transaction.to.toLowerCase(),
       );
       if (toAccount) {
         params.toAccountId = toAccount.id;
@@ -729,6 +783,32 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 20,
     fontSize: 16,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+  transcribedContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    maxWidth: 400,
+  },
+  transcriptionText: {
+    fontSize: 18,
+    color: "#F9FAFB",
+    fontWeight: "400",
+    fontStyle: "italic",
+    textAlign: "center",
+    lineHeight: 28,
+    marginBottom: 24,
+  },
+  extractingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  extractingText: {
+    fontSize: 14,
     color: "#9CA3AF",
     fontWeight: "500",
   },
