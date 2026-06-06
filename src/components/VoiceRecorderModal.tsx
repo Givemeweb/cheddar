@@ -579,7 +579,11 @@ export function VoiceRecorderModal({
                       { transform: [{ scale: micScaleAnim }] },
                     ]}
                   >
-                    <Pressable testID="stop-mic-button" onPress={handleStopRecording}>
+                    <Pressable
+                      testID="stop-mic-button"
+                      style={{ padding: 40 }}
+                      onPress={handleStopRecording}
+                    >
                       <Mic size={40} color="#212226" />
                     </Pressable>
                   </Animated.View>
@@ -637,6 +641,10 @@ function mapExtractionToParams(
   const { transaction } = response;
   const params: AddTransactionParams = {
     type: transaction.type,
+    categoryId: transaction.category,
+    accountId: transaction.account,
+    fromAccountId: transaction.from,
+    toAccountId: transaction.to,
     amount: transaction.amount > 0 ? transaction.amount.toString() : "",
     note: transaction.note || "",
     description: "",
