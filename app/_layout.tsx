@@ -5,6 +5,7 @@ import { Platform, View, useWindowDimensions, StyleSheet } from "react-native";
 import { DatabaseProvider } from "../src/components/DatabaseProvider";
 import { ThemeProvider, useTheme } from "../src/components/ThemeProvider";
 import { PasscodeProvider, usePasscode } from "../src/components/PasscodeProvider";
+import { SubscriptionProvider } from "../src/components/SubscriptionProvider";
 import { LockScreen } from "../src/components/LockScreen";
 import { SideNav } from "../src/components/SideNav";
 import "../src/i18n";
@@ -164,11 +165,13 @@ const styles = StyleSheet.create({
 export default function RootLayout() {
   return (
     <DatabaseProvider>
-      <ThemeProvider>
-        <PasscodeProvider>
-          <ThemedApp />
-        </PasscodeProvider>
-      </ThemeProvider>
+      <SubscriptionProvider>
+        <ThemeProvider>
+          <PasscodeProvider>
+            <ThemedApp />
+          </PasscodeProvider>
+        </ThemeProvider>
+      </SubscriptionProvider>
     </DatabaseProvider>
   );
 }
