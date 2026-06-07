@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { supabase } from "./supabase";
+import { iapBridge } from "./iapBridge";
 
 // Types
 
@@ -29,6 +30,14 @@ export interface SubscriptionCore {
   refreshStatus(): Promise<void>;
   getAnonymousUserId(): string | null;
   markRestored(): Promise<void>;
+  restoreSubscription(): Promise<{
+    success: boolean;
+    error?: string;
+    status?: "free" | "premium" | "expired";
+    tier?: "monthly" | "annual" | null;
+    expiryDate?: string | null;
+  }>;
+  hasSubscriptionCache(): Promise<boolean>;
 }
 
 // Constants
@@ -354,6 +363,84 @@ async function markRestored(): Promise<void> {
   await refreshStatus();
 }
 
+async function restoreSubscription(): Promise<{
+  success: boolean;
+  error?: string;
+  status?: "free" | "premium" | "expired";
+  tier?: "monthly" | "annual" | null;
+  expiryDate?: string | null;
+}> {
+  if (!_anonymousUserId) {
+    return { success: false, error: "No anonymous user" };
+  }
+
+  try {
+    // 1. Get receipt from native store
+    const restoreResult = await iapBridge.restorePurchases();
+
+    if (!restoreResult.success || !restoreResult.receipt) {
+      return {
+        success: false,
+        error: "NO_PURCHASES_FOUND",
+      };
+    }
+
+    // 2. Send receipt + anonymousUserId to backend
+    const { data, error } = await supabase.functions.invoke(
+      "restore-subscription",
+      {
+        body: {
+          receipt: restoreResult.receipt,
+          anonymousUserId: _anonymousUserId,
+          platform: restoreResult.platform ?? "ios",
+        },
+      },
+    );
+
+    if (error) {
+      return {
+        success: false,
+        error: "NETWORK_ERROR",
+      };
+    }
+
+    // 3. Handle backend response
+    if (!data?.success) {
+      return {
+        success: false,
+        error: data?.error ?? "UNKNOWN_ERROR",
+      };
+    }
+
+    // 4. Success — update cache with returned data
+    const cache: SubscriptionCache = {
+      anonymousUserId: _anonymousUserId,
+      status: data.status ?? "premium",
+      tier: data.tier ?? null,
+      expiryDate: data.expiryDate ?? null,
+      lastCheckedAt: new Date().toISOString(),
+      receiptToken: restoreResult.receipt,
+    };
+
+    await saveCache(cache);
+    _state = buildStateFromCache(cache);
+
+    return {
+      success: true,
+      status: data.status,
+      tier: data.tier,
+      expiryDate: data.expiryDate,
+    };
+  } catch {
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+}
+
+async function hasSubscriptionCache(): Promise<boolean> {
+  const cache = await loadCache();
+  return cache !== null;
+}
+
 // Exported Singleton
 
 export const subscriptionCore: SubscriptionCore = {
@@ -364,4 +451,6 @@ export const subscriptionCore: SubscriptionCore = {
   refreshStatus,
   getAnonymousUserId,
   markRestored,
+  restoreSubscription,
+  hasSubscriptionCache,
 };

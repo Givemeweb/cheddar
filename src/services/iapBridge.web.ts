@@ -26,6 +26,7 @@ export interface RestoreResult {
   success: boolean;
   receipt: string | null;
   expiryDate: Date | null;
+  platform?: "ios" | "android";
   error?: string;
 }
 

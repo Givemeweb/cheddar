@@ -82,6 +82,12 @@ function ThemedApp() {
                 animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
               }}
             />
+            <Stack.Screen
+              name="subscription"
+              options={{
+                animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+              }}
+            />
           </Stack>
         </View>
         <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -138,6 +144,12 @@ function ThemedApp() {
         />
         <Stack.Screen
           name="backup-reset"
+          options={{
+            animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="subscription"
           options={{
             animation: Platform.OS === 'android' ? 'none' : 'slide_from_right',
           }}

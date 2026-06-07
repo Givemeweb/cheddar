@@ -37,6 +37,7 @@ export interface RestoreResult {
   success: boolean;
   receipt: string | null;
   expiryDate: Date | null;
+  platform?: "ios" | "android";
   error?: string;
 }
 
@@ -295,7 +296,12 @@ class NativeIAPBridge implements IAPBridge {
         );
       }
 
-      return { success: true, receipt, expiryDate };
+      return {
+        success: true,
+        receipt,
+        expiryDate,
+        platform: Platform.OS === "ios" ? "ios" : "android",
+      };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       return {

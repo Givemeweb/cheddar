@@ -266,6 +266,65 @@
     "notificationTitle": "Time to track your expenses!",
     "notificationBody": "Don't forget to add your transactions for today."
   },
+  "subscription": {
+    "screen": {
+      "title": "Subscription",
+      "status": {
+        "active": "Active",
+        "expired": "Expired",
+        "free": "Free Plan",
+        "offline": "Offline"
+      },
+      "expiryLabel": "Expires",
+      "expiredLabel": "Expired",
+      "monthlyPlan": "Monthly",
+      "annualPlan": "Annual",
+      "restoreButton": "Restore Purchases",
+      "manageSubscription": "Manage Subscription",
+      "upgradeTitle": "Upgrade to Premium",
+      "upgradeDesc": "Unlock all premium features",
+      "pricing": {
+        "monthly": "{{price}}/month",
+        "annual": "{{price}}/year",
+        "savings": "Save {{percent}}%"
+      }
+    },
+    "paywall": {
+      "title": "Unlock Premium",
+      "subtitle": "Get the most out of Cheddar",
+      "benefits": {
+        "voice": "Voice-to-transaction",
+        "unlimited": "Unlimited accounts & categories",
+        "stats": "Advanced stats & trends",
+        "backup": "Cloud backup & restore",
+        "subcategories": "Subcategories",
+        "alarms": "Reminders & alarms",
+        "passcode": "Passcode & biometric lock"
+      },
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "cta": "Subscribe for {{price}}",
+      "restoreLink": "Restore Purchases",
+      "dismiss": "Not now"
+    },
+    "error": {
+      "noPurchases": "No previous purchases found for this account",
+      "alreadyLinked": "This purchase is already linked to another device. Contact support if you need help.",
+      "invalidReceipt": "Receipt validation failed. Please try again.",
+      "networkError": "Check your connection and try again.",
+      "unknownError": "Something went wrong. Please try again.",
+      "retry": "Retry"
+    },
+    "gate": {
+      "upgradeTitle": "Upgrade to Premium",
+      "upgradeDesc": "Unlock this feature with Cheddar Premium",
+      "unlockCta": "Unlock"
+    },
+    "limits": {
+      "accounts": "Free plan: 3 accounts max",
+      "categories": "Free plan: 10 categories max"
+    }
+  },
   "app": {
     "name": "Cheddar"
   }

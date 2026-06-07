@@ -10,6 +10,7 @@ import {
   Bell,
   Palette,
   ChevronRight,
+  Star,
 } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
 
@@ -60,6 +61,11 @@ export default function ConfigurationScreen() {
     {
       title: t('config.other'),
       items: [
+        {
+          label: t('subscription.screen.title'),
+          icon: <Star size={22} color="#FBBF24" />,
+          route: "/subscription",
+        },
         {
           label: t('config.passcode'),
           icon: <Lock size={22} color={iconColor} />,
