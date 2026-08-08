@@ -17,6 +17,7 @@ import {
   Trash2,
   Circle,
   ChevronRight,
+  Lock,
 } from 'lucide-react-native';
 import { categoryIconMap } from '@/src/components/categoryIcons';
 import {
@@ -27,6 +28,9 @@ import {
 import { useTheme } from '@/src/components/ThemeProvider';
 import { ToggleSwitch } from '@/src/components/ToggleSwitch';
 import { useTranslation } from 'react-i18next';
+import { PremiumGate } from '@/src/components/PremiumGate';
+import { PaywallModal } from '@/src/components/PaywallModal';
+import { usePremiumGate } from '@/src/hooks/usePremiumGate';
 
 export default function IncomeCategoriesScreen() {
   const router = useRouter();
@@ -34,13 +38,15 @@ export default function IncomeCategoriesScreen() {
   const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const { canAddCategory, paywallVisible, showPaywall, hidePaywall, refreshCounts } = usePremiumGate();
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
     const cats = await getCategoriesByType('income');
     setCategories(cats);
+    await refreshCounts();
     setLoading(false);
-  }, []);
+  }, [refreshCounts]);
 
   useFocusEffect(
     useCallback(() => {
@@ -120,30 +126,42 @@ export default function IncomeCategoriesScreen() {
           {t('categories.incomeCategories')}
         </Text>
         <TouchableOpacity
-          onPress={() => router.push('/configuration/add-income-category' as never)}
+          onPress={() => {
+            if (canAddCategory) {
+              router.push('/configuration/add-income-category' as never);
+            } else {
+              showPaywall('unlimited_accounts');
+            }
+          }}
           className="p-1"
         >
-          <Plus size={24} color="#FFB800" />
+          {canAddCategory ? (
+            <Plus size={24} color="#FFB800" />
+          ) : (
+            <Lock size={24} color="#9CA3AF" />
+          )}
         </TouchableOpacity>
       </View>
 
       {/* Subcategories Toggle */}
-      <View className={`mx-4 mt-4 rounded-xl ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
-        <View className="flex-row items-center justify-between p-4">
-          <View className="flex-1 mr-4">
-            <Text className={`text-base font-medium ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-              {t('categories.subcategories')}
-            </Text>
-            <Text className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {t('categories.subcategoriesDesc')}
-            </Text>
+      <PremiumGate feature="subcategories">
+        <View className={`mx-4 mt-4 rounded-xl ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
+          <View className="flex-row items-center justify-between p-4">
+            <View className="flex-1 mr-4">
+              <Text className={`text-base font-medium ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                {t('categories.subcategories')}
+              </Text>
+              <Text className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {t('categories.subcategoriesDesc')}
+              </Text>
+            </View>
+            <ToggleSwitch
+              value={subcategoriesEnabled}
+              onValueChange={handleToggleSubcategories}
+            />
           </View>
-          <ToggleSwitch
-            value={subcategoriesEnabled}
-            onValueChange={handleToggleSubcategories}
-          />
         </View>
-      </View>
+      </PremiumGate>
 
       <ScrollView className="flex-1 px-4 pt-4">
         {categories.length === 0 ? (
@@ -197,6 +215,11 @@ export default function IncomeCategoriesScreen() {
           </View>
         )}
       </ScrollView>
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={hidePaywall}
+        feature="unlimited_accounts"
+      />
     </SafeAreaView>
   );
 }

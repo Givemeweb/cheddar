@@ -16,6 +16,9 @@ import { getAccounts, Account } from "../../src/db/storage";
 import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
+import { usePremiumGate } from "../../src/hooks/usePremiumGate";
+import { PaywallModal } from "../../src/components/PaywallModal";
+import { Lock } from "lucide-react-native";
 
 export default function AccountsScreen() {
   const router = useRouter();
@@ -26,6 +29,13 @@ export default function AccountsScreen() {
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol } = useTheme();
   const { t } = useTranslation();
+  const {
+    canAddAccount,
+    paywallVisible,
+    showPaywall,
+    hidePaywall,
+    refreshCounts,
+  } = usePremiumGate();
 
   useFocusEffect(
     useCallback(() => {
@@ -33,6 +43,7 @@ export default function AccountsScreen() {
         try {
           const allAccounts = await getAccounts();
           setAccountsList(allAccounts);
+          await refreshCounts();
         } catch (error) {
           console.error("Error fetching accounts:", error);
         } finally {
@@ -40,7 +51,7 @@ export default function AccountsScreen() {
         }
       }
       fetchAccounts();
-    }, [])
+    }, [refreshCounts])
   );
 
   const totalAssets = accountsList.reduce((sum, acc) => sum + acc.balance, 0);
@@ -98,15 +109,24 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
-              router.push("/configuration/add-account");
+              if (canAddAccount) {
+                router.push("/configuration/add-account");
+              } else {
+                showPaywall("unlimited_accounts");
+              }
             }}
             className="px-4 py-3"
           >
-            <Text
-              className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-            >
-              {t("accounts.addAccount")}
-            </Text>
+            <View className="flex-row items-center">
+              {!canAddAccount && (
+                <Lock size={16} color="#9CA3AF" style={{ marginRight: 8 }} />
+              )}
+              <Text
+                className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              >
+                {t("accounts.addAccount")}
+              </Text>
+            </View>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -200,6 +220,11 @@ export default function AccountsScreen() {
             </Text>
           </View>
         }
+      />
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={hidePaywall}
+        feature="unlimited_accounts"
       />
     </SafeAreaView>
   );

@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
-import { Bell } from "lucide-react-native";
+import { Bell, Lock } from "lucide-react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { ToggleSwitch } from "../../src/components/ToggleSwitch";
@@ -13,6 +13,8 @@ import {
   scheduleAlarmNotification,
   cancelAlarmNotifications,
 } from "../../src/utils/notifications";
+import { PremiumGate } from "../../src/components/PremiumGate";
+import { PaywallModal } from "../../src/components/PaywallModal";
 
 const DAYS = [
   { key: 0, shortKey: "sun" },
@@ -35,6 +37,7 @@ export default function AlarmSettingsScreen() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -110,140 +113,180 @@ export default function AlarmSettingsScreen() {
   const iconColor = isDark ? "#F9FAFB" : "#212226";
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
+    <PremiumGate
+      feature="alarms"
+      fallback={
+        <SafeAreaView
+          className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
+        >
+          <View
+            className={`flex-row items-center px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
+          >
+            <TouchableOpacity onPress={() => router.back()} className="mr-4">
+              <Text className="text-cheddar-yellow text-lg font-medium">
+                {t("common.back")}
+              </Text>
+            </TouchableOpacity>
+            <Text
+              className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("config.alarmSettings")}
+            </Text>
+          </View>
+          <View className="flex-1 items-center justify-center px-6">
+            <View className={`rounded-xl p-6 items-center ${isDark ? "bg-[#26282D]" : "bg-white"}`}>
+              <Lock size={32} color="#9CA3AF" />
+              <Text className={`text-lg font-semibold mt-4 mb-2 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}>
+                {t("subscription.gate.upgradeTitle")}
+              </Text>
+              <Text className={`text-sm text-center mb-4 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                {t("subscription.gate.upgradeDesc")}
+              </Text>
+            </View>
+          </View>
+          <PaywallModal
+            visible={paywallVisible}
+            onClose={() => setPaywallVisible(false)}
+            feature="alarms"
+          />
+        </SafeAreaView>
+      }
     >
-      <View
-        className={`flex-row items-center px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
+      <SafeAreaView
+        className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-cheddar-yellow text-lg font-medium">
-            {t("common.back")}
-          </Text>
-        </TouchableOpacity>
-        <Text
-          className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-        >
-          {t("config.alarmSettings")}
-        </Text>
-      </View>
-
-      <View className="flex-1 px-4 pt-4">
-        {/* Enable/Disable toggle */}
-        <Text
-          className={`text-sm font-medium uppercase mb-2 px-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-        >
-          {t("config.alarmSettings")}
-        </Text>
         <View
-          className={`${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl overflow-hidden`}
+          className={`flex-row items-center px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
         >
-          <View className="flex-row items-center justify-between p-4">
-            <View className="flex-row items-center flex-1">
-              <View className="mr-3">
-                <Bell size={24} color={iconColor} />
+          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+            <Text className="text-cheddar-yellow text-lg font-medium">
+              {t("common.back")}
+            </Text>
+          </TouchableOpacity>
+          <Text
+            className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+          >
+            {t("config.alarmSettings")}
+          </Text>
+        </View>
+
+        <View className="flex-1 px-4 pt-4">
+          {/* Enable/Disable toggle */}
+          <Text
+            className={`text-sm font-medium uppercase mb-2 px-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+          >
+            {t("config.alarmSettings")}
+          </Text>
+          <View
+            className={`${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl overflow-hidden`}
+          >
+            <View className="flex-row items-center justify-between p-4">
+              <View className="flex-row items-center flex-1">
+                <View className="mr-3">
+                  <Bell size={24} color={iconColor} />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                  >
+                    {t("alarm.enable")}
+                  </Text>
+                  <Text
+                    className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    {t("alarm.enableDesc")}
+                  </Text>
+                </View>
               </View>
+              <ToggleSwitch
+                value={settings.enabled}
+                onValueChange={handleToggleEnabled}
+              />
+            </View>
+          </View>
+
+          {/* Time Selection */}
+          <Text
+            className={`text-sm font-medium uppercase mb-2 px-2 mt-6 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+          >
+            {t("alarm.time")}
+          </Text>
+          <View
+            className={`${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl overflow-hidden`}
+          >
+            <TouchableOpacity
+              className="flex-row items-center justify-between p-4"
+              onPress={() => setShowTimePicker(true)}
+              disabled={!settings.enabled}
+            >
               <View className="flex-1">
                 <Text
-                  className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                  className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"} ${!settings.enabled ? "opacity-50" : ""}`}
                 >
-                  {t("alarm.enable")}
+                  {getDisplayTime(settings.time)}
                 </Text>
                 <Text
-                  className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                  className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"} ${!settings.enabled ? "opacity-50" : ""}`}
                 >
-                  {t("alarm.enableDesc")}
+                  {t("alarm.timeDesc")}
                 </Text>
               </View>
-            </View>
-            <ToggleSwitch
-              value={settings.enabled}
-              onValueChange={handleToggleEnabled}
-            />
+            </TouchableOpacity>
+            {showTimePicker && (
+              <DateTimePicker
+                value={(() => {
+                  const [hours, minutes] = settings.time.split(":").map(Number);
+                  const date = new Date();
+                  date.setHours(hours, minutes, 0, 0);
+                  return date;
+                })()}
+                mode="time"
+                is24Hour={true}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleTimeChange}
+              />
+            )}
+          </View>
+
+          {/* Day Selection */}
+          <Text
+            className={`text-sm font-medium uppercase mb-2 px-2 mt-6 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+          >
+            {t("alarm.repeat")}
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {DAYS.map((day) => {
+              const isSelected = settings.days.includes(day.key);
+              return (
+                <TouchableOpacity
+                  key={day.key}
+                  onPress={() => toggleDay(day.key)}
+                  disabled={!settings.enabled}
+                  className={`px-3 py-2 rounded-full border ${
+                    isSelected
+                      ? "bg-cheddar-yellow border-cheddar-yellow"
+                      : isDark
+                      ? "bg-[#26282D] border-gray-600"
+                      : "bg-white border-gray-300"
+                  } ${!settings.enabled ? "opacity-50" : ""}`}
+                >
+                  <Text
+                    className={`text-sm font-medium ${
+                      isSelected
+                        ? "text-cheddar-dark"
+                        : isDark
+                        ? "text-cheddar-light"
+                        : "text-cheddar-dark"
+                    }`}
+                  >
+                    {t(`days.short.${day.shortKey}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
-
-        {/* Time Selection */}
-        <Text
-          className={`text-sm font-medium uppercase mb-2 px-2 mt-6 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-        >
-          {t("alarm.time")}
-        </Text>
-        <View
-          className={`${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl overflow-hidden`}
-        >
-          <TouchableOpacity
-            className="flex-row items-center justify-between p-4"
-            onPress={() => setShowTimePicker(true)}
-            disabled={!settings.enabled}
-          >
-            <View className="flex-1">
-              <Text
-                className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"} ${!settings.enabled ? "opacity-50" : ""}`}
-              >
-                {getDisplayTime(settings.time)}
-              </Text>
-              <Text
-                className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"} ${!settings.enabled ? "opacity-50" : ""}`}
-              >
-                {t("alarm.timeDesc")}
-              </Text>
-            </View>
-          </TouchableOpacity>
-          {showTimePicker && (
-            <DateTimePicker
-              value={(() => {
-                const [hours, minutes] = settings.time.split(":").map(Number);
-                const date = new Date();
-                date.setHours(hours, minutes, 0, 0);
-                return date;
-              })()}
-              mode="time"
-              is24Hour={true}
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={handleTimeChange}
-            />
-          )}
-        </View>
-
-        {/* Day Selection */}
-        <Text
-          className={`text-sm font-medium uppercase mb-2 px-2 mt-6 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-        >
-          {t("alarm.repeat")}
-        </Text>
-        <View className="flex-row flex-wrap gap-2">
-          {DAYS.map((day) => {
-            const isSelected = settings.days.includes(day.key);
-            return (
-              <TouchableOpacity
-                key={day.key}
-                onPress={() => toggleDay(day.key)}
-                disabled={!settings.enabled}
-                className={`px-3 py-2 rounded-full border ${
-                  isSelected
-                    ? "bg-cheddar-yellow border-cheddar-yellow"
-                    : isDark
-                    ? "bg-[#26282D] border-gray-600"
-                    : "bg-white border-gray-300"
-                } ${!settings.enabled ? "opacity-50" : ""}`}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    isSelected
-                      ? "text-cheddar-dark"
-                      : isDark
-                      ? "text-cheddar-light"
-                      : "text-cheddar-dark"
-                  }`}
-                >
-                  {t(`days.short.${day.shortKey}`)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </PremiumGate>
   );
 }

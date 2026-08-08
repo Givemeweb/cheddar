@@ -8,6 +8,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
 import { formatNumber } from "../src/utils/formatNumber";
+import { PremiumGate } from "../src/components/PremiumGate";
+import { PaywallModal } from "../src/components/PaywallModal";
+import { Lock } from "lucide-react-native";
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
 
@@ -162,137 +165,173 @@ export default function TotalStatsScreen() {
   }
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
-      edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
-    >
-      <View
-        className={`flex-row items-center justify-between px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
-      >
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-cheddar-yellow text-lg font-medium">
-              {t("common.back")}
+    <PremiumGate
+      feature="advanced_stats"
+      fallback={
+        <SafeAreaView
+          className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
+          edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
+        >
+          <View
+            className={`flex-row items-center px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
+          >
+            <TouchableOpacity onPress={() => router.back()} className="mr-4">
+              <Text className="text-cheddar-yellow text-lg font-medium">
+                {t("common.back")}
+              </Text>
+            </TouchableOpacity>
+            <Text
+              className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("totalStats.title")}
             </Text>
-          </TouchableOpacity>
-          <Text
-            className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-          >
-            {t("totalStats.title")}
-          </Text>
-        </View>
-        <View className="flex-row items-center">
-          <Pressable
-            onPress={goToPreviousMonth}
-            className="p-2"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ChevronLeft size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
-          </Pressable>
-          <Text
-            className={`text-base font-semibold ${isDark ? "text-white" : "text-cheddar-dark"}`}
-          >
-            {monthYear}
-          </Text>
-          <Pressable
-            onPress={goToNextMonth}
-            className="p-2"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ChevronRight size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Total Balance */}
-      <View className="px-4 mb-4 mt-4">
-        <View className="bg-cheddar-yellow rounded-xl p-4 shadow-sm">
-          <Text className="text-cheddar-dark text-sm font-medium">
-            {t("totalStats.balance")}
-          </Text>
-          <Text className="text-cheddar-dark text-xl font-bold mt-1">
-            {currencySymbol} {formatNumber(selectedMonthBalance)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Asset Growth Chart */}
-      <View className="flex-1 px-4 mb-4">
-        <View
-          className={`flex-1 rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-        >
-          <Text
-            className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-          >
-            {t("totalStats.monthlyGrowth")}
-          </Text>
-          {monthlyData.length > 0 ? (
-            <View
-              className="flex-1"
-              onLayout={(event) => {
-                const { width, height } = event.nativeEvent.layout;
-                setDotChartDimensions({ width, height });
-              }}
-            >
-              {dotChartDimensions && (
-                <DotChart
-                  data={monthlyData}
-                  width={dotChartDimensions.width}
-                  height={dotChartDimensions.height}
-                  currencySymbol={currencySymbol}
-                />
-              )}
-            </View>
-          ) : (
-            <View className="flex-1 items-center justify-center">
-              <Text
-                className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
-              >
-                {t("totalStats.noData")}
+          </View>
+          <View className="flex-1 items-center justify-center px-6">
+            <View className={`rounded-xl p-6 items-center ${isDark ? "bg-[#26282D]" : "bg-white"}`}>
+              <Lock size={32} color="#9CA3AF" />
+              <Text className={`text-lg font-semibold mt-4 mb-2 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}>
+                {t("subscription.gate.upgradeTitle")}
+              </Text>
+              <Text className={`text-sm text-center mb-4 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                {t("subscription.gate.upgradeDesc")}
               </Text>
             </View>
-          )}
-        </View>
-      </View>
-
-      {/* Income vs Expense Chart */}
-      <View className="flex-1 px-4 mb-4">
+          </View>
+        </SafeAreaView>
+      }
+    >
+      <SafeAreaView
+        className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
+        edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
+      >
         <View
-          className={`flex-1 rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          className={`flex-row items-center justify-between px-4 py-3 ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"} border-b`}
         >
-          <Text
-            className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-          >
-            {t("totalStats.incomeExpense")}
-          </Text>
-          {incomeExpenseData.length > 0 ? (
-            <View
-              className="flex-1"
-              onLayout={(event) => {
-                const { width, height } = event.nativeEvent.layout;
-                setBarChartDimensions({ width, height });
-              }}
-            >
-              {barChartDimensions && (
-                <BarChart
-                  data={incomeExpenseData}
-                  width={barChartDimensions.width}
-                  height={barChartDimensions.height}
-                  currencySymbol={currencySymbol}
-                />
-              )}
-            </View>
-          ) : (
-            <View className="flex-1 items-center justify-center">
-              <Text
-                className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
-              >
-                {t("totalStats.noData")}
+          <View className="flex-row items-center">
+            <TouchableOpacity onPress={() => router.back()} className="mr-4">
+              <Text className="text-cheddar-yellow text-lg font-medium">
+                {t("common.back")}
               </Text>
-            </View>
-          )}
+            </TouchableOpacity>
+            <Text
+              className={`text-xl font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("totalStats.title")}
+            </Text>
+          </View>
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={goToPreviousMonth}
+              className="p-2"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronLeft size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            </Pressable>
+            <Text
+              className={`text-base font-semibold ${isDark ? "text-white" : "text-cheddar-dark"}`}
+            >
+              {monthYear}
+            </Text>
+            <Pressable
+              onPress={goToNextMonth}
+              className="p-2"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronRight size={24} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            </Pressable>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+
+        {/* Total Balance */}
+        <View className="px-4 mb-4 mt-4">
+          <View className="bg-cheddar-yellow rounded-xl p-4 shadow-sm">
+            <Text className="text-cheddar-dark text-sm font-medium">
+              {t("totalStats.balance")}
+            </Text>
+            <Text className="text-cheddar-dark text-xl font-bold mt-1">
+              {currencySymbol} {formatNumber(selectedMonthBalance)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Asset Growth Chart */}
+        <View className="flex-1 px-4 mb-4">
+          <View
+            className={`flex-1 rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("totalStats.monthlyGrowth")}
+            </Text>
+            {monthlyData.length > 0 ? (
+              <View
+                className="flex-1"
+                onLayout={(event) => {
+                  const { width, height } = event.nativeEvent.layout;
+                  setDotChartDimensions({ width, height });
+                }}
+              >
+                {dotChartDimensions && (
+                  <DotChart
+                    data={monthlyData}
+                    width={dotChartDimensions.width}
+                    height={dotChartDimensions.height}
+                    currencySymbol={currencySymbol}
+                  />
+                )}
+              </View>
+            ) : (
+              <View className="flex-1 items-center justify-center">
+                <Text
+                  className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                >
+                  {t("totalStats.noData")}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Income vs Expense Chart */}
+        <View className="flex-1 px-4 mb-4">
+          <View
+            className={`flex-1 rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          >
+            <Text
+              className={`font-semibold mb-4 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+            >
+              {t("totalStats.incomeExpense")}
+            </Text>
+            {incomeExpenseData.length > 0 ? (
+              <View
+                className="flex-1"
+                onLayout={(event) => {
+                  const { width, height } = event.nativeEvent.layout;
+                  setBarChartDimensions({ width, height });
+                }}
+              >
+                {barChartDimensions && (
+                  <BarChart
+                    data={incomeExpenseData}
+                    width={barChartDimensions.width}
+                    height={barChartDimensions.height}
+                    currencySymbol={currencySymbol}
+                  />
+                )}
+              </View>
+            ) : (
+              <View className="flex-1 items-center justify-center">
+                <Text
+                  className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                >
+                  {t("totalStats.noData")}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    </PremiumGate>
   );
 }

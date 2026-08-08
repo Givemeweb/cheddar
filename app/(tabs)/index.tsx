@@ -23,7 +23,10 @@ import {
   TransactionWithDetails,
 } from "../../src/components/TransactionItem";
 import { FAB } from "../../src/components/FAB";
+import { VoiceFAB } from "../../src/components/VoiceFAB";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { PremiumGate } from "../../src/components/PremiumGate";
+import { PaywallModal } from "../../src/components/PaywallModal";
 
 import { formatNumber } from "../../src/utils/formatNumber";
 
@@ -37,6 +40,7 @@ export default function TransactionsScreen() {
   const [filterCategoryName, setFilterCategoryName] = useState<string | null>(
     null,
   );
+  const [paywallVisible, setPaywallVisible] = useState(false);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol } = useTheme();
@@ -346,7 +350,24 @@ export default function TransactionsScreen() {
           </View>
         }
       />
+      <PremiumGate
+        feature="voice"
+        fallback={
+          <VoiceFAB
+            isDark={isDark}
+            locked={true}
+            onPress={() => setPaywallVisible(true)}
+          />
+        }
+      >
+        <VoiceFAB isDark={isDark} locked={false} />
+      </PremiumGate>
       <FAB isDark={isDark} />
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        feature="voice"
+      />
     </SafeAreaView>
   );
 }

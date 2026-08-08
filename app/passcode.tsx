@@ -21,6 +21,8 @@ import {
   isBiometricEnabled,
   setBiometricEnabled,
 } from '../src/db/passcode';
+import { PremiumGate } from '../src/components/PremiumGate';
+import { PaywallModal } from '../src/components/PaywallModal';
 
 type Mode = 'disabled' | 'enable_step1' | 'enable_step2' | 'change_verify' | 'change_step1' | 'change_step2' | 'disable_verify';
 
@@ -387,27 +389,62 @@ export default function PasscodeScreen() {
   const isEntryMode = mode !== 'disabled';
 
   return (
-    <SafeAreaView
-      className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
-    >
-      <View
-        className={`flex-row items-center px-4 py-3 ${isDark ? 'bg-[#26282D] border-gray-700' : 'bg-white border-gray-200'} border-b`}
-      >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-cheddar-yellow text-lg font-medium">
-            {t('common.back')}
-          </Text>
-        </TouchableOpacity>
-        <Text
-          className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+    <PremiumGate
+      feature="passcode"
+      fallback={
+        <SafeAreaView
+          className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
         >
-          {t('passcode.title')}
-        </Text>
-      </View>
+          <View
+            className={`flex-row items-center px-4 py-3 ${isDark ? 'bg-[#26282D] border-gray-700' : 'bg-white border-gray-200'} border-b`}
+          >
+            <TouchableOpacity onPress={() => router.back()} className="mr-4">
+              <Text className="text-cheddar-yellow text-lg font-medium">
+                {t('common.back')}
+              </Text>
+            </TouchableOpacity>
+            <Text
+              className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+            >
+              {t('passcode.title')}
+            </Text>
+          </View>
+          <View className="flex-1 items-center justify-center px-6">
+            <View className={`rounded-xl p-6 items-center ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
+              <Lock size={32} color="#9CA3AF" />
+              <Text className={`text-lg font-semibold mt-4 mb-2 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
+                {t('subscription.gate.upgradeTitle')}
+              </Text>
+              <Text className={`text-sm text-center mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {t('subscription.gate.upgradeDesc')}
+              </Text>
+            </View>
+          </View>
+        </SafeAreaView>
+      }
+    >
+      <SafeAreaView
+        className={`flex-1 ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}
+      >
+        <View
+          className={`flex-row items-center px-4 py-3 ${isDark ? 'bg-[#26282D] border-gray-700' : 'bg-white border-gray-200'} border-b`}
+        >
+          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+            <Text className="text-cheddar-yellow text-lg font-medium">
+              {t('common.back')}
+            </Text>
+          </TouchableOpacity>
+          <Text
+            className={`text-xl font-semibold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+          >
+            {t('passcode.title')}
+          </Text>
+        </View>
 
-      {passcodeEnabled && !isEntryMode && renderEnabledMode()}
-      {!passcodeEnabled && !isEntryMode && renderDisabledMode()}
-      {isEntryMode && renderPasscodeEntry()}
-    </SafeAreaView>
+        {passcodeEnabled && !isEntryMode && renderEnabledMode()}
+        {!passcodeEnabled && !isEntryMode && renderDisabledMode()}
+        {isEntryMode && renderPasscodeEntry()}
+      </SafeAreaView>
+    </PremiumGate>
   );
 }
