@@ -30,7 +30,7 @@ export default function AlarmSettingsScreen() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<AlarmSettings>({
     enabled: false,
-    time: "21:00",
+    time: "20:00",
     days: [0, 1, 2, 3, 4, 5, 6],
   });
   const [isLoading, setIsLoading] = useState(true);

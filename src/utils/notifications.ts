@@ -30,6 +30,10 @@ export async function scheduleAlarmNotification(): Promise<string | null> {
     return null;
   }
 
+  // Treat an empty day selection as every day — "enabled" must always
+  // schedule at least one reminder, otherwise the toggle silently does nothing.
+  const days = settings.days.length > 0 ? settings.days : [0, 1, 2, 3, 4, 5, 6];
+
   // Get notification content fromi18n - using hardcoded for now
   const title = "Time to track your expenses!";
   const body = "Don't forget to add your transactions for today.";
@@ -40,7 +44,7 @@ export async function scheduleAlarmNotification(): Promise<string | null> {
   // Schedule for each selected day
   const notificationIds: string[] = [];
 
-  for (const dayOfWeek of settings.days) {
+  for (const dayOfWeek of days) {
     const [hours, minutes] = settings.time.split(":").map(Number);
 
     // Calculate next occurrence of this day/time

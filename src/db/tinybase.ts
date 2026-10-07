@@ -139,7 +139,7 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
     await persister.save();
   }
   if (store.getValue('alarmTime') === undefined) {
-    store.setValue('alarmTime', '21:00'); // 9:00 PM
+    store.setValue('alarmTime', '20:00'); // 8:00 PM
     await persister.save();
   }
   if (store.getValue('alarmDays') === undefined) {

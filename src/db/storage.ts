@@ -563,7 +563,7 @@ export interface AlarmSettings {
 
 export async function getAlarmSettings(): Promise<AlarmSettings> {
   if (!isDatabaseReady()) {
-    return { enabled: false, time: '21:00', days: [0, 1, 2, 3, 4, 5, 6] };
+    return { enabled: false, time: '20:00', days: [0, 1, 2, 3, 4, 5, 6] };
   }
   const store = getStore();
 
@@ -573,7 +573,7 @@ export async function getAlarmSettings(): Promise<AlarmSettings> {
 
   return {
     enabled: enabled === 'true',
-    time: time ?? '21:00',
+    time: time ?? '20:00',
     days: days ? days.split(',').map(Number) : [0, 1, 2, 3, 4, 5, 6],
   };
 }
