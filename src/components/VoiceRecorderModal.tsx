@@ -137,40 +137,6 @@ export function VoiceRecorderModal({
     }
   }, [visible, fadeAnim]);
 
-  // Check permission when modal opens and auto-start recording if enabled
-  useEffect(() => {
-    if (!visible) return;
-
-    const checkPermission = async () => {
-      const granted = await requestMicrophonePermission();
-      if (!granted) {
-        Alert.alert(t("voice.microphonePermissionRequired"), "", [
-          {
-            text: t("common.cancel"),
-            style: "cancel",
-            onPress: onClose,
-          },
-          {
-            text: t("voice.openSettings"),
-            onPress: () => {
-              if (Platform.OS === "ios") {
-                Linking.openURL("app-settings:");
-              } else {
-                Linking.openSettings();
-              }
-              onClose();
-            },
-          },
-        ]);
-      } else if (autoStart) {
-        // Permission granted and auto-start enabled — begin recording
-        handleStartRecording();
-      }
-    };
-
-    checkPermission();
-  }, [visible, t, onClose, autoStart, handleStartRecording]);
-
   // Start recording animation
   const startRecordingAnimation = useCallback(() => {
     // Spring mic button
@@ -254,6 +220,40 @@ export function VoiceRecorderModal({
       ]);
     }
   }, [startRecordingAnimation, t, onClose]);
+
+  // Check permission when modal opens and auto-start recording if enabled
+  useEffect(() => {
+    if (!visible) return;
+
+    const checkPermission = async () => {
+      const granted = await requestMicrophonePermission();
+      if (!granted) {
+        Alert.alert(t("voice.microphonePermissionRequired"), "", [
+          {
+            text: t("common.cancel"),
+            style: "cancel",
+            onPress: onClose,
+          },
+          {
+            text: t("voice.openSettings"),
+            onPress: () => {
+              if (Platform.OS === "ios") {
+                Linking.openURL("app-settings:");
+              } else {
+                Linking.openSettings();
+              }
+              onClose();
+            },
+          },
+        ]);
+      } else if (autoStart) {
+        // Permission granted and auto-start enabled — begin recording
+        handleStartRecording();
+      }
+    };
+
+    checkPermission();
+  }, [visible, t, onClose, autoStart, handleStartRecording]);
 
   const deleteAudioFile = useCallback(async (uri: string) => {
     try {

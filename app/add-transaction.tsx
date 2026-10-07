@@ -199,10 +199,15 @@ export default function AddTransactionScreen() {
 
         // Auto-focus account selection for new transactions only if no relevant params provided
         const hasPreselectedValues = params.type || params.accountId || params.fromAccountId || params.categoryId || params.amount;
-        if (!isEditing && accs.length > 0 && !hasPreselectedValues) {
+        if (!isEditing && accs.length > 0 && (!hasPreselectedValues || params.type === 'transfer')) {
             // Small delay to ensure UI is ready
             setTimeout(() => {
-                setSelectionMode('account');
+                // `type` state may be stale inside this closure — check params too
+                if (type === 'transfer' || params.type === 'transfer') {
+                    setSelectionMode('fromAccount');
+                } else {
+                    setSelectionMode('account');
+                }
             }, 100);
         }
     };
