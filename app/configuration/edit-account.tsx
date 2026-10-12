@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LucideIcon } from 'lucide-react-native';
 import { getAccountById, updateAccount } from '@/src/db/storage';
 import { accountIconOptions } from '@/src/components/accountIcons';
+import CurrencyPicker from '@/src/components/CurrencyPicker';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 
@@ -29,6 +30,9 @@ export default function EditAccountScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('wallet');
+  const [currency, setCurrency] = useState('EUR');
+  const [originalCurrency, setOriginalCurrency] = useState('EUR');
+  const [currencyPickerExpanded, setCurrencyPickerExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +44,8 @@ export default function EditAccountScreen() {
         setName(account.name ?? '');
         setDescription(account.description ?? '');
         setSelectedIcon(account.icon ?? 'wallet');
+        setCurrency(account.currency ?? 'EUR');
+        setOriginalCurrency(account.currency ?? 'EUR');
       }
       setLoading(false);
     }
@@ -57,6 +63,7 @@ export default function EditAccountScreen() {
         name: name.trim(),
         icon: showIcons ? selectedIcon : undefined,
         description: description.trim() || null,
+        currency,
       });
       router.back();
     } catch (error) {
@@ -141,6 +148,21 @@ export default function EditAccountScreen() {
               {accountIconOptions.map(renderIconOption)}
             </View>
           </View>
+        )}
+
+        <CurrencyPicker
+          selected={currency}
+          onSelect={setCurrency}
+          expanded={currencyPickerExpanded}
+          onToggle={() => setCurrencyPickerExpanded(prev => !prev)}
+        />
+        {currency !== originalCurrency && (
+          <Text className={`text-sm mb-4 px-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            {t('accounts.currencyChangeNote', {
+              oldCurrency: originalCurrency,
+              newCurrency: currency,
+            })}
+          </Text>
         )}
 
         <View className={`rounded-xl p-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>

@@ -76,7 +76,9 @@
     "deleteWebConfirm": "Are you sure you want to delete \"{{name}}\"?\n\nExisting transactions with this account will not be affected.",
     "noAccountsDelete": "No accounts to delete.",
     "noAccountsReorder": "No accounts to reorder.",
-    "deleteInfo": "Transactions associated with deleted accounts will remain in your history."
+    "deleteInfo": "Transactions associated with deleted accounts will remain in your history.",
+    "currency": "Currency",
+    "currencyChangeNote": "Saving will convert the current balance from {{oldCurrency}} to {{newCurrency}} at the current exchange rate."
   },
   "categories": {
     "incomeCategories": "Income Categories",

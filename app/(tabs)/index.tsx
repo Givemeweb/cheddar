@@ -26,6 +26,11 @@ import { FAB } from "../../src/components/FAB";
 import { useTheme } from "../../src/components/ThemeProvider";
 
 import { formatNumber } from "../../src/utils/formatNumber";
+import {
+  convertWithRates,
+  getLatestRates,
+  RatesCache,
+} from "../../src/services/exchangeRates";
 
 export default function TransactionsScreen() {
   const [groupedTransactions, setGroupedTransactions] = useState<
@@ -37,9 +42,10 @@ export default function TransactionsScreen() {
   const [filterCategoryName, setFilterCategoryName] = useState<string | null>(
     null,
   );
+  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, currencySymbol } = useTheme();
+  const { isDark, currencySymbol, currencyCode } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const { categoryId } = useLocalSearchParams<{ categoryId?: string }>();
@@ -68,6 +74,13 @@ export default function TransactionsScreen() {
   async function fetchTransactions() {
     try {
       const allTransactions = await getTransactions();
+      // Load rates before converting amounts to the main currency
+      const rates = await getLatestRates();
+      setRatesCache(rates);
+      const toMain = (amount: number, currency: string): number => {
+        if (!rates || currency === currencyCode) return amount;
+        return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
+      };
 
       // Filter transactions by selected month
       const startOfMonth = new Date(
@@ -114,7 +127,7 @@ export default function TransactionsScreen() {
             toAccountId: tx.toAccountId,
             note: tx.note,
             description: tx.description,
-            amount: tx.amount,
+            amount: toMain(tx.amount, tx.currency),
             date: new Date(tx.date),
             category: tx.categoryName
               ? {

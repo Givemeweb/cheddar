@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { LucideIcon } from 'lucide-react-native';
 import { addAccount } from '@/src/db/storage';
 import { accountIconOptions } from '@/src/components/accountIcons';
+import CurrencyPicker from '@/src/components/CurrencyPicker';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 
@@ -27,6 +28,8 @@ export default function AddAccountScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('wallet');
+  const [currency, setCurrency] = useState('EUR');
+  const [currencyPickerExpanded, setCurrencyPickerExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -40,6 +43,7 @@ export default function AddAccountScreen() {
         name: name.trim(),
         icon: showIcons ? selectedIcon : undefined,
         description: description.trim() || null,
+        currency,
       });
       router.back();
     } catch (error) {
@@ -117,6 +121,13 @@ export default function AddAccountScreen() {
             </View>
           </View>
         )}
+
+        <CurrencyPicker
+          selected={currency}
+          onSelect={setCurrency}
+          expanded={currencyPickerExpanded}
+          onToggle={() => setCurrencyPickerExpanded(prev => !prev)}
+        />
 
         <View className={`rounded-xl p-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
           <Text className={`text-sm font-medium uppercase mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>

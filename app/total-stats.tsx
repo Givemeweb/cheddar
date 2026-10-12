@@ -8,6 +8,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
 import { formatNumber } from "../src/utils/formatNumber";
+import {
+  convertWithRates,
+  getLatestRates,
+  RatesCache,
+} from "../src/services/exchangeRates";
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
 
@@ -32,13 +37,14 @@ export default function TotalStatsScreen() {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [incomeExpenseData, setIncomeExpenseData] = useState<IncomeExpenseData[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const [dotChartDimensions, setDotChartDimensions] =
     useState<ChartDimensions>(null);
   const [barChartDimensions, setBarChartDimensions] =
     useState<ChartDimensions>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, currencySymbol } = useTheme();
+  const { isDark, currencySymbol, currencyCode } = useTheme();
   const { t } = useTranslation();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
@@ -69,7 +75,19 @@ export default function TotalStatsScreen() {
           const accounts = await getAccounts();
           const transactions = await getTransactions();
 
-          const total = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+          // Load rates before converting amounts to the main currency
+          const rates = await getLatestRates();
+          setRatesCache(rates);
+          const toMain = (amount: number, currency: string): number => {
+            if (!rates || currency === currencyCode) return amount;
+            return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
+          };
+
+          // Total assets: every account converted to the main currency
+          const total = accounts.reduce(
+            (sum, acc) => sum + toMain(acc.balance, acc.currency),
+            0,
+          );
           setTotalAssets(total);
 
           // Calculate monthly asset growth for last 6 months ending at selected month
@@ -92,10 +110,10 @@ export default function TotalStatsScreen() {
                 if (tx.type === 'transfer') {
                   // Transfers: negative amount means money left the account (subtract from total)
                   // Reversing: add the amount back
-                  monthBalance -= tx.amount; // amount is negative for outgoing transfers
+                  monthBalance -= toMain(tx.amount, tx.currency); // amount is negative for outgoing transfers
                 } else {
                   // Income/expense: reverse by subtracting
-                  monthBalance -= tx.amount;
+                  monthBalance -= toMain(tx.amount, tx.currency);
                 }
               }
             }
@@ -128,9 +146,9 @@ export default function TotalStatsScreen() {
               const txDate = new Date(tx.date);
               if (txDate >= monthStart && txDate <= monthEnd) {
                 if (tx.type === 'income') {
-                  monthIncome += Math.abs(tx.amount);
+                  monthIncome += Math.abs(toMain(tx.amount, tx.currency));
                 } else if (tx.type === 'expense') {
-                  monthExpense += Math.abs(tx.amount);
+                  monthExpense += Math.abs(toMain(tx.amount, tx.currency));
                 }
               }
             }

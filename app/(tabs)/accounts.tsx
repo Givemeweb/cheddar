@@ -13,6 +13,8 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { BarChart3 } from "lucide-react-native";
 import { getAccounts, Account } from "../../src/db/storage";
+import { getCurrencySymbol } from "../../src/db/currency";
+import { convertWithRates, getLatestRates, RatesCache } from "../../src/services/exchangeRates";
 import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
@@ -22,9 +24,10 @@ export default function AccountsScreen() {
   const [accountsList, setAccountsList] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, showIcons, currencySymbol } = useTheme();
+  const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
   const { t } = useTranslation();
 
   useFocusEffect(
@@ -33,6 +36,10 @@ export default function AccountsScreen() {
         try {
           const allAccounts = await getAccounts();
           setAccountsList(allAccounts);
+          // Rates load asynchronously; when they arrive the converted
+          // total re-renders with correct cross-currency sums.
+          const rates = await getLatestRates();
+          setRatesCache(rates);
         } catch (error) {
           console.error("Error fetching accounts:", error);
         } finally {
@@ -43,7 +50,19 @@ export default function AccountsScreen() {
     }, [])
   );
 
-  const totalAssets = accountsList.reduce((sum, acc) => sum + acc.balance, 0);
+  // Convert an amount from an account/transaction currency to the app's
+  // main currency using the latest cached rates (identity when same code).
+  const convertToMain = (amount: number, fromCurrency: string): number => {
+    if (!ratesCache || fromCurrency === currencyCode) return amount;
+    return convertWithRates(amount, fromCurrency, currencyCode, ratesCache.rates, ratesCache.base);
+  };
+
+  // Sum every account in the main currency, converting from each
+  // account's own currency at current rates.
+  const totalAssets = accountsList.reduce(
+    (sum: number, acc: Account) => sum + convertToMain(acc.balance, acc.currency),
+    0,
+  );
 
   if (loading) {
     return (
@@ -186,7 +205,7 @@ export default function AccountsScreen() {
               <Text
                 className={`text-lg font-semibold ${item.balance >= 0 ? "text-cheddar-income" : "text-cheddar-expense"}`}
               >
-                {currencySymbol} {formatNumber(item.balance)}
+                {getCurrencySymbol(item.currency)} {formatNumber(item.balance)}
               </Text>
             </Pressable>
           );

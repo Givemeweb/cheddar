@@ -10,6 +10,7 @@ import {
   IndexedDbPersister,
 } from 'tinybase/persisters/persister-indexed-db';
 import i18n from '../i18n';
+import { DEFAULT_CURRENCY_CODE } from './currency';
 
 // Types for our data
 export interface Category {
@@ -26,6 +27,7 @@ export interface Account {
   description: string | null;
   balance: number;
   order: number;
+  currency: string; // per-account currency, defaults to the app main currency
 }
 
 export interface Transaction {
@@ -39,6 +41,7 @@ export interface Transaction {
   note: string | null;
   description: string | null;
   amount: number;
+  currency: string; // currency of the account at entry time
   date: number; // timestamp
   imagePath: string | null; // relative path to attached image
 }
@@ -47,7 +50,7 @@ export interface Transaction {
 export interface TablesSchema {
   categories: { [id: string]: { name: string; icon: string; type: string } };
   subcategories: { [id: string]: { name: string; categoryId: string } };
-  accounts: { [id: string]: { name: string; icon: string; description: string | null; balance: number; order: number } };
+  accounts: { [id: string]: { name: string; icon: string; description: string | null; balance: number; order: number; currency: string } };
   transactions: {
     [id: string]: {
       type: string;
@@ -61,6 +64,7 @@ export interface TablesSchema {
       note: string | null;
       description: string | null;
       amount: number;
+      currency: string;
       date: number;
       imagePath: string | null;
     };
@@ -93,9 +97,9 @@ const getDefaultCategories = (): TablesSchema['categories'] => ({
 });
 
 const getDefaultAccounts = (): TablesSchema['accounts'] => ({
-  '1': { name: i18n.t('defaultData.accounts.checking'), icon: 'wallet', description: null, balance: 0.0, order: 0 },
-  '2': { name: i18n.t('defaultData.accounts.savings'), icon: 'piggy-bank', description: null, balance: 0.0, order: 1 },
-  '3': { name: i18n.t('defaultData.accounts.creditCard'), icon: 'credit-card', description: null, balance: 0.0, order: 2 },
+  '1': { name: i18n.t('defaultData.accounts.checking'), icon: 'wallet', description: null, balance: 0.0, order: 0, currency: DEFAULT_CURRENCY_CODE },
+  '2': { name: i18n.t('defaultData.accounts.savings'), icon: 'piggy-bank', description: null, balance: 0.0, order: 1, currency: DEFAULT_CURRENCY_CODE },
+  '3': { name: i18n.t('defaultData.accounts.creditCard'), icon: 'credit-card', description: null, balance: 0.0, order: 2, currency: DEFAULT_CURRENCY_CODE },
 });
 
 export async function initDatabase(forceReinit: boolean = false): Promise<Store> {
@@ -189,6 +193,11 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
           store!.setCell('accounts', id, 'icon', 'wallet');
           needsSave = true;
         }
+        // Migrate accounts without currency field (default to app currency)
+        if (data.currency === undefined || data.currency === null || (data.currency as string) === '') {
+          store!.setCell('accounts', id, 'currency', DEFAULT_CURRENCY_CODE);
+          needsSave = true;
+        }
         orderIndex++;
       });
       if (needsSave) {
@@ -230,6 +239,12 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
         // Ensure imagePath field exists (migration)
         if (data.imagePath === undefined) {
           store!.setCell('transactions', id, 'imagePath', null);
+          needsSave = true;
+        }
+        // Migrate transactions without currency (inherit the account's currency)
+        if (data.currency === undefined || data.currency === null || (data.currency as string) === '') {
+          const account = accounts?.[data.accountId as string];
+          store!.setCell('transactions', id, 'currency', (account?.currency as string) || DEFAULT_CURRENCY_CODE);
           needsSave = true;
         }
       });
