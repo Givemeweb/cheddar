@@ -1,4 +1,5 @@
 import { getStore, saveStore, generateId, isDatabaseReady } from './tinybase';
+import { DEFAULT_CURRENCY_CODE, convertAmountWithRates } from './currency';
 
 // Types - IDs are strings for TinyBase
 export interface Category {
@@ -15,6 +16,7 @@ export interface Account {
   description: string | null;
   balance: number;
   order: number;
+  currency: string;
 }
 
 export interface Transaction {
@@ -33,6 +35,9 @@ export interface Transaction {
   note: string | null;
   description: string | null;
   amount: number;
+  currency: string;
+  toCurrency: string | null; // transfer destination currency
+  toAmount: number | null; // transfer amount in the destination currency
   date: Date;
   imagePath: string | null;
 }
@@ -81,6 +86,7 @@ export async function getAccounts(): Promise<Account[]> {
       description: data.description as string | null,
       balance: data.balance as number,
       order: (data.order as number) ?? 0,
+      currency: (data.currency as string) || DEFAULT_CURRENCY_CODE,
     }))
     .sort((a, b) => a.order - b.order);
 }
@@ -98,6 +104,7 @@ export async function getAccountById(id: string): Promise<Account | undefined> {
     description: row.description as string | null,
     balance: row.balance as number,
     order: (row.order as number) ?? 0,
+    currency: (row.currency as string) || DEFAULT_CURRENCY_CODE,
   };
 }
 
@@ -132,6 +139,9 @@ export async function getTransactions(): Promise<Transaction[]> {
       note: data.note as string | null,
       description: data.description as string | null,
       amount: data.amount as number,
+      currency: (data.currency as string) || DEFAULT_CURRENCY_CODE,
+      toCurrency: (data.toCurrency as string | null) ?? null,
+      toAmount: (data.toAmount as number | null) ?? null,
       date: new Date(data.date as number),
       imagePath: data.imagePath as string | null,
     }))
@@ -153,6 +163,7 @@ export async function addTransaction(tx: {
   note?: string | null;
   description?: string | null;
   amount: number;
+  currency?: string;
   date: Date;
   imagePath?: string | null;
 }): Promise<Transaction> {
@@ -161,6 +172,10 @@ export async function addTransaction(tx: {
   }
   const store = getStore();
   const id = generateId();
+
+  // Currency: explicit value, else the account's currency, else app default.
+  const currency = tx.currency
+    || ((store.getCell('accounts', tx.accountId, 'currency') as string) || DEFAULT_CURRENCY_CODE);
 
   store.setRow('transactions', id, {
     type: tx.type,
@@ -177,17 +192,31 @@ export async function addTransaction(tx: {
     note: tx.note ?? null,
     description: tx.description ?? null,
     amount: tx.amount,
+    currency,
+    toCurrency: null,
+    toAmount: null,
     date: tx.date.getTime(),
     imagePath: tx.imagePath ?? null,
   });
 
   // Update account balance(s)
   if (tx.type === 'transfer' && tx.toAccountId) {
-    // Transfer: debit from account, credit to toAccountId
+    // Transfer: debit from account, credit to toAccountId.
+    // When the accounts use different currencies, convert the amount at
+    // the destination account's currency so the received value is correct.
+    const fromCurrency = currency;
+    const toCurrency = ((store.getCell('accounts', tx.toAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE);
+    const toAmount = await convertAmountWithRates(tx.amount, fromCurrency, toCurrency);
+
+    // Persist the converted values so later edits/deletes don't depend on
+    // the exchange rate at that future moment.
+    store.setCell('transactions', id, 'toCurrency', toCurrency);
+    store.setCell('transactions', id, 'toAmount', toAmount);
+
     const fromBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
     const toBalance = store.getCell('accounts', tx.toAccountId, 'balance') as number ?? 0;
     store.setCell('accounts', tx.accountId, 'balance', fromBalance + tx.amount); // amount is negative
-    store.setCell('accounts', tx.toAccountId, 'balance', toBalance - tx.amount); // positive equivalent
+    store.setCell('accounts', tx.toAccountId, 'balance', toBalance - toAmount); // positive equivalent converted
   } else {
     // Income or expense: update the account balance
     const currentBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
@@ -212,6 +241,9 @@ export async function addTransaction(tx: {
     note: tx.note ?? null,
     description: tx.description ?? null,
     amount: tx.amount,
+    currency,
+    toCurrency: tx.type === 'transfer' && tx.toAccountId ? ((store.getCell('transactions', id, 'toCurrency') as string) ?? null) : null,
+    toAmount: tx.type === 'transfer' && tx.toAccountId ? ((store.getCell('transactions', id, 'toAmount') as number) ?? null) : null,
     date: tx.date,
     imagePath: tx.imagePath ?? null,
   };
@@ -239,6 +271,9 @@ export async function getTransactionById(id: string): Promise<Transaction | unde
     note: row.note as string | null,
     description: row.description as string | null,
     amount: row.amount as number,
+    currency: (row.currency as string) || DEFAULT_CURRENCY_CODE,
+    toCurrency: (row.toCurrency as string | null) ?? null,
+    toAmount: (row.toAmount as number | null) ?? null,
     date: new Date(row.date as number),
     imagePath: row.imagePath as string | null,
   };
@@ -259,6 +294,7 @@ export async function updateTransaction(id: string, updates: {
   note?: string | null;
   description?: string | null;
   amount?: number;
+  currency?: string;
   date?: Date;
   imagePath?: string | null;
 }): Promise<Transaction | undefined> {
@@ -281,13 +317,21 @@ export async function updateTransaction(id: string, updates: {
   const newToAccountId = updates.toAccountId ?? currentTx.toAccountId;
   const newAccountName = updates.accountName ?? currentTx.accountName;
   const newToAccountName = updates.toAccountName ?? currentTx.toAccountName;
+  // Currency follows the (possibly changed) from-account unless set explicitly
+  const newCurrency = updates.currency
+    || ((store.getCell('accounts', newAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE);
 
   // Reverse old balance changes
   if (oldType === 'transfer' && oldToAccountId) {
     const fromBalance = store.getCell('accounts', oldAccountId, 'balance') as number ?? 0;
     const toBalance = store.getCell('accounts', oldToAccountId, 'balance') as number ?? 0;
+    // Prefer the stored converted amount from entry time; fall back to a
+    // live conversion for legacy rows without it.
+    const oldToAmount = currentTx.toAmount
+      ?? (await convertAmountWithRates(oldAmount, currentTx.currency || DEFAULT_CURRENCY_CODE,
+        ((store.getCell('accounts', oldToAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE)));
     store.setCell('accounts', oldAccountId, 'balance', fromBalance - oldAmount); // reverse: was negative, add back
-    store.setCell('accounts', oldToAccountId, 'balance', toBalance + oldAmount); // reverse: was positive, subtract
+    store.setCell('accounts', oldToAccountId, 'balance', toBalance + oldToAmount); // reverse the converted credit
   } else {
     const currentBalance = store.getCell('accounts', oldAccountId, 'balance') as number ?? 0;
     store.setCell('accounts', oldAccountId, 'balance', currentBalance - oldAmount);
@@ -309,6 +353,9 @@ export async function updateTransaction(id: string, updates: {
     note: updates.note ?? currentTx.note,
     description: updates.description ?? currentTx.description,
     amount: newAmount,
+    currency: newCurrency,
+    toCurrency: null,
+    toAmount: null,
     date: (updates.date ?? currentTx.date).getTime(),
     imagePath: updates.imagePath ?? currentTx.imagePath,
   });
@@ -317,8 +364,13 @@ export async function updateTransaction(id: string, updates: {
   if (newType === 'transfer' && newToAccountId) {
     const fromBalance = store.getCell('accounts', newAccountId, 'balance') as number ?? 0;
     const toBalance = store.getCell('accounts', newToAccountId, 'balance') as number ?? 0;
+    const newToCurrency = ((store.getCell('accounts', newToAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE);
+    const newToAmount = await convertAmountWithRates(newAmount, newCurrency, newToCurrency);
+    // Persist the converted values for later edits/deletes
+    store.setCell('transactions', id, 'toCurrency', newToCurrency);
+    store.setCell('transactions', id, 'toAmount', newToAmount);
     store.setCell('accounts', newAccountId, 'balance', fromBalance + newAmount);
-    store.setCell('accounts', newToAccountId, 'balance', toBalance - newAmount);
+    store.setCell('accounts', newToAccountId, 'balance', toBalance - newToAmount);
   } else {
     const currentBalance = store.getCell('accounts', newAccountId, 'balance') as number ?? 0;
     store.setCell('accounts', newAccountId, 'balance', currentBalance + newAmount);
@@ -339,8 +391,13 @@ export async function deleteTransaction(id: string): Promise<void> {
     if (tx.type === 'transfer' && tx.toAccountId) {
       const fromBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
       const toBalance = store.getCell('accounts', tx.toAccountId, 'balance') as number ?? 0;
+      // Prefer the stored converted amount from entry time; fall back to a
+      // live conversion for legacy rows without it.
+      const toAmount = tx.toAmount
+        ?? (await convertAmountWithRates(tx.amount, tx.currency || DEFAULT_CURRENCY_CODE,
+          ((store.getCell('accounts', tx.toAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE)));
       store.setCell('accounts', tx.accountId, 'balance', fromBalance - tx.amount);
-      store.setCell('accounts', tx.toAccountId, 'balance', toBalance + tx.amount);
+      store.setCell('accounts', tx.toAccountId, 'balance', toBalance + toAmount);
     } else {
       const currentBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
       store.setCell('accounts', tx.accountId, 'balance', currentBalance - tx.amount);
@@ -452,6 +509,7 @@ export async function addAccount(account: {
   name: string;
   icon?: string;
   description?: string | null;
+  currency?: string;
 }): Promise<Account> {
   if (!isDatabaseReady()) {
     throw new Error('Database not initialized');
@@ -464,6 +522,7 @@ export async function addAccount(account: {
   const maxOrder = accounts.length > 0 ? Math.max(...accounts.map(a => a.order)) : -1;
 
   const accountIcon = account.icon ?? 'wallet';
+  const accountCurrency = account.currency || DEFAULT_CURRENCY_CODE;
 
   store.setRow('accounts', id, {
     name: account.name,
@@ -471,6 +530,7 @@ export async function addAccount(account: {
     description: account.description ?? null,
     balance: 0,
     order: maxOrder + 1,
+    currency: accountCurrency,
   });
 
   await saveStore();
@@ -482,6 +542,7 @@ export async function addAccount(account: {
     description: account.description ?? null,
     balance: 0,
     order: maxOrder + 1,
+    currency: accountCurrency,
   };
 }
 
@@ -503,7 +564,7 @@ export async function reorderAccounts(accountIds: string[]): Promise<void> {
   await saveStore();
 }
 
-export async function updateAccount(id: string, updates: { name?: string; icon?: string; description?: string | null }): Promise<Account | undefined> {
+export async function updateAccount(id: string, updates: { name?: string; icon?: string; description?: string | null; currency?: string }): Promise<Account | undefined> {
   if (!isDatabaseReady()) return undefined;
   const store = getStore();
 
@@ -513,14 +574,27 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
   const newName = updates.name ?? currentAccount.name;
   const newIcon = updates.icon ?? currentAccount.icon;
   const newDescription = updates.description ?? currentAccount.description;
+  const newCurrency = updates.currency || currentAccount.currency;
+
+  // If the currency changes, convert the stored balance at current rates so
+  // the account keeps its real-world value across the switch.
+  let newBalance = currentAccount.balance;
+  if (newCurrency !== currentAccount.currency) {
+    newBalance = await convertAmountWithRates(
+      currentAccount.balance,
+      currentAccount.currency,
+      newCurrency,
+    );
+  }
 
   // Update account
   store.setRow('accounts', id, {
     name: newName,
     icon: newIcon,
     description: newDescription,
-    balance: currentAccount.balance,
+    balance: newBalance,
     order: currentAccount.order,
+    currency: newCurrency,
   });
 
   // Update all transactions that reference this account
@@ -549,8 +623,9 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
     name: newName,
     icon: newIcon,
     description: newDescription,
-    balance: currentAccount.balance,
+    balance: newBalance,
     order: currentAccount.order,
+    currency: newCurrency,
   };
 }
 

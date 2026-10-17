@@ -8,6 +8,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
 import { formatNumber } from "../src/utils/formatNumber";
+import {
+  convertWithRates,
+  getLatestRates,
+  RatesCache,
+} from "../src/services/exchangeRates";
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
 
@@ -32,13 +37,14 @@ export default function TotalStatsScreen() {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [incomeExpenseData, setIncomeExpenseData] = useState<IncomeExpenseData[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const [dotChartDimensions, setDotChartDimensions] =
     useState<ChartDimensions>(null);
   const [barChartDimensions, setBarChartDimensions] =
     useState<ChartDimensions>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, currencySymbol } = useTheme();
+  const { isDark, currencySymbol, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
   const { t } = useTranslation();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
@@ -69,8 +75,30 @@ export default function TotalStatsScreen() {
           const accounts = await getAccounts();
           const transactions = await getTransactions();
 
-          const total = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-          setTotalAssets(total);
+          // Load rates before converting amounts to the main currency
+          const rates = await getLatestRates();
+          setRatesCache(rates);
+          const toMain = (amount: number, currency: string): number => {
+            if (!rates || currency === currencyCode) return amount;
+            return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
+          };
+
+          // Total assets: every account converted to the main currency.
+          // All chart math below stays in the main currency; values are
+          // converted to the card's display currency at the end.
+          const totalInMain = accounts.reduce(
+            (sum, acc) => sum + toMain(acc.balance, acc.currency),
+            0,
+          );
+
+          // The Total Assets card can display its own currency; when the
+          // override matches the main currency (or is unset) this is a no-op.
+          const toDisplay = (amount: number): number =>
+            !totalAssetsCurrencyCode || totalAssetsCurrencyCode === currencyCode || !rates
+              ? amount
+              : convertWithRates(amount, currencyCode, totalAssetsCurrencyCode, rates.rates, rates.base);
+
+          setTotalAssets(toDisplay(totalInMain));
 
           // Calculate monthly asset growth for last 6 months ending at selected month
           const months: MonthlyData[] = [];
@@ -82,7 +110,7 @@ export default function TotalStatsScreen() {
 
             // Calculate balance at the end of this month
             // Start from current total and subtract transactions that happened after this month
-            let monthBalance = total;
+            let monthBalance = totalInMain;
 
             const now = new Date();
             for (const tx of transactions) {
@@ -92,17 +120,17 @@ export default function TotalStatsScreen() {
                 if (tx.type === 'transfer') {
                   // Transfers: negative amount means money left the account (subtract from total)
                   // Reversing: add the amount back
-                  monthBalance -= tx.amount; // amount is negative for outgoing transfers
+                  monthBalance -= toMain(tx.amount, tx.currency); // amount is negative for outgoing transfers
                 } else {
                   // Income/expense: reverse by subtracting
-                  monthBalance -= tx.amount;
+                  monthBalance -= toMain(tx.amount, tx.currency);
                 }
               }
             }
 
             months.push({
               month: monthName,
-              value: monthBalance,
+              value: toDisplay(monthBalance),
             });
           }
 
@@ -128,17 +156,17 @@ export default function TotalStatsScreen() {
               const txDate = new Date(tx.date);
               if (txDate >= monthStart && txDate <= monthEnd) {
                 if (tx.type === 'income') {
-                  monthIncome += Math.abs(tx.amount);
+                  monthIncome += Math.abs(toMain(tx.amount, tx.currency));
                 } else if (tx.type === 'expense') {
-                  monthExpense += Math.abs(tx.amount);
+                  monthExpense += Math.abs(toMain(tx.amount, tx.currency));
                 }
               }
             }
 
             incomeExpenseMonths.push({
               month: monthName,
-              income: monthIncome,
-              expense: monthExpense,
+              income: toDisplay(monthIncome),
+              expense: toDisplay(monthExpense),
             });
           }
 
@@ -211,7 +239,7 @@ export default function TotalStatsScreen() {
             {t("totalStats.balance")}
           </Text>
           <Text className="text-cheddar-dark text-xl font-bold mt-1">
-            {currencySymbol} {formatNumber(selectedMonthBalance)}
+            {totalAssetsCurrencySymbol} {formatNumber(selectedMonthBalance)}
           </Text>
         </View>
       </View>
@@ -239,7 +267,7 @@ export default function TotalStatsScreen() {
                   data={monthlyData}
                   width={dotChartDimensions.width}
                   height={dotChartDimensions.height}
-                  currencySymbol={currencySymbol}
+                  currencySymbol={totalAssetsCurrencySymbol}
                 />
               )}
             </View>
@@ -278,7 +306,7 @@ export default function TotalStatsScreen() {
                   data={incomeExpenseData}
                   width={barChartDimensions.width}
                   height={barChartDimensions.height}
-                  currencySymbol={currencySymbol}
+                  currencySymbol={totalAssetsCurrencySymbol}
                 />
               )}
             </View>

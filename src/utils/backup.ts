@@ -387,7 +387,8 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
   icon TEXT NOTNULL,
   description TEXT,
   balance REAL NOTNULL,
-  \`order\` INTEGER NOTNULL
+  \`order\` INTEGER NOTNULL,
+  currency TEXT
 )`);
 
   statements.push(`CREATE TABLE IF NOT EXISTS transactions (
@@ -406,6 +407,7 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
   note TEXT,
   description TEXT,
   amount REAL NOTNULL,
+  currency TEXT,
   date INTEGER NOTNULL,
   imagePath TEXT,
   FOREIGN KEY (categoryId) REFERENCES categories(id),
@@ -440,11 +442,12 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
   // Insert accounts
   if (tables?.accounts) {
     statements.push('-- Insert accounts');
-    Object.entries(tables.accounts as Record<string, { name: string; icon: string; description: string | null; balance: number; order: number }>).forEach(([id, data]) => {
+    Object.entries(tables.accounts as Record<string, { name: string; icon: string; description: string | null; balance: number; order: number; currency?: string }>).forEach(([id, data]) => {
       const name = escapeSqlString(data.name);
       const icon = escapeSqlString(data.icon);
       const description = data.description ? `'${escapeSqlString(data.description)}'` : 'NULL';
-      statements.push(`INSERT INTO accounts (id, name, icon, description, balance, \`order\`) VALUES ('${id}', '${name}', '${icon}', ${description}, ${data.balance}, ${data.order})`);
+      const currency = data.currency ? `'${escapeSqlString(data.currency)}'` : 'NULL';
+      statements.push(`INSERT INTO accounts (id, name, icon, description, balance, \`order\`, currency) VALUES ('${id}', '${name}', '${icon}', ${description}, ${data.balance}, ${data.order}, ${currency})`);
     });
     statements.push('');
   }
@@ -467,6 +470,7 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
       note: string | null;
       description: string | null;
       amount: number;
+      currency?: string;
       date: number;
       imagePath: string | null;
     }>).forEach(([id, data]) => {
@@ -488,7 +492,8 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
         ? imagePathMap[data.imagePath]
         : data.imagePath;
       const imagePath = rawImagePath ? `'${escapeSqlString(rawImagePath)}'` : 'NULL';
-      statements.push(`INSERT INTO transactions (id, type, categoryId, subcategoryId, subcategoryName, categoryName, categoryIcon, categoryType, accountId, accountName, toAccountId, toAccountName, note, description, amount, date, imagePath) VALUES ('${id}', '${type}', ${categoryId}, ${subcategoryId}, ${subcategoryName}, ${categoryName}, ${categoryIcon}, ${categoryType}, '${accountId}', '${accountName}', ${toAccountId}, ${toAccountName}, ${note}, ${description}, ${data.amount}, ${data.date}, ${imagePath})`);
+      const currency = data.currency ? `'${escapeSqlString(data.currency)}'` : 'NULL';
+      statements.push(`INSERT INTO transactions (id, type, categoryId, subcategoryId, subcategoryName, categoryName, categoryIcon, categoryType, accountId, accountName, toAccountId, toAccountName, note, description, amount, currency, date, imagePath) VALUES ('${id}', '${type}', ${categoryId}, ${subcategoryId}, ${subcategoryName}, ${categoryName}, ${categoryIcon}, ${categoryType}, '${accountId}', '${accountName}', ${toAccountId}, ${toAccountName}, ${note}, ${description}, ${data.amount}, ${currency}, ${data.date}, ${imagePath})`);
     });
     statements.push('');
   }
@@ -637,6 +642,7 @@ function parseSqlStatements(sqlContent: string): Tables {
             description: parsed.description || null,
             balance: parseFloat(parsed.balance) || 0,
             order: parseInt(parsed.order) || 0,
+            currency: parsed.currency || 'EUR',
           };
         }
       } else if (tableName === 'transactions') {
@@ -657,6 +663,7 @@ function parseSqlStatements(sqlContent: string): Tables {
             note: parsed.note || null,
             description: parsed.description || null,
             amount: parseFloat(parsed.amount) || 0,
+            currency: parsed.currency || 'EUR',
             date: parseInt(parsed.date) || Date.now(),
             imagePath: parsed.imagePath || null,
           };
