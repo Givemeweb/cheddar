@@ -45,7 +45,13 @@ export {
 export {
   getMainCurrencyCode,
   setMainCurrencyCode,
+  getTotalAssetsCurrencyCode,
+  setTotalAssetsCurrencyCode,
   getCurrencySymbol,
+  getAccountCurrency,
+  setAccountCurrency,
+  resolveAccountCurrency,
+  convertAmountWithRates,
   CURRENCIES,
   DEFAULT_CURRENCY_CODE,
   DEFAULT_CURRENCY_SYMBOL,

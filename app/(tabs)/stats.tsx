@@ -22,6 +22,11 @@ import { renderIcon } from "../../src/components/TransactionItem";
 import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
+import {
+  convertWithRates,
+  getLatestRates,
+  RatesCache,
+} from "../../src/services/exchangeRates";
 
 type CategoryStat = {
   id: string;
@@ -64,9 +69,10 @@ export default function StatsScreen() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
     null
   );
+  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, showIcons, currencySymbol } = useTheme();
+  const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
 
@@ -98,6 +104,14 @@ export default function StatsScreen() {
           const allCategories = await getCategories();
           const allTransactions = await getTransactions();
           const allAccounts = await getAccounts();
+
+          // Load rates before converting amounts to the main currency
+          const rates = await getLatestRates();
+          setRatesCache(rates);
+          const toMain = (amount: number, currency: string): number => {
+            if (!rates || currency === currencyCode) return amount;
+            return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
+          };
 
           setAccounts(
             allAccounts.map((acc) => ({
@@ -150,12 +164,13 @@ export default function StatsScreen() {
             return cat?.type === activeTab;
           });
 
-          // Calculate totals per category
+          // Calculate totals per category, converting each transaction to
+          // the main currency so mixed-currency sums are meaningful.
           const categoryTotals = new Map<string, number>();
           filteredTransactions.forEach((tx) => {
             if (!tx.categoryId) return;
             const current = categoryTotals.get(tx.categoryId) || 0;
-            categoryTotals.set(tx.categoryId, current + Math.abs(tx.amount));
+            categoryTotals.set(tx.categoryId, current + Math.abs(toMain(tx.amount, tx.currency)));
           });
 
           // Build stats with colors
