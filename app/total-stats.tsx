@@ -44,7 +44,7 @@ export default function TotalStatsScreen() {
     useState<ChartDimensions>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, currencySymbol, currencyCode } = useTheme();
+  const { isDark, currencySymbol, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
   const { t } = useTranslation();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
@@ -83,12 +83,22 @@ export default function TotalStatsScreen() {
             return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
           };
 
-          // Total assets: every account converted to the main currency
-          const total = accounts.reduce(
+          // Total assets: every account converted to the main currency.
+          // All chart math below stays in the main currency; values are
+          // converted to the card's display currency at the end.
+          const totalInMain = accounts.reduce(
             (sum, acc) => sum + toMain(acc.balance, acc.currency),
             0,
           );
-          setTotalAssets(total);
+
+          // The Total Assets card can display its own currency; when the
+          // override matches the main currency (or is unset) this is a no-op.
+          const toDisplay = (amount: number): number =>
+            !totalAssetsCurrencyCode || totalAssetsCurrencyCode === currencyCode || !rates
+              ? amount
+              : convertWithRates(amount, currencyCode, totalAssetsCurrencyCode, rates.rates, rates.base);
+
+          setTotalAssets(toDisplay(totalInMain));
 
           // Calculate monthly asset growth for last 6 months ending at selected month
           const months: MonthlyData[] = [];
@@ -100,7 +110,7 @@ export default function TotalStatsScreen() {
 
             // Calculate balance at the end of this month
             // Start from current total and subtract transactions that happened after this month
-            let monthBalance = total;
+            let monthBalance = totalInMain;
 
             const now = new Date();
             for (const tx of transactions) {
@@ -120,7 +130,7 @@ export default function TotalStatsScreen() {
 
             months.push({
               month: monthName,
-              value: monthBalance,
+              value: toDisplay(monthBalance),
             });
           }
 
@@ -155,8 +165,8 @@ export default function TotalStatsScreen() {
 
             incomeExpenseMonths.push({
               month: monthName,
-              income: monthIncome,
-              expense: monthExpense,
+              income: toDisplay(monthIncome),
+              expense: toDisplay(monthExpense),
             });
           }
 
@@ -229,7 +239,7 @@ export default function TotalStatsScreen() {
             {t("totalStats.balance")}
           </Text>
           <Text className="text-cheddar-dark text-xl font-bold mt-1">
-            {currencySymbol} {formatNumber(selectedMonthBalance)}
+            {totalAssetsCurrencySymbol} {formatNumber(selectedMonthBalance)}
           </Text>
         </View>
       </View>
@@ -257,7 +267,7 @@ export default function TotalStatsScreen() {
                   data={monthlyData}
                   width={dotChartDimensions.width}
                   height={dotChartDimensions.height}
-                  currencySymbol={currencySymbol}
+                  currencySymbol={totalAssetsCurrencySymbol}
                 />
               )}
             </View>
@@ -296,7 +306,7 @@ export default function TotalStatsScreen() {
                   data={incomeExpenseData}
                   width={barChartDimensions.width}
                   height={barChartDimensions.height}
-                  currencySymbol={currencySymbol}
+                  currencySymbol={totalAssetsCurrencySymbol}
                 />
               )}
             </View>
