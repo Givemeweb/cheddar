@@ -8,7 +8,7 @@ import {
 import { useColorScheme } from 'react-native';
 import { getTheme, setTheme, ThemeMode } from '../db/theme';
 import { getShowIcons, setShowIcons } from '../db/icons';
-import { getMainCurrencyCode, setMainCurrencyCode, getCurrencySymbol, DEFAULT_CURRENCY_SYMBOL, DEFAULT_CURRENCY_CODE } from '../db/currency';
+import { getMainCurrencyCode, setMainCurrencyCode, getTotalAssetsCurrencyCode, setTotalAssetsCurrencyCode, getCurrencySymbol, DEFAULT_CURRENCY_SYMBOL, DEFAULT_CURRENCY_CODE } from '../db/currency';
 import { getSubcategoriesEnabled, setSubcategoriesEnabled as persistSubcategoriesEnabled } from '../db/subcategories';
 import { useDatabase } from './DatabaseProvider';
 
@@ -24,10 +24,14 @@ interface ThemeContextType {
   subcategoriesEnabled: boolean;
   currencySymbol: string;
   currencyCode: string;
+  /** Display currency for the Total Assets card; null means follow currencyCode. */
+  totalAssetsCurrencyCode: string | null;
+  totalAssetsCurrencySymbol: string;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setShowIconsState: (show: boolean) => Promise<void>;
   setSubcategoriesEnabledState: (enabled: boolean) => Promise<void>;
   setCurrencyState: (code: string) => Promise<void>;
+  setTotalAssetsCurrencyState: (code: string | null) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
@@ -38,10 +42,13 @@ const ThemeContext = createContext<ThemeContextType>({
   subcategoriesEnabled: false,
   currencySymbol: DEFAULT_CURRENCY_SYMBOL,
   currencyCode: DEFAULT_CURRENCY_CODE,
+  totalAssetsCurrencyCode: null,
+  totalAssetsCurrencySymbol: DEFAULT_CURRENCY_SYMBOL,
   setThemeMode: async () => {},
   setShowIconsState: async () => {},
   setSubcategoriesEnabledState: async () => {},
   setCurrencyState: async () => {},
+  setTotalAssetsCurrencyState: async () => {},
 });
 
 export function useTheme() {
@@ -59,6 +66,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [subcategoriesEnabled, setSubcategoriesEnabledState] = useState<boolean>(false);
   const [currencySymbol, setCurrencySymbolState] = useState<string>(DEFAULT_CURRENCY_SYMBOL);
   const [currencyCode, setCurrencyCodeState] = useState<string>(DEFAULT_CURRENCY_CODE);
+  const [totalAssetsCurrencyCode, setTotalAssetsCurrencyCodeState] = useState<string | null>(null);
+  const [totalAssetsCurrencySymbol, setTotalAssetsCurrencySymbolState] = useState<string>(DEFAULT_CURRENCY_SYMBOL);
   const systemColorScheme = useColorScheme();
 
   // Load saved theme and icons setting on mount
@@ -75,6 +84,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       setSubcategoriesEnabledState(savedSubcategoriesEnabled);
       setCurrencyCodeState(savedCurrencyCode);
       setCurrencySymbolState(getCurrencySymbol(savedCurrencyCode));
+      const savedTotalAssetsCurrency = await getTotalAssetsCurrencyCode();
+      setTotalAssetsCurrencyCodeState(savedTotalAssetsCurrency);
+      setTotalAssetsCurrencySymbolState(getCurrencySymbol(savedTotalAssetsCurrency ?? savedCurrencyCode));
     }
     loadSettings();
   }, [isReady]);
@@ -100,6 +112,19 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     setCurrencyCodeState(code);
     setCurrencySymbolState(getCurrencySymbol(code));
     await setMainCurrencyCode(code);
+    // When the total-assets card follows the main currency, keep its symbol in sync.
+    setTotalAssetsCurrencyCodeState((prev) => {
+      if (!prev) {
+        setTotalAssetsCurrencySymbolState(getCurrencySymbol(code));
+      }
+      return prev;
+    });
+  };
+
+  const handleSetTotalAssetsCurrency = async (code: string | null) => {
+    setTotalAssetsCurrencyCodeState(code);
+    setTotalAssetsCurrencySymbolState(getCurrencySymbol(code ?? currencyCode));
+    await setTotalAssetsCurrencyCode(code);
   };
 
   const handleSetSubcategoriesEnabled = async (enabled: boolean) => {
@@ -117,10 +142,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         subcategoriesEnabled,
         currencySymbol,
         currencyCode,
+        totalAssetsCurrencyCode,
+        totalAssetsCurrencySymbol,
         setThemeMode: handleSetThemeMode,
         setShowIconsState: handleSetShowIcons,
         setSubcategoriesEnabledState: handleSetSubcategoriesEnabled,
         setCurrencyState: handleSetCurrency,
+        setTotalAssetsCurrencyState: handleSetTotalAssetsCurrency,
       }}
     >
       {children}

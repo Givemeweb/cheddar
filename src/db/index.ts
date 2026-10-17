@@ -45,6 +45,8 @@ export {
 export {
   getMainCurrencyCode,
   setMainCurrencyCode,
+  getTotalAssetsCurrencyCode,
+  setTotalAssetsCurrencyCode,
   getCurrencySymbol,
   getAccountCurrency,
   setAccountCurrency,

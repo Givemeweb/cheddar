@@ -18,6 +18,7 @@ import { convertWithRates, getLatestRates, RatesCache } from "../../src/services
 import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
+import { Globe } from "lucide-react-native";
 
 export default function AccountsScreen() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function AccountsScreen() {
   const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
+  const { isDark, showIcons, currencySymbol, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
   const { t } = useTranslation();
 
   useFocusEffect(
@@ -59,10 +60,19 @@ export default function AccountsScreen() {
 
   // Sum every account in the main currency, converting from each
   // account's own currency at current rates.
-  const totalAssets = accountsList.reduce(
+  const totalAssetsInMain = accountsList.reduce(
     (sum: number, acc: Account) => sum + convertToMain(acc.balance, acc.currency),
     0,
   );
+
+  // The card can display the total in its own currency; when the override
+  // matches the main currency (or is unset) no extra conversion is needed.
+  const totalAssets =
+    !totalAssetsCurrencyCode || totalAssetsCurrencyCode === currencyCode
+      ? totalAssetsInMain
+      : (ratesCache
+          ? convertWithRates(totalAssetsInMain, currencyCode, totalAssetsCurrencyCode, ratesCache.rates, ratesCache.base)
+          : totalAssetsInMain);
 
   if (loading) {
     return (
@@ -153,6 +163,29 @@ export default function AccountsScreen() {
               {t("accounts.reorderAccounts")}
             </Text>
           </Pressable>
+          <Pressable
+            onPress={() => {
+              setMenuVisible(false);
+              router.push("/configuration/total-assets-currency");
+            }}
+            className="px-4 py-3"
+          >
+            <View className="flex-row items-center justify-between">
+              <Text
+                className={`${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              >
+                {t("accounts.totalAssetsCurrency")}
+              </Text>
+              <View className="flex-row items-center ml-3">
+                <Text
+                  className={`mr-2 ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                >
+                  {getCurrencySymbol(totalAssetsCurrencyCode ?? currencyCode)}
+                </Text>
+                <Globe size={18} color={isDark ? "#F9FAFB" : "#212226"} />
+              </View>
+            </View>
+          </Pressable>
         </View>
       )}
 
@@ -163,7 +196,7 @@ export default function AccountsScreen() {
             {t("accounts.totalAssets")}
           </Text>
           <Text className="text-cheddar-dark text-3xl font-bold mt-1">
-            {currencySymbol} {formatNumber(totalAssets)}
+            {totalAssetsCurrencySymbol} {formatNumber(totalAssets)}
           </Text>
         </View>
       </View>

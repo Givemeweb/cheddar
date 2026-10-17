@@ -78,7 +78,9 @@
     "noAccountsReorder": "No accounts to reorder.",
     "deleteInfo": "Transactions associated with deleted accounts will remain in your history.",
     "currency": "Currency",
-    "currencyChangeNote": "Saving will convert the current balance from {{oldCurrency}} to {{newCurrency}} at the current exchange rate."
+    "currencyChangeNote": "Saving will convert the current balance from {{oldCurrency}} to {{newCurrency}} at the current exchange rate.",
+    "totalAssetsCurrency": "Total Assets Currency",
+    "totalAssetsFollowMain": "Follow Main Currency"
   },
   "categories": {
     "incomeCategories": "Income Categories",

@@ -2,6 +2,7 @@ import { getStore, saveStore, isDatabaseReady } from './tinybase';
 import { convertWithRates, getLatestRates, RatesCache } from '../services/exchangeRates';
 
 const CURRENCY_KEY = 'mainCurrency';
+const TOTAL_ASSETS_CURRENCY_KEY = 'totalAssetsCurrency';
 
 // Default currency code is Euro
 export const DEFAULT_CURRENCY_CODE = 'EUR';
@@ -55,6 +56,28 @@ export async function setMainCurrencyCode(code: string): Promise<void> {
   if (!isDatabaseReady()) return;
   const store = getStore();
   store.setValue(CURRENCY_KEY, code);
+  await saveStore();
+}
+
+/**
+ * Display currency for the "Total Assets" card on the accounts screen.
+ * Empty/unset means "follow the app's main currency".
+ */
+export async function getTotalAssetsCurrencyCode(): Promise<string | null> {
+  if (!isDatabaseReady()) return null;
+  const store = getStore();
+  const code = store.getValue(TOTAL_ASSETS_CURRENCY_KEY) as string | undefined;
+  return code && code.trim() ? code : null;
+}
+
+export async function setTotalAssetsCurrencyCode(code: string | null): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  if (code && code.trim()) {
+    store.setValue(TOTAL_ASSETS_CURRENCY_KEY, code);
+  } else {
+    store.setValue(TOTAL_ASSETS_CURRENCY_KEY, '');
+  }
   await saveStore();
 }
 
