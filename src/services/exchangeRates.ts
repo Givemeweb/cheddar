@@ -19,6 +19,10 @@ export interface RatesCache {
 }
 
 let memoryCache: RatesCache | null = null;
+let refreshInFlight: Promise<RatesCache | null> | null = null;
+
+// Bounded network wait so a slow/flaky connection can never hang a spinner.
+const FETCH_TIMEOUT_MS = 5_000;
 
 async function readCache(): Promise<RatesCache | null> {
   if (memoryCache) return memoryCache;
@@ -42,21 +46,13 @@ async function writeCache(cache: RatesCache): Promise<void> {
   }
 }
 
-/**
- * Fetch latest rates (base EUR) from frankfurter.dev.
- * Uses the cache when it is fresh; falls back to a stale cache when offline.
- * Returns null when no rates are available at all.
- */
-export async function getLatestRates(forceRefresh = false): Promise<RatesCache | null> {
-  const cached = await readCache();
-  const isFresh = cached && Date.now() - cached.fetchedAt < RATES_TTL_MS;
-
-  if (!forceRefresh && isFresh && cached) {
-    return cached;
-  }
-
+async function fetchRatesFromApi(): Promise<RatesCache> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=EUR');
+    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=EUR', {
+      signal: controller.signal,
+    });
     if (!response.ok) throw new Error(`Frankfurter responded ${response.status}`);
     const data = (await response.json()) as {
       base: string;
@@ -71,10 +67,59 @@ export async function getLatestRates(forceRefresh = false): Promise<RatesCache |
     };
     await writeCache(cache);
     return cache;
-  } catch (error) {
-    console.warn('[exchangeRates] fetch failed, using cached rates:', error);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Fetch latest rates (base EUR) from frankfurter.dev.
+ *
+ * Never makes the caller wait on the network unless there is nothing to
+ * display without it:
+ * - fresh cache  -> returned immediately
+ * - stale cache  -> returned immediately; a single background refresh is
+ *   kicked off (deduped) so the next screen/view gets fresh rates
+ * - no cache     -> blocks on the fetch, bounded by FETCH_TIMEOUT_MS
+ * Falls back to a stale cache when offline. Returns null when no rates are
+ * available at all.
+ */
+export async function getLatestRates(forceRefresh = false): Promise<RatesCache | null> {
+  const cached = await readCache();
+  const isFresh = cached && Date.now() - cached.fetchedAt < RATES_TTL_MS;
+
+  if (!forceRefresh && isFresh && cached) {
     return cached;
   }
+
+  if (forceRefresh) {
+    try {
+      return await fetchRatesFromApi();
+    } catch (error) {
+      console.warn('[exchangeRates] fetch failed, using cached rates:', error);
+      return cached;
+    }
+  }
+
+  if (!cached) {
+    // First launch (no cache at all): block once, bounded by FETCH_TIMEOUT_MS.
+    try {
+      return await fetchRatesFromApi();
+    } catch (error) {
+      console.warn('[exchangeRates] fetch failed, no rates available:', error);
+      return null;
+    }
+  }
+
+  // Stale cache: serve it now, refresh in the background for next time.
+  if (!refreshInFlight) {
+    refreshInFlight = fetchRatesFromApi()
+      .catch(() => null)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return cached;
 }
 
 /**
@@ -125,4 +170,10 @@ export async function getRatesTimestamp(): Promise<number | null> {
 export async function getRatesDate(): Promise<string | null> {
   const cache = await readCache();
   return cache ? cache.date : null;
+}
+
+/** Test-only: clear the in-memory cache and in-flight refresh state. */
+export function _resetRatesCacheForTests(): void {
+  memoryCache = null;
+  refreshInFlight = null;
 }
