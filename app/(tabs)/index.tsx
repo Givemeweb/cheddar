@@ -246,19 +246,6 @@ export default function TransactionsScreen() {
             {monthYear}
           </Text>
           <View className="flex-row items-center">
-            <View
-              className={`mr-1 px-2.5 py-1 rounded-full ${
-                isDark ? "bg-[#2A2C32]" : "bg-gray-100"
-              }`}
-            >
-              <Text
-                className={`text-xs font-semibold ${
-                  isDark ? "text-gray-300" : "text-gray-600"
-                }`}
-              >
-                {currencyCode}
-              </Text>
-            </View>
             <Pressable
               onPress={goToNextMonth}
               className="p-2"
