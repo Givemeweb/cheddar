@@ -11,6 +11,7 @@ import {
     Keyboard,
     Image,
     ActionSheetIOS,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -31,8 +32,11 @@ import {
     Camera,
     Image as ImageIcon,
     X,
+    Check,
 } from 'lucide-react-native';
 import { useTheme } from '@/src/components/ThemeProvider';
+import { CURRENCIES, getCurrencySymbol, resolveAccountCurrency, convertAmountWithRates } from '@/src/db/currency';
+import { formatNumber } from '@/src/utils/formatNumber';
 
 type TransactionType = 'income' | 'expense' | 'transfer';
 type SelectionMode = 'none' | 'account' | 'category' | 'subcategory' | 'fromAccount' | 'toAccount';
@@ -80,6 +84,10 @@ export default function AddTransactionScreen() {
     const [fromAccountId, setFromAccountId] = useState<string | null>(null);
     const [toAccountId, setToAccountId] = useState<string | null>(null);
     const [amount, setAmount] = useState('');
+    const [currency, setCurrency] = useState<string | null>(null);
+    const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+    const [convertedAmount, setConvertedAmount] = useState<number | null>(null);
+    const [rateError, setRateError] = useState<string | null>(null);
     const [note, setNote] = useState('');
     const [description, setDescription] = useState('');
     const [categories, setCategories] = useState<Category[]>([]);
@@ -128,6 +136,7 @@ export default function AddTransactionScreen() {
                 setNote(existingTx.note || '');
                 setDescription(existingTx.description || '');
                 setAmount(Math.abs(existingTx.amount).toString());
+                setCurrency(existingTx.currency || null);
                 setImagePath(existingTx.imagePath || null);
                 if (existingTx.imagePath) {
                     setDisplayImageUri(getImageUri(existingTx.imagePath));
@@ -216,6 +225,42 @@ export default function AddTransactionScreen() {
         type === 'income' ? c.type === 'income' : c.type === 'expense'
     );
 
+    // Currency the user is entering the amount in. null means "the account's
+    // currency", which is the default and needs no conversion.
+    const amountAccount = accounts.find(a => a.id === (type === 'transfer' ? fromAccountId : selectedAccountId));
+    const accountCurrency = resolveAccountCurrency(amountAccount?.currency);
+    const effectiveCurrency = currency ?? accountCurrency;
+
+    // Live preview: convert the typed amount into the account currency so the
+    // balance change is visible before saving.
+    useEffect(() => {
+        const parsed = parseFloat(amount.replace(',', '.'));
+        if (!parsed || parsed <= 0 || effectiveCurrency === accountCurrency) {
+            setConvertedAmount(null);
+            setRateError(null);
+            return;
+        }
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            try {
+                const value = await convertAmountWithRates(parsed, effectiveCurrency, accountCurrency);
+                if (!cancelled) {
+                    setConvertedAmount(value);
+                    setRateError(null);
+                }
+            } catch {
+                if (!cancelled) {
+                    setConvertedAmount(null);
+                    setRateError(t('transactions.rateUnavailable', { from: effectiveCurrency, to: accountCurrency }));
+                }
+            }
+        }, 250);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [amount, effectiveCurrency, accountCurrency, t]);
+
     const handleSave = async () => {
         const validationError = validateForm();
         if (validationError) {
@@ -227,7 +272,23 @@ export default function AddTransactionScreen() {
             return;
         }
 
-        const parsedAmount = parseFloat(amount);
+        const parsedAmount = parseFloat(amount.replace(',', '.'));
+
+        // Convert into the account currency, because account balances are kept
+        // in that currency. Same-currency entries skip the network entirely.
+        const targetCurrency = accountCurrency;
+        let savingAmount = parsedAmount;
+        if (effectiveCurrency !== targetCurrency) {
+            try {
+                savingAmount = await convertAmountWithRates(parsedAmount, effectiveCurrency, targetCurrency);
+            } catch {
+                Alert.alert(
+                    t('transactions.error'),
+                    t('transactions.rateUnavailable', { from: effectiveCurrency, to: targetCurrency })
+                );
+                return;
+            }
+        }
 
         if (type === 'transfer') {
             if (!fromAccountId || !toAccountId) return;
@@ -243,7 +304,7 @@ export default function AddTransactionScreen() {
                     toAccountName: toAccount?.name || '',
                     note: note || null,
                     description: description || null,
-                    amount: -Math.abs(parsedAmount),
+                    amount: -Math.abs(savingAmount),
                     date,
                     imagePath: imagePath,
                 });
@@ -256,7 +317,7 @@ export default function AddTransactionScreen() {
                     toAccountName: toAccount?.name || '',
                     note: note || null,
                     description: description || null,
-                    amount: -Math.abs(parsedAmount),
+                    amount: -Math.abs(savingAmount),
                     date,
                     imagePath: imagePath,
                 });
@@ -279,7 +340,7 @@ export default function AddTransactionScreen() {
                     accountName: account?.name || '',
                     note: note || null,
                     description: description || null,
-                    amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
+                    amount: type === 'expense' ? -Math.abs(savingAmount) : Math.abs(savingAmount),
                     date,
                     imagePath: imagePath,
                 });
@@ -296,7 +357,7 @@ export default function AddTransactionScreen() {
                     accountName: account?.name || '',
                     note: note || null,
                     description: description || null,
-                    amount: type === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
+                    amount: type === 'expense' ? -Math.abs(savingAmount) : Math.abs(savingAmount),
                     date,
                     imagePath: imagePath,
                 });
@@ -521,6 +582,7 @@ export default function AddTransactionScreen() {
 
     const handleAccountSelect = (accountId: string) => {
         setSelectedAccountId(accountId);
+        setCurrency(null);
         setSelectionMode('none');
         // Focus on category if not selected
         if (!selectedCategoryId) {
@@ -541,6 +603,7 @@ export default function AddTransactionScreen() {
 
     const handleFromAccountSelect = (accountId: string) => {
         setFromAccountId(accountId);
+        setCurrency(null);
         setSelectionMode('toAccount');
     };
 
@@ -553,6 +616,7 @@ export default function AddTransactionScreen() {
 
     const handleTypeChange = (newType: TransactionType) => {
         setType(newType);
+        setCurrency(null);
         setSelectedCategoryId(null);
         setSelectedSubcategoryId(null);
         setSubcategories([]);
@@ -904,16 +968,44 @@ export default function AddTransactionScreen() {
             >
               {t("transactions.amount")}
             </Text>
-            <TextInput
-              ref={amountRef}
-              className={`text-2xl font-semibold py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-              onFocus={() => setSelectionMode('none')}
-            />
+            <View className="flex-row items-center">
+              <TextInput
+                ref={amountRef}
+                className={`flex-1 text-2xl font-semibold py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                onFocus={() => setSelectionMode('none')}
+              />
+              <Pressable
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowCurrencyPicker(true);
+                }}
+                className={`flex-row items-center ml-2 px-3 py-1.5 rounded-full ${
+                  isDark ? "bg-[#33353B]" : "bg-gray-100"
+                }`}
+              >
+                <Text className={`text-sm font-semibold mr-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}>
+                  {getCurrencySymbol(effectiveCurrency)} {effectiveCurrency}
+                </Text>
+                <ChevronDown size={14} color={isDark ? "#9CA3AF" : "#6B7280"} />
+              </Pressable>
+            </View>
+            {effectiveCurrency !== accountCurrency && convertedAmount !== null && (
+              <Text className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                {t("transactions.convertedTo", {
+                  amount: formatNumber(convertedAmount),
+                  currency: accountCurrency,
+                  account: amountAccount?.name || '',
+                })}
+              </Text>
+            )}
+            {rateError && (
+              <Text className="text-xs mt-1 text-red-500">{rateError}</Text>
+            )}
           </View>
 
           {/* Note */}
@@ -1184,6 +1276,56 @@ export default function AddTransactionScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {/* Currency Picker */}
+        <Modal
+          visible={showCurrencyPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCurrencyPicker(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <Pressable className="absolute inset-0" onPress={() => setShowCurrencyPicker(false)} />
+            <View className={`rounded-t-2xl max-h-[75%] ${isDark ? "bg-[#26282D]" : "bg-white"}`}>
+              <View className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? "border-gray-700" : "border-gray-200"}`}>
+                <Text className={`text-lg font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}>
+                  {t("transactions.selectCurrency")}
+                </Text>
+                <Pressable onPress={() => setShowCurrencyPicker(false)} className="p-2">
+                  <X size={22} color={isDark ? "#9CA3AF" : "#6B7280"} />
+                </Pressable>
+              </View>
+              <ScrollView>
+                {CURRENCIES.map((c) => {
+                  const selected = c.code === effectiveCurrency;
+                  return (
+                    <Pressable
+                      key={c.code}
+                      onPress={() => {
+                        setCurrency(c.code === accountCurrency ? null : c.code);
+                        setShowCurrencyPicker(false);
+                      }}
+                      className={`flex-row items-center px-4 py-3 border-b ${isDark ? "border-gray-700" : "border-gray-100"}`}
+                    >
+                      <Text className={`text-xl w-10 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}>
+                        {c.symbol}
+                      </Text>
+                      <View className="flex-1">
+                        <Text className={`text-base ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}>
+                          {c.name}
+                        </Text>
+                        <Text className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                          {c.code}
+                        </Text>
+                      </View>
+                      {selected && <Check size={20} color="#FFB800" />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
 }
