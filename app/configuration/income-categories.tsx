@@ -6,7 +6,6 @@ import {
   ScrollView,
   Alert,
   Platform,
-  Pressable,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,18 +13,18 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Plus,
-  Trash2,
   Circle,
-  ChevronRight,
 } from 'lucide-react-native';
 import { categoryIconMap } from '@/src/components/categoryIcons';
 import {
   getCategoriesByType,
   deleteCategory,
+  reorderCategories,
   Category,
 } from '@/src/db/storage';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { ToggleSwitch } from '@/src/components/ToggleSwitch';
+import { DraggableCategoryList } from '@/src/components/DraggableCategoryList';
 import { useTranslation } from 'react-i18next';
 
 export default function IncomeCategoriesScreen() {
@@ -153,48 +152,24 @@ export default function IncomeCategoriesScreen() {
             </Text>
           </View>
         ) : (
-          <View className={`rounded-xl overflow-hidden ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
-            {categories.map((category, index) => (
-              <View
-                key={category.id}
-                className={`flex-row items-center justify-between p-4 ${
-                  index > 0 ? (isDark ? 'border-t border-gray-700' : 'border-t border-gray-100') : ''
-                }`}
-              >
-                <Pressable
-                  onPress={() => {
-                    if (subcategoriesEnabled) {
-                      router.push(`/configuration/subcategories?categoryId=${category.id}` as never);
-                    } else {
-                      router.push(`/configuration/edit-category?id=${category.id}` as never);
-                    }
-                  }}
-                  className="flex-row items-center flex-1"
-                >
-                  <View className="mr-3">
-                    {renderIcon(category.icon)}
-                  </View>
-                  <Text className={`text-lg flex-1 ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}>
-                    {category.name}
-                  </Text>
-                  {subcategoriesEnabled && (
-                    <ChevronRight size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                  )}
-                </Pressable>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDelete(category);
-                  }}
-                  className="p-2"
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Trash2 size={22} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+          <DraggableCategoryList
+            categories={categories}
+            isDark={isDark}
+            subcategoriesEnabled={subcategoriesEnabled}
+            renderIcon={renderIcon}
+            onPressCategory={(category) => {
+              if (subcategoriesEnabled) {
+                router.push(`/configuration/subcategories?categoryId=${category.id}` as never);
+              } else {
+                router.push(`/configuration/edit-category?id=${category.id}` as never);
+              }
+            }}
+            onDeleteCategory={handleDelete}
+            onReorder={(next) => {
+              setCategories(next);
+              reorderCategories(next.map(c => c.id));
+            }}
+          />
         )}
       </ScrollView>
     </SafeAreaView>

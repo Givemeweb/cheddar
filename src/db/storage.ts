@@ -7,6 +7,8 @@ export interface Category {
   name: string;
   icon: string;
   type: 'income' | 'expense';
+  /** Position within its type, used by the reorder screens. */
+  order?: number;
 }
 
 export interface Account {
@@ -49,12 +51,25 @@ export async function getCategories(): Promise<Category[]> {
   const categories = store.getTable('categories');
   if (!categories) return [];
 
-  return Object.entries(categories).map(([id, data]) => ({
+  const list: Category[] = Object.entries(categories).map(([id, data]) => ({
     id,
     name: data.name as string,
     icon: data.icon as string,
     type: data.type as 'income' | 'expense',
+    order: typeof data.order === 'number' ? data.order : undefined,
   }));
+
+  // Backfill once for categories created before ordering existed, keeping the
+  // order they are displayed in today.
+  if (list.some(c => c.order === undefined)) {
+    list.forEach((category, index) => {
+      store.setCell('categories', category.id, 'order', index);
+      category.order = index;
+    });
+    await saveStore();
+  }
+
+  return list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 export async function getCategoryById(id: string): Promise<Category | undefined> {
@@ -68,6 +83,7 @@ export async function getCategoryById(id: string): Promise<Category | undefined>
     name: row.name as string,
     icon: row.icon as string,
     type: row.type as 'income' | 'expense',
+    order: typeof row.order === 'number' ? row.order : undefined,
   };
 }
 
@@ -442,10 +458,17 @@ export async function addCategory(category: {
   const store = getStore();
   const id = generateId();
 
+  // Append at the end of its own type's list.
+  const table = store.getTable('categories') ?? {};
+  const nextOrder = Object.values(table)
+    .filter(row => row.type === category.type)
+    .reduce((max, row) => Math.max(max, typeof row.order === 'number' ? row.order : -1), -1) + 1;
+
   store.setRow('categories', id, {
     name: category.name,
     icon: category.icon,
     type: category.type,
+    order: nextOrder,
   });
 
   await saveStore();
@@ -455,7 +478,18 @@ export async function addCategory(category: {
     name: category.name,
     icon: category.icon,
     type: category.type,
+    order: nextOrder,
   };
+}
+
+/** Persist a new order for one type's categories. */
+export async function reorderCategories(orderedIds: string[]): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  orderedIds.forEach((id, index) => {
+    store.setCell('categories', id, 'order', index);
+  });
+  await saveStore();
 }
 
 export async function deleteCategory(id: string): Promise<void> {
@@ -479,6 +513,7 @@ export async function updateCategory(id: string, updates: { name?: string; icon?
     name: newName,
     icon: newIcon,
     type: currentCategory.type,
+    order: currentCategory.order ?? 0,
   });
 
   // Update all transactions that reference this category
@@ -501,6 +536,7 @@ export async function updateCategory(id: string, updates: { name?: string; icon?
     name: newName,
     icon: newIcon,
     type: currentCategory.type,
+    order: currentCategory.order ?? 0,
   };
 }
 
