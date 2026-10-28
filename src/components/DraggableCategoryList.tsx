@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import type { Category } from '@/src/db/storage';
 
 const DEFAULT_ROW_HEIGHT = 60;
-const HOLD_MS = 180;
+const DRAG_SLOP = 2;
 
 interface DraggableRowProps {
   index: number;
@@ -27,26 +27,21 @@ function DraggableRow({ index, isFirst, isDark, onDrop, onMeasure, children }: D
   const [dragging, setDragging] = useState(false);
   const translateY = useRef(new Animated.Value(0)).current;
   const dyRef = useRef(0);
-  const armedRef = useRef(false);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draggingRef = useRef(false);
   const indexRef = useRef(index);
   const onDropRef = useRef(onDrop);
 
   indexRef.current = index;
   onDropRef.current = onDrop;
 
-  const clearHold = () => {
-    if (holdTimerRef.current) {
-      clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
+  const setDragActive = (active: boolean) => {
+    draggingRef.current = active;
+    setDragging(active);
   };
 
   const reset = () => {
-    clearHold();
-    armedRef.current = false;
     dyRef.current = 0;
-    setDragging(false);
+    setDragActive(false);
     translateY.setValue(0);
   };
 
@@ -56,22 +51,19 @@ function DraggableRow({ index, isFirst, isDark, onDrop, onMeasure, children }: D
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
         dyRef.current = 0;
-        holdTimerRef.current = setTimeout(() => {
-          armedRef.current = true;
-          setDragging(true);
-        }, HOLD_MS);
+        setDragActive(false);
       },
       onPanResponderMove: (_event, gesture) => {
-        if (!armedRef.current) {
-          // Moving before the hold completes means this was not a drag.
-          if (Math.abs(gesture.dy) > 6) clearHold();
-          return;
+        // No hold needed: as soon as the grip moves, the row is being dragged.
+        if (!draggingRef.current) {
+          if (Math.abs(gesture.dy) < DRAG_SLOP) return;
+          setDragActive(true);
         }
         dyRef.current = gesture.dy;
         translateY.setValue(gesture.dy);
       },
       onPanResponderRelease: () => {
-        if (armedRef.current) {
+        if (draggingRef.current) {
           onDropRef.current(indexRef.current, dyRef.current);
         }
         reset();
