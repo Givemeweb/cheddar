@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -24,22 +25,40 @@ export default function PaywallScreen() {
     isPremium,
     isLoading,
     lifetimePackage,
+    refreshOfferings,
     purchaseLifetime,
     restorePurchases,
   } = usePremium();
   const [busy, setBusy] = useState<'purchase' | 'restore' | null>(null);
+  const [retryingOfferings, setRetryingOfferings] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const price = lifetimePackage?.product.priceString;
-  const benefits = [
-    t('premium.benefits.accounts'),
-    t('premium.benefits.categories'),
-    t('premium.benefits.stats'),
-    t('premium.benefits.totalStats'),
-  ];
+  const benefits = (
+    ['accounts', 'categories', 'stats', 'totalStats'] as const
+  ).map((id) => ({
+    id,
+    label: t(`premium.benefits.${id}`),
+  }));
+
+  const handleRetryOfferings = async () => {
+    if (busy !== null || retryingOfferings) return;
+    setError(null);
+    setMessage(null);
+    setRetryingOfferings(true);
+    try {
+      await refreshOfferings();
+    } catch (offeringsError) {
+      console.warn('[premium] Failed to reload offerings', offeringsError);
+      setError(t('premium.error'));
+    } finally {
+      setRetryingOfferings(false);
+    }
+  };
 
   const handlePurchase = async () => {
+    if (busy !== null || retryingOfferings) return;
     setError(null);
     setMessage(null);
     setBusy('purchase');
@@ -60,13 +79,15 @@ export default function PaywallScreen() {
   };
 
   const handleRestore = async () => {
+    if (busy !== null || retryingOfferings) return;
     setError(null);
     setMessage(null);
     setBusy('restore');
     try {
       const active = await restorePurchases();
       setMessage(active ? t('premium.restored') : t('premium.notRestored'));
-    } catch {
+    } catch (restoreError) {
+      console.warn('[premium] Restore failed', restoreError);
       setError(t('premium.error'));
     } finally {
       setBusy(null);
@@ -80,7 +101,10 @@ export default function PaywallScreen() {
       <View
         className={`flex-row items-center px-4 py-3 ${isDark ? 'border-gray-700 bg-[#26282D]' : 'border-gray-200 bg-white'} border-b`}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+        <TouchableOpacity
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          className="mr-4"
+        >
           <Text className="text-cheddar-yellow text-lg font-medium">
             {t('common.back')}
           </Text>
@@ -116,14 +140,14 @@ export default function PaywallScreen() {
           className={`mt-8 rounded-2xl p-5 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
         >
           {benefits.map((benefit) => (
-            <View key={benefit} className="mb-3 flex-row items-center last:mb-0">
+            <View key={benefit.id} className="mb-3 flex-row items-center last:mb-0">
               <View className="mr-3 h-6 w-6 items-center justify-center rounded-full bg-cheddar-yellow">
                 <Check size={16} color="#212226" />
               </View>
               <Text
                 className={`flex-1 text-base ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
               >
-                {benefit}
+                {benefit.label}
               </Text>
             </View>
           ))}
@@ -138,19 +162,40 @@ export default function PaywallScreen() {
             >
               {t('premium.lifetime')}
             </Text>
-            {isLoading ? (
+            {isLoading || retryingOfferings ? (
               <ActivityIndicator color="#FFB800" />
             ) : (
-              <Text
-                testID="paywall-price"
-                className={`text-2xl font-bold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
-              >
-                {price ?? t('premium.priceUnavailable')}
-              </Text>
+              <View className="flex-row items-center">
+                <Text
+                  testID="paywall-price"
+                  className={`text-2xl font-bold ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+                >
+                  {price ?? t('premium.priceUnavailable')}
+                </Text>
+                {!price && Platform.OS !== 'web' ? (
+                  <TouchableOpacity
+                    testID="paywall-retry-price"
+                    className="ml-3"
+                    disabled={busy !== null || retryingOfferings}
+                    onPress={handleRetryOfferings}
+                  >
+                    <Text className="text-cheddar-yellow text-base font-medium">
+                      {t('premium.retry')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             )}
           </View>
 
-          {isPremium ? (
+          {Platform.OS === 'web' ? (
+            <Text
+              testID="paywall-web-notice"
+              className={`mt-5 text-center text-base ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+            >
+              {t('premium.webUnavailable')}
+            </Text>
+          ) : isPremium ? (
             <View
               testID="paywall-status"
               className="mt-5 flex-row items-center justify-center rounded-xl bg-green-500 px-4 py-4"
@@ -164,10 +209,14 @@ export default function PaywallScreen() {
             <TouchableOpacity
               testID="paywall-buy"
               className={`mt-5 flex-row items-center justify-center rounded-xl px-4 py-4 ${
-                busy || isLoading || !price ? 'bg-gray-400' : 'bg-cheddar-yellow'
+                busy || isLoading || retryingOfferings || !price
+                  ? 'bg-gray-400'
+                  : 'bg-cheddar-yellow'
               }`}
               activeOpacity={0.8}
-              disabled={busy !== null || isLoading || !price}
+              disabled={
+                busy !== null || isLoading || retryingOfferings || !price
+              }
               onPress={handlePurchase}
             >
               {busy === 'purchase' ? (
@@ -182,20 +231,22 @@ export default function PaywallScreen() {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
-            testID="paywall-restore"
-            className="mt-4 items-center py-3"
-            disabled={busy !== null}
-            onPress={handleRestore}
-          >
-            {busy === 'restore' ? (
-              <ActivityIndicator color="#FFB800" />
-            ) : (
-              <Text className="text-cheddar-yellow text-base font-medium">
-                {t('premium.restore')}
-              </Text>
-            )}
-          </TouchableOpacity>
+          {Platform.OS !== 'web' ? (
+            <TouchableOpacity
+              testID="paywall-restore"
+              className="mt-4 items-center py-3"
+              disabled={busy !== null || isLoading || retryingOfferings}
+              onPress={handleRestore}
+            >
+              {busy === 'restore' ? (
+                <ActivityIndicator color="#FFB800" />
+              ) : (
+                <Text className="text-cheddar-yellow text-base font-medium">
+                  {t('premium.restore')}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {message ? (
