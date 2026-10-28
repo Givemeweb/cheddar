@@ -136,6 +136,27 @@
     "feedback": "Feedback",
     "recommend": "Recommend"
   },
+  "premium": {
+    "title": "Cheddar Premium",
+    "subtitle": "One payment. Yours forever.",
+    "active": "Premium active",
+    "lifetime": "Lifetime access",
+    "benefits": {
+      "accounts": "Unlimited accounts",
+      "categories": "Unlimited categories",
+      "stats": "Full stats history",
+      "totalStats": "Total assets over time"
+    },
+    "buy": "Unlock for {{price}}",
+    "restore": "Restore Purchases",
+    "restored": "Premium restored.",
+    "notRestored": "No previous purchase found.",
+    "purchased": "Premium is active. Thank you!",
+    "notGranted": "Purchase completed, but premium was not granted. Check the RevenueCat entitlement.",
+    "priceUnavailable": "Store unavailable",
+    "error": "Something went wrong. Please try again.",
+    "legal": "Payment is charged to your store account. Cheddar does not store payment details."
+  },
   "backup": {
     "title": "Backup",
     "onDevice": "Backup/Restore on Device",

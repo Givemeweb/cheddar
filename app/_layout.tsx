@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { Platform, View, useWindowDimensions, StyleSheet } from "react-native";
 import { DatabaseProvider } from "../src/components/DatabaseProvider";
 import { ThemeProvider, useTheme } from "../src/components/ThemeProvider";
+import { PremiumProvider } from "../src/components/PremiumProvider";
 import { PasscodeProvider, usePasscode } from "../src/components/PasscodeProvider";
 import { LockScreen } from "../src/components/LockScreen";
 import { SideNav } from "../src/components/SideNav";
@@ -32,6 +33,13 @@ function ThemedApp() {
         <View style={styles.contentContainer}>
           <Stack screenOptions={{ headerShown: false, animation: Platform.OS === 'android' ? 'none' : 'default' }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="paywall"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
             <Stack.Screen
               name="add-transaction"
               options={{
@@ -92,6 +100,13 @@ function ThemedApp() {
     <View className={`flex-1 ${isDark ? 'dark bg-cheddar-dark' : 'bg-cheddar-light'}`}>
       <Stack screenOptions={{ headerShown: false, animation: Platform.OS === 'android' ? 'none' : 'default' }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="paywall"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
         <Stack.Screen
           name="add-transaction"
           options={{
@@ -165,9 +180,11 @@ export default function RootLayout() {
   return (
     <DatabaseProvider>
       <ThemeProvider>
-        <PasscodeProvider>
-          <ThemedApp />
-        </PasscodeProvider>
+        <PremiumProvider>
+          <PasscodeProvider>
+            <ThemedApp />
+          </PasscodeProvider>
+        </PremiumProvider>
       </ThemeProvider>
     </DatabaseProvider>
   );

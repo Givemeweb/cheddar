@@ -9,11 +9,14 @@ import {
   Cloud,
   MessageCircle,
   Star,
+  Crown,
 } from "lucide-react-native";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { usePremium } from "../../src/components/PremiumProvider";
 
 type MenuItem = {
   label: string;
+  sublabel?: string;
   icon: React.ReactNode;
   route: string;
 };
@@ -23,11 +26,18 @@ export default function MoreScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark } = useTheme();
+  const { isPremium } = usePremium();
   const { t } = useTranslation();
 
   const iconColor = isDark ? "#F9FAFB" : "#212226";
 
   const menuItems: MenuItem[] = [
+    {
+      label: t('premium.title'),
+      sublabel: isPremium ? t('premium.active') : t('premium.subtitle'),
+      icon: <Crown size={24} color="#FFB800" />,
+      route: "/paywall",
+    },
     {
       label: t('more.configuration'),
       icon: <Settings size={24} color={iconColor} />,
@@ -69,6 +79,7 @@ export default function MoreScreen() {
         {menuItems.map((item, index) => (
           <TouchableOpacity
             key={item.route}
+            testID={item.route === "/paywall" ? "more-premium" : undefined}
             className={`flex-row items-center p-4 ${
               index === 0 ? "rounded-t-xl" : ""
             } ${index === menuItems.length - 1 ? "rounded-b-xl" : ""} ${
@@ -82,11 +93,26 @@ export default function MoreScreen() {
             onPress={() => router.push(item.route as never)}
           >
             <View className="mr-4">{item.icon}</View>
-            <Text
-              className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-            >
-              {item.label}
-            </Text>
+            <View className="flex-1">
+              <Text
+                className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              >
+                {item.label}
+              </Text>
+              {item.sublabel ? (
+                <Text
+                  className={`text-sm mt-1 ${
+                    item.route === "/paywall" && isPremium
+                      ? "text-green-500"
+                      : isDark
+                        ? "text-gray-400"
+                        : "text-gray-500"
+                  }`}
+                >
+                  {item.sublabel}
+                </Text>
+              ) : null}
+            </View>
           </TouchableOpacity>
         ))}
       </View>
