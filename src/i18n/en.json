@@ -101,6 +101,7 @@
     "noExpenseCategories": "No expense categories yet.\nTap the + button to add one.",
     "subcategories": "Subcategories",
     "subcategoriesDesc": "Enable subcategories for this category type",
+    "reorderCategory": "Reorder category",
     "addSubcategory": "Add Subcategory",
     "subcategoryName": "Subcategory name",
     "noSubcategories": "No subcategories yet.\nTap the + button to add one."
