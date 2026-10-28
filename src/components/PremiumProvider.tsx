@@ -58,6 +58,7 @@ type PremiumContextType = {
   isPremium: boolean;
   isLoading: boolean;
   lifetimePackage: PurchasesPackage | null;
+  refreshOfferings: () => Promise<void>;
   purchaseLifetime: () => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
 };
@@ -66,6 +67,7 @@ const PremiumContext = createContext<PremiumContextType>({
   isPremium: false,
   isLoading: true,
   lifetimePackage: null,
+  refreshOfferings: async () => {},
   purchaseLifetime: async () => false,
   restorePurchases: async () => false,
 });
@@ -170,6 +172,12 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     };
   }, [isReady, applyCustomerInfo]);
 
+  const refreshOfferings = useCallback(async () => {
+    if (Platform.OS === 'web') return;
+    const offerings = await Purchases.getOfferings();
+    setLifetimePackage(findLifetimePackage(offerings));
+  }, []);
+
   const purchaseLifetime = useCallback(async () => {
     if (Platform.OS === 'web') return false;
 
@@ -217,6 +225,7 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
         isPremium,
         isLoading,
         lifetimePackage,
+        refreshOfferings,
         purchaseLifetime,
         restorePurchases,
       }}

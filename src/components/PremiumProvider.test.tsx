@@ -178,6 +178,26 @@ describe('PremiumProvider', () => {
     expect(premium.lifetimePackage).toBeNull();
   });
 
+  it('reloads offerings after an initial failure', async () => {
+    purchases.getCustomerInfo.mockResolvedValue(customerInfo(false));
+    purchases.getOfferings
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        current: { availablePackages: [LIFETIME_PACKAGE] },
+      });
+
+    const screen = renderProvider();
+
+    await waitFor(() => expect(premium.isLoading).toBe(false));
+    expect(premium.lifetimePackage).toBeNull();
+
+    await act(async () => {
+      await premium.refreshOfferings();
+    });
+
+    expect(premium.lifetimePackage).toBe(LIFETIME_PACKAGE);
+  });
+
   it('revokes premium when the listener reports a refund', async () => {
     getCachedPremiumMock.mockResolvedValue(true);
     purchases.getCustomerInfo.mockResolvedValue(customerInfo(true));

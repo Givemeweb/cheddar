@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Settings,
@@ -18,7 +18,7 @@ type MenuItem = {
   label: string;
   sublabel?: string;
   icon: React.ReactNode;
-  route: string;
+  route: Href;
 };
 
 export default function MoreScreen() {
@@ -75,11 +75,18 @@ export default function MoreScreen() {
       className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
-      <View className="flex-1 px-4 pt-4">
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
         {menuItems.map((item, index) => (
           <TouchableOpacity
-            key={item.route}
+            key={item.label}
             testID={item.route === "/paywall" ? "more-premium" : undefined}
+            accessibilityRole="button"
+            accessibilityLabel={
+              item.sublabel ? `${item.label}, ${item.sublabel}` : item.label
+            }
             className={`flex-row items-center p-4 ${
               index === 0 ? "rounded-t-xl" : ""
             } ${index === menuItems.length - 1 ? "rounded-b-xl" : ""} ${
@@ -90,7 +97,7 @@ export default function MoreScreen() {
                 : ""
             } ${isDark ? "bg-[#26282D]" : "bg-white"}`}
             activeOpacity={0.7}
-            onPress={() => router.push(item.route as never)}
+            onPress={() => router.push(item.route)}
           >
             <View className="mr-4">{item.icon}</View>
             <View className="flex-1">
@@ -115,7 +122,7 @@ export default function MoreScreen() {
             </View>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

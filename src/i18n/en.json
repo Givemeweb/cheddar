@@ -154,6 +154,8 @@
     "purchased": "Premium is active. Thank you!",
     "notGranted": "Purchase completed, but premium was not granted. Check the RevenueCat entitlement.",
     "priceUnavailable": "Store unavailable",
+    "retry": "Retry",
+    "webUnavailable": "Premium purchases are available in the iOS and Android apps.",
     "error": "Something went wrong. Please try again.",
     "legal": "Payment is charged to your store account. Cheddar does not store payment details."
   },
