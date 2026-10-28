@@ -963,11 +963,16 @@ export default function AddTransactionScreen() {
           <View
             className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
           >
-            <Text
-              className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            <Pressable
+              onPress={() => amountRef.current?.focus()}
+              hitSlop={{ top: 8, bottom: 8, left: 0, right: 24 }}
             >
-              {t("transactions.amount")}
-            </Text>
+              <Text
+                className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+              >
+                {t("transactions.amount")}
+              </Text>
+            </Pressable>
             <View className="flex-row items-center">
               <TextInput
                 ref={amountRef}
@@ -1012,11 +1017,16 @@ export default function AddTransactionScreen() {
           <View
             className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
           >
-            <Text
-              className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            <Pressable
+              onPress={() => noteRef.current?.focus()}
+              hitSlop={{ top: 8, bottom: 8, left: 0, right: 24 }}
             >
-              {t("transactions.note")}
-            </Text>
+              <Text
+                className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+              >
+                {t("transactions.note")}
+              </Text>
+            </Pressable>
             <TextInput
               ref={noteRef}
               className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
@@ -1050,6 +1060,7 @@ export default function AddTransactionScreen() {
                     onPress={() => {
                       setNote(suggestion);
                       setShowNoteSuggestions(false);
+                      Keyboard.dismiss();
                     }}
                   >
                     {renderHighlightedNote(suggestion, note)}
@@ -1063,11 +1074,16 @@ export default function AddTransactionScreen() {
           <View
             className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
           >
-            <Text
-              className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+            <Pressable
+              onPress={() => descRef.current?.focus()}
+              hitSlop={{ top: 8, bottom: 8, left: 0, right: 24 }}
             >
-              {t("transactions.description")}
-            </Text>
+              <Text
+                className={`text-xs font-medium uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+              >
+                {t("transactions.description")}
+              </Text>
+            </Pressable>
             <TextInput
               ref={descRef}
               className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
