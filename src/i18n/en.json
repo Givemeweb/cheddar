@@ -224,6 +224,8 @@
     "income": "Income",
     "expenses": "Expenses",
     "categories": "Categories",
+    "transfersOut": "Transfers out",
+    "transfersIn": "Transfers in",
     "noTransactions": "No {{tab}} transactions this month"
   },
   "totalStats": {
