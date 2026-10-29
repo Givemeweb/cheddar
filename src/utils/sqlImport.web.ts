@@ -2,6 +2,7 @@
 // Native implementation (iOS/Android) is in sqlImport.native.ts
 
 import { getStore, saveStore } from '../db/tinybase';
+import { assertImportWithinFreeCaps } from '../db/premium';
 
 // Dynamic import for sql.js (web only)
 type SqlJsStatic = {
@@ -315,6 +316,13 @@ export async function importFromSql(file: WebFile): Promise<SqlImportResult> {
       imagePath: tx.imagePath,
     };
   }
+
+  // All-or-nothing: reject before any store write so a blocked import leaves
+  // the existing data intact.
+  await assertImportWithinFreeCaps({
+    accounts: Object.keys(accountsRecord).length,
+    categories: Object.keys(categoriesRecord).length,
+  });
 
   // Enable subcategories if any were imported
   if (Object.keys(subcategoriesRecord).length > 0) {

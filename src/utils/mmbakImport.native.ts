@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { openDatabaseSync, SQLiteDatabase } from 'expo-sqlite';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { getStore, saveStore } from '../db/tinybase';
+import { assertImportWithinFreeCaps } from '../db/premium';
 
 // Native-only implementation (iOS/Android)
 // Web implementation is in mmbakImport.web.ts
@@ -502,6 +503,13 @@ export async function importFromMMBak(uri: string): Promise<MMBakImportResult> {
       cheddarAccounts[id].balance = balance;
     }
   }
+
+  // All-or-nothing: reject before any store write so a blocked import leaves
+  // the existing data intact.
+  await assertImportWithinFreeCaps({
+    accounts: Object.keys(cheddarAccounts).length,
+    categories: Object.keys(cheddarCategories).length,
+  });
 
   // Enable subcategories if any were imported
   const hasSubcategories = Object.keys(cheddarSubcategories).length > 0;

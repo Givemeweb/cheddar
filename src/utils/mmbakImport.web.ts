@@ -2,6 +2,7 @@
 // Native implementation (iOS/Android) is in mmbakImport.native.ts
 
 import { getStore, saveStore } from '../db/tinybase';
+import { assertImportWithinFreeCaps } from '../db/premium';
 
 // Dynamic import for sql.js (web only)
 type SqlJsStatic = {
@@ -562,6 +563,13 @@ export async function importFromMMBak(file: WebFile): Promise<MMBakImportResult>
       cheddarAccounts[id].balance = balance;
     }
   }
+
+  // All-or-nothing: reject before any store write so a blocked import leaves
+  // the existing data intact.
+  await assertImportWithinFreeCaps({
+    accounts: Object.keys(cheddarAccounts).length,
+    categories: Object.keys(cheddarCategories).length,
+  });
 
   // Enable subcategories if any were imported
   const hasSubcategories = Object.keys(cheddarSubcategories).length > 0;

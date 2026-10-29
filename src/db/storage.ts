@@ -3,8 +3,12 @@ import { DEFAULT_CURRENCY_CODE, convertAmountWithRates } from './currency';
 import {
   FREE_LIMITS,
   getCachedPremium,
+  LimitReachedError,
   type LimitedResource,
 } from './premium';
+
+// Existing callers import the error from here; keep that path working.
+export { LimitReachedError } from './premium';
 
 // Types - IDs are strings for TinyBase
 export interface Category {
@@ -49,24 +53,10 @@ export interface Transaction {
   imagePath: string | null;
 }
 
-// Free-tier limits
-export class LimitReachedError extends Error {
-  readonly resource: LimitedResource;
-  readonly limit: number;
-
-  constructor(resource: LimitedResource) {
-    const limit = FREE_LIMITS[resource];
-    super(`The free plan is limited to ${limit} ${resource}`);
-    this.name = 'LimitReachedError';
-    this.resource = resource;
-    this.limit = limit;
-  }
-}
-
 /**
  * Free-tier guard shared by both create paths. It only ever blocks new rows;
  * existing rows stay readable and editable (including after a refund). Bulk
- * imports replace tables wholesale and are not creates.
+ * imports replace tables wholesale, so they use assertImportWithinFreeCaps.
  */
 async function assertCanCreate(resource: LimitedResource): Promise<void> {
   const count = Object.keys(getStore().getTable(resource) ?? {}).length;

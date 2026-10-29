@@ -43,12 +43,25 @@ export default function PaywallScreen() {
     id,
     label: t(`premium.benefits.${id}`),
   }));
-  const limitMessage =
-    reason === 'accounts' || reason === 'categories'
-      ? t(`premium.limit.${reason}`, { limit: FREE_LIMITS[reason] })
-      : reason === 'statsHistory' || reason === 'totalStats'
-        ? t(`premium.limit.${reason}`)
-        : null;
+  let limitMessage: string | null = null;
+  switch (reason) {
+    case 'import':
+      limitMessage = t('premium.limit.import', {
+        accounts: FREE_LIMITS.accounts,
+        categories: FREE_LIMITS.categories,
+      });
+      break;
+    case 'accounts':
+    case 'categories':
+      limitMessage = t(`premium.limit.${reason}`, {
+        limit: FREE_LIMITS[reason],
+      });
+      break;
+    case 'statsHistory':
+    case 'totalStats':
+      limitMessage = t(`premium.limit.${reason}`);
+      break;
+  }
 
   const handleRetryOfferings = async () => {
     if (busy !== null || retryingOfferings) return;

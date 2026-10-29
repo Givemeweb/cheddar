@@ -4,6 +4,7 @@ import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
 import * as SQLite from 'expo-sqlite';
 import { getStore, getPersister } from '../db/tinybase';
+import { assertImportWithinFreeCaps } from '../db/premium';
 import type { Tables } from 'tinybase';
 
 export interface BackupData {
@@ -222,6 +223,12 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
 
     const sqlContent = await backupFile.async('string');
     const data = parseSqlStatements(sqlContent);
+
+    // All-or-nothing: reject before extracting images or writing to the store.
+    await assertImportWithinFreeCaps({
+      accounts: Object.keys(data.accounts ?? {}).length,
+      categories: Object.keys(data.categories ?? {}).length,
+    });
 
     // Extract images from ZIP first
     const imageFolder = zipContent.folder('images');
@@ -538,6 +545,11 @@ export async function importDatabaseFromJson(jsonContent: string): Promise<Impor
     // Validate the backup data
     const validatedData = await validateBackupFile(backupData);
 
+    await assertImportWithinFreeCaps({
+      accounts: Object.keys(validatedData.data.accounts).length,
+      categories: Object.keys(validatedData.data.categories).length,
+    });
+
     // Clear existing data and set new data
     store.setTables(validatedData.data as Parameters<typeof store.setTables>[0]);
 
@@ -571,6 +583,11 @@ export async function importDatabaseFromSql(sqlContent: string): Promise<ImportR
 
     // Parse SQL statements and extract data
     const data = parseSqlStatements(sqlContent);
+
+    await assertImportWithinFreeCaps({
+      accounts: Object.keys(data.accounts ?? {}).length,
+      categories: Object.keys(data.categories ?? {}).length,
+    });
 
     // Set data in store
     store.setTables(data);
