@@ -21,7 +21,12 @@ import {
 import { renderIcon } from "../../src/components/TransactionItem";
 import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { usePremium } from "../../src/components/PremiumProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
+import {
+  canBrowseStatsMonth,
+  statsPaywallHref,
+} from "../../src/utils/premiumAccess";
 import {
   convertWithRates,
   getLatestRates,
@@ -74,6 +79,7 @@ export default function StatsScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
+  const { isPremium, isEntitlementLoaded } = usePremium();
   const { t } = useTranslation();
   const router = useRouter();
 
@@ -82,20 +88,24 @@ export default function StatsScreen() {
     year: "numeric",
   });
 
-  const goToPreviousMonth = () => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
-      return newDate;
-    });
-  };
+  const goToMonth = (offset: number) => {
+    // The cached entitlement resolves in a frame; ignore input until then so
+    // a premium user is never sent to the paywall on a cold start.
+    if (!isEntitlementLoaded) return;
 
-  const goToNextMonth = () => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
-      return newDate;
-    });
+    const now = new Date();
+    const target = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + offset,
+      1
+    );
+    // The current month is the newest one with data.
+    if (target.getTime() > now.getTime()) return;
+    if (!canBrowseStatsMonth(target, now, isPremium)) {
+      router.push(statsPaywallHref("statsHistory"));
+      return;
+    }
+    setCurrentDate(target);
   };
 
   useFocusEffect(
@@ -256,7 +266,7 @@ export default function StatsScreen() {
         {/* Month Navigation */}
         <View className="flex-row items-center mb-3">
           <Pressable
-            onPress={goToPreviousMonth}
+            onPress={() => goToMonth(-1)}
             className="p-1"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -268,7 +278,7 @@ export default function StatsScreen() {
             {monthYear}
           </Text>
           <Pressable
-            onPress={goToNextMonth}
+            onPress={() => goToMonth(1)}
             className="p-1"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >

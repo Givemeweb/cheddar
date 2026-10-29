@@ -134,6 +134,7 @@ describe('PremiumProvider', () => {
 
     await waitFor(() => expect(premium.isLoading).toBe(false));
     expect(premiumState(screen)).toBe('free');
+    expect(premium.isEntitlementLoaded).toBe(true);
     expect(getCachedPremiumMock).not.toHaveBeenCalled();
     expect(purchases.configure).not.toHaveBeenCalled();
     expect(purchases.__listeners).toHaveLength(0);
@@ -150,6 +151,34 @@ describe('PremiumProvider', () => {
     expect(purchases.configure).toHaveBeenCalledWith({ apiKey: 'test_ios_key' });
     expect(setCachedPremiumMock).toHaveBeenCalledWith(true);
     expect(purchases.__listeners).toHaveLength(1);
+  });
+
+  it('exposes the cached entitlement while the store sync is still pending', async () => {
+    getCachedPremiumMock.mockResolvedValue(true);
+    purchases.getCustomerInfo.mockReturnValue(new Promise(() => {}));
+    purchases.getOfferings.mockReturnValue(new Promise(() => {}));
+
+    const screen = renderProvider();
+
+    await waitFor(() => expect(premium.isEntitlementLoaded).toBe(true));
+    expect(premiumState(screen)).toBe('premium');
+    expect(premium.isLoading).toBe(true);
+  });
+
+  it('falls back to free and finishes loading when the cache cannot be read', async () => {
+    getCachedPremiumMock.mockRejectedValue(new Error('db unavailable'));
+    purchases.getCustomerInfo.mockResolvedValue(customerInfo(false));
+    purchases.getOfferings.mockResolvedValue({ current: null });
+
+    const screen = renderProvider();
+
+    await waitFor(() => expect(premium.isLoading).toBe(false));
+    expect(premiumState(screen)).toBe('free');
+    expect(premium.isEntitlementLoaded).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[premium] Failed to read cached entitlement',
+      expect.any(Error),
+    );
   });
 
   it('keeps the cached entitlement when the network is unavailable', async () => {
