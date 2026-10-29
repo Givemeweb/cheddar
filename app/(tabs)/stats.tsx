@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, ArrowLeftRight } from "lucide-react-native";
 import PieChart from "../../src/components/PieChart";
 import {
   getCategories,
@@ -34,6 +34,7 @@ type CategoryStat = {
   icon: string;
   total: number;
   color: string;
+  isTransfer?: boolean;
 };
 
 type Account = {
@@ -164,6 +165,25 @@ export default function StatsScreen() {
             return cat?.type === activeTab;
           });
 
+          // Transfers have no category, so they are folded into the matching
+          // tab as one extra line. They only make sense for a single account:
+          // in the "All" view an internal transfer is neither income nor
+          // expense, it just moves money between the user's own accounts.
+          let transferTotal = 0;
+          if (selectedAccountId) {
+            monthTransactions.forEach((tx) => {
+              if (tx.type !== "transfer") return;
+              if (activeTab === "expense" && tx.accountId === selectedAccountId) {
+                transferTotal += Math.abs(toMain(tx.amount, tx.currency));
+              } else if (activeTab === "income" && tx.toAccountId === selectedAccountId) {
+                const hasConverted = typeof tx.toAmount === "number";
+                const amount = hasConverted ? (tx.toAmount as number) : tx.amount;
+                const currency = hasConverted ? (tx.toCurrency || tx.currency) : tx.currency;
+                transferTotal += Math.abs(toMain(amount, currency));
+              }
+            });
+          }
+
           // Calculate totals per category, converting each transaction to
           // the main currency so mixed-currency sums are meaningful.
           const categoryTotals = new Map<string, number>();
@@ -192,6 +212,21 @@ export default function StatsScreen() {
               colorIndex++;
             }
           });
+
+          if (transferTotal > 0) {
+            stats.push({
+              id: `transfer-${activeTab}`,
+              name:
+                activeTab === "expense"
+                  ? t("stats.transfersOut")
+                  : t("stats.transfersIn"),
+              icon: "transfer",
+              total: transferTotal,
+              color: "#8B5CF6",
+              isTransfer: true,
+            });
+            totalAmount += transferTotal;
+          }
 
           // Sort by total descending
           stats.sort((a, b) => b.total - a.total);
@@ -395,8 +430,10 @@ export default function StatsScreen() {
                   <Pressable
                     key={stat.id}
                     className="flex-row items-center py-2"
-                    onPress={() =>
-                      router.push(`/?categoryId=${stat.id}` as never)
+                    onPress={
+                      stat.isTransfer
+                        ? undefined
+                        : () => router.push(`/?categoryId=${stat.id}` as never)
                     }
                   >
                     <View
@@ -408,11 +445,18 @@ export default function StatsScreen() {
                       </Text>
                     </View>
                     <View className="mr-2">
-                      {renderIcon(
-                        stat.icon,
-                        18,
-                        isDark ? "#F9FAFB" : "#212226",
-                        showIcons
+                      {stat.isTransfer ? (
+                        <ArrowLeftRight
+                          size={18}
+                          color={isDark ? "#F9FAFB" : "#212226"}
+                        />
+                      ) : (
+                        renderIcon(
+                          stat.icon,
+                          18,
+                          isDark ? "#F9FAFB" : "#212226",
+                          showIcons
+                        )
                       )}
                     </View>
                     <View className="flex-1">
