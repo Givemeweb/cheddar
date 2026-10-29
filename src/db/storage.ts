@@ -1,5 +1,10 @@
 import { getStore, saveStore, generateId, isDatabaseReady } from './tinybase';
 import { DEFAULT_CURRENCY_CODE, convertAmountWithRates } from './currency';
+import {
+  FREE_LIMITS,
+  getCachedPremium,
+  type LimitedResource,
+} from './premium';
 
 // Types - IDs are strings for TinyBase
 export interface Category {
@@ -42,6 +47,32 @@ export interface Transaction {
   toAmount: number | null; // transfer amount in the destination currency
   date: Date;
   imagePath: string | null;
+}
+
+// Free-tier limits
+export class LimitReachedError extends Error {
+  readonly resource: LimitedResource;
+  readonly limit: number;
+
+  constructor(resource: LimitedResource) {
+    const limit = FREE_LIMITS[resource];
+    super(`The free plan is limited to ${limit} ${resource}`);
+    this.name = 'LimitReachedError';
+    this.resource = resource;
+    this.limit = limit;
+  }
+}
+
+/**
+ * Free-tier guard shared by both create paths. It only ever blocks new rows;
+ * existing rows stay readable and editable (including after a refund). Bulk
+ * imports replace tables wholesale and are not creates.
+ */
+async function assertCanCreate(resource: LimitedResource): Promise<void> {
+  const count = Object.keys(getStore().getTable(resource) ?? {}).length;
+  if (count >= FREE_LIMITS[resource] && !(await getCachedPremium())) {
+    throw new LimitReachedError(resource);
+  }
 }
 
 // Categories
@@ -455,6 +486,7 @@ export async function addCategory(category: {
   if (!isDatabaseReady()) {
     throw new Error('Database not initialized');
   }
+  await assertCanCreate('categories');
   const store = getStore();
   const id = generateId();
 
@@ -550,6 +582,7 @@ export async function addAccount(account: {
   if (!isDatabaseReady()) {
     throw new Error('Database not initialized');
   }
+  await assertCanCreate('accounts');
   const store = getStore();
   const id = generateId();
 

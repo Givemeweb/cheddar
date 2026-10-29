@@ -2,6 +2,15 @@ import { getStore, isDatabaseReady, saveStore } from './tinybase';
 
 const PREMIUM_KEY = 'isPremium';
 
+export type LimitedResource = 'accounts' | 'categories';
+
+// Free-tier caps. Seeded defaults count toward them, so a free user must
+// delete a default before adding a custom account or category.
+export const FREE_LIMITS: Record<LimitedResource, number> = {
+  accounts: 3,
+  categories: 10,
+};
+
 export async function getCachedPremium(): Promise<boolean> {
   if (!isDatabaseReady()) return false;
   return getStore().getValue(PREMIUM_KEY) === 'true';

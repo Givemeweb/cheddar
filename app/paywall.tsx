@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Check, Crown } from 'lucide-react-native';
 import { useTheme } from '../src/components/ThemeProvider';
@@ -16,11 +16,13 @@ import {
   PremiumNotGrantedError,
   usePremium,
 } from '../src/components/PremiumProvider';
+import { FREE_LIMITS } from '../src/db/premium';
 
 export default function PaywallScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const { t } = useTranslation();
+  const { reason } = useLocalSearchParams<{ reason?: string }>();
   const {
     isPremium,
     isLoading,
@@ -41,6 +43,10 @@ export default function PaywallScreen() {
     id,
     label: t(`premium.benefits.${id}`),
   }));
+  const limitMessage =
+    reason === 'accounts' || reason === 'categories'
+      ? t(`premium.limit.${reason}`, { limit: FREE_LIMITS[reason] })
+      : null;
 
   const handleRetryOfferings = async () => {
     if (busy !== null || retryingOfferings) return;
@@ -135,6 +141,19 @@ export default function PaywallScreen() {
             {t('premium.subtitle')}
           </Text>
         </View>
+
+        {limitMessage && !isPremium ? (
+          <View
+            className={`mt-6 rounded-xl px-4 py-3 ${isDark ? 'bg-[#3A3320]' : 'bg-amber-100'}`}
+          >
+            <Text
+              testID="paywall-limit-message"
+              className={`text-center text-base ${isDark ? 'text-cheddar-light' : 'text-cheddar-dark'}`}
+            >
+              {limitMessage}
+            </Text>
+          </View>
+        ) : null}
 
         <View
           className={`mt-8 rounded-2xl p-5 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}

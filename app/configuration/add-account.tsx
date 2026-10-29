@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LucideIcon } from 'lucide-react-native';
-import { addAccount } from '@/src/db/storage';
+import { addAccount, LimitReachedError } from '@/src/db/storage';
 import { accountIconOptions } from '@/src/components/accountIcons';
 import CurrencyPicker from '@/src/components/CurrencyPicker';
 import { useTheme } from '@/src/components/ThemeProvider';
@@ -47,6 +47,10 @@ export default function AddAccountScreen() {
       });
       router.back();
     } catch (error) {
+      if (error instanceof LimitReachedError) {
+        router.push({ pathname: '/paywall', params: { reason: error.resource } });
+        return;
+      }
       console.error('Failed to save account:', error);
     } finally {
       setSaving(false);
