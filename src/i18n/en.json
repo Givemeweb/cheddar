@@ -148,6 +148,10 @@
       "stats": "Full stats history",
       "totalStats": "Total assets over time"
     },
+    "limit": {
+      "accounts": "The free plan allows up to {{limit}} accounts. Delete one or upgrade to add more.",
+      "categories": "The free plan allows up to {{limit}} categories. Delete one or upgrade to add more."
+    },
     "buy": "Unlock for {{price}}",
     "restore": "Restore Purchases",
     "restored": "Premium restored.",

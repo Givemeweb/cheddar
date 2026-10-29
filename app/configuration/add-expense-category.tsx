@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LucideIcon } from 'lucide-react-native';
-import { addCategory } from '@/src/db/storage';
+import { addCategory, LimitReachedError } from '@/src/db/storage';
 import { categoryIconOptions } from '@/src/components/categoryIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +42,10 @@ export default function AddExpenseCategoryScreen() {
       });
       router.back();
     } catch (error) {
+      if (error instanceof LimitReachedError) {
+        router.push({ pathname: '/paywall', params: { reason: error.resource } });
+        return;
+      }
       console.error('Failed to save category:', error);
     } finally {
       setSaving(false);
