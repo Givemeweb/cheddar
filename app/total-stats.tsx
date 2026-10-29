@@ -1,13 +1,15 @@
 import { useState, useCallback } from "react";
 import { View, Text, ActivityIndicator, useWindowDimensions, TouchableOpacity, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, Redirect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
+import { usePremium } from "../src/components/PremiumProvider";
 import { formatNumber } from "../src/utils/formatNumber";
+import { statsPaywallHref } from "../src/utils/premiumAccess";
 import {
   convertWithRates,
   getLatestRates,
@@ -45,6 +47,7 @@ export default function TotalStatsScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
+  const { isPremium, isEntitlementLoaded } = usePremium();
   const { t } = useTranslation();
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
@@ -52,24 +55,23 @@ export default function TotalStatsScreen() {
     year: "numeric",
   });
 
-  const goToPreviousMonth = () => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
-      return newDate;
-    });
-  };
-
-  const goToNextMonth = () => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
-      return newDate;
-    });
+  const goToMonth = (offset: number) => {
+    const now = new Date();
+    const target = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + offset,
+      1
+    );
+    // The current month is the newest one with data.
+    if (target.getTime() > now.getTime()) return;
+    setCurrentDate(target);
   };
 
   useFocusEffect(
     useCallback(() => {
+      // Free users are redirected before this screen renders.
+      if (!isPremium) return;
+
       async function fetchData() {
         try {
           const accounts = await getAccounts();
@@ -178,8 +180,22 @@ export default function TotalStatsScreen() {
         }
       }
       fetchData();
-    }, [currentDate])
+    }, [currentDate, isPremium])
   );
+
+  if (!isEntitlementLoaded) {
+    return (
+      <View className={`flex-1 items-center justify-center ${isDark ? 'bg-cheddar-dark' : 'bg-cheddar-light'}`}>
+        <ActivityIndicator size="large" color="#FFB800" />
+      </View>
+    );
+  }
+
+  // Covers deep links and web history; entry points already gate before
+  // navigating here.
+  if (!isPremium) {
+    return <Redirect href={statsPaywallHref('totalStats')} />;
+  }
 
   if (loading) {
     return (
@@ -211,7 +227,7 @@ export default function TotalStatsScreen() {
         </View>
         <View className="flex-row items-center">
           <Pressable
-            onPress={goToPreviousMonth}
+            onPress={() => goToMonth(-1)}
             className="p-2"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -223,7 +239,7 @@ export default function TotalStatsScreen() {
             {monthYear}
           </Text>
           <Pressable
-            onPress={goToNextMonth}
+            onPress={() => goToMonth(1)}
             className="p-2"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >

@@ -57,6 +57,11 @@ function findLifetimePackage(offerings: PurchasesOfferings): PurchasesPackage | 
 type PremiumContextType = {
   isPremium: boolean;
   isLoading: boolean;
+  /**
+   * True once the cached entitlement has been read. The RevenueCat sync may
+   * still be running, so `isLoading` can stay true for longer.
+   */
+  isEntitlementLoaded: boolean;
   lifetimePackage: PurchasesPackage | null;
   refreshOfferings: () => Promise<void>;
   purchaseLifetime: () => Promise<boolean>;
@@ -66,6 +71,7 @@ type PremiumContextType = {
 const PremiumContext = createContext<PremiumContextType>({
   isPremium: false,
   isLoading: true,
+  isEntitlementLoaded: false,
   lifetimePackage: null,
   refreshOfferings: async () => {},
   purchaseLifetime: async () => false,
@@ -84,6 +90,7 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
   const { isReady } = useDatabase();
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEntitlementLoaded, setIsEntitlementLoaded] = useState(false);
   const [lifetimePackage, setLifetimePackage] = useState<PurchasesPackage | null>(null);
   const listenerRef = useRef<((customerInfo: CustomerInfo) => void) | null>(null);
 
@@ -103,13 +110,21 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     async function loadPremiumState() {
       if (Platform.OS === 'web') {
         setIsPremium(FORCE_PREMIUM);
+        setIsEntitlementLoaded(true);
         setIsLoading(false);
         return;
       }
 
-      const cached = await getCachedPremium();
+      let cached = false;
+      try {
+        cached = await getCachedPremium();
+      } catch (error) {
+        // A failed read must not leave the tier unknown forever.
+        console.warn('[premium] Failed to read cached entitlement', error);
+      }
       if (cancelled) return;
       setIsPremium(FORCE_PREMIUM || cached);
+      setIsEntitlementLoaded(true);
 
       const apiKey = getApiKey();
       if (!apiKey) {
@@ -224,6 +239,7 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       value={{
         isPremium,
         isLoading,
+        isEntitlementLoaded,
         lifetimePackage,
         refreshOfferings,
         purchaseLifetime,

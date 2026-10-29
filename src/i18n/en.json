@@ -150,7 +150,9 @@
     },
     "limit": {
       "accounts": "The free plan allows up to {{limit}} accounts. Delete one or upgrade to add more.",
-      "categories": "The free plan allows up to {{limit}} categories. Delete one or upgrade to add more."
+      "categories": "The free plan allows up to {{limit}} categories. Delete one or upgrade to add more.",
+      "statsHistory": "The free plan covers the current and the previous month. Upgrade to browse your full history.",
+      "totalStats": "The total stats screen is part of Cheddar Premium."
     },
     "buy": "Unlock for {{price}}",
     "restore": "Restore Purchases",

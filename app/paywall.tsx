@@ -46,7 +46,9 @@ export default function PaywallScreen() {
   const limitMessage =
     reason === 'accounts' || reason === 'categories'
       ? t(`premium.limit.${reason}`, { limit: FREE_LIMITS[reason] })
-      : null;
+      : reason === 'statsHistory' || reason === 'totalStats'
+        ? t(`premium.limit.${reason}`)
+        : null;
 
   const handleRetryOfferings = async () => {
     if (busy !== null || retryingOfferings) return;

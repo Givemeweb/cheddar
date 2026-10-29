@@ -17,7 +17,9 @@ import { getCurrencySymbol } from "../../src/db/currency";
 import { convertWithRates, getLatestRates, RatesCache } from "../../src/services/exchangeRates";
 import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { usePremium } from "../../src/components/PremiumProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
+import { totalStatsDestination } from "../../src/utils/premiumAccess";
 import { Globe } from "lucide-react-native";
 
 export default function AccountsScreen() {
@@ -29,6 +31,7 @@ export default function AccountsScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
+  const { isPremium, isEntitlementLoaded } = usePremium();
   const { t } = useTranslation();
 
   useFocusEffect(
@@ -97,7 +100,10 @@ export default function AccountsScreen() {
           </Text>
           <View className="flex-row items-center">
             <Pressable
-              onPress={() => router.push("/total-stats")}
+              onPress={() => {
+                if (!isEntitlementLoaded) return;
+                router.push(totalStatsDestination(isPremium));
+              }}
               className="p-2 mr-1"
             >
               <BarChart3
