@@ -12,6 +12,7 @@ import {
     Image,
     ActionSheetIOS,
     Modal,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -690,6 +691,10 @@ export default function AddTransactionScreen() {
       <SafeAreaView
         className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       >
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         {/* Header */}
         <View
           className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"}`}
@@ -722,7 +727,13 @@ export default function AddTransactionScreen() {
         </View>
 
         {/* Main Content Area - Scrollable */}
-        <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          className="flex-1 p-4"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ paddingBottom: 24 }}
+        >
           {/* Type Selector */}
           <View
             className={`flex-row mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-700" : "bg-gray-200"}`}
@@ -1342,6 +1353,7 @@ export default function AddTransactionScreen() {
             </View>
           </View>
         </Modal>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
 }
