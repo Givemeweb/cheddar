@@ -716,7 +716,7 @@ export default function AddTransactionScreen() {
       >
         <KeyboardAvoidingView
           className="flex-1"
-          behavior="padding"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
         {/* Header */}
         <View
