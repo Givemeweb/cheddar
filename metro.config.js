@@ -23,4 +23,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+// Strip console.* calls from release bundles. Metro only runs the minifier for
+// production builds, so development keeps its logs.
+config.transformer.minifierConfig = {
+  ...(config.transformer.minifierConfig ?? {}),
+  compress: {
+    ...((config.transformer.minifierConfig ?? {}).compress ?? {}),
+    drop_console: true,
+  },
+};
+
 module.exports = withNativeWind(config, { input: "./global.css" });
