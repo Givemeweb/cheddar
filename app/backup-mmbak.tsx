@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, Upload, FileJson } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../src/components/ThemeProvider';
+import { LimitReachedError } from '../src/db/storage';
 import type { MMBakImportResult } from '../src/utils/mmbakImport';
 
 // Platform-specific imports
@@ -23,6 +24,15 @@ export default function BackupMMBakScreen() {
   const [importResult, setImportResult] = useState<'success' | 'error' | null>(null);
   const [importData, setImportData] = useState<MMBakImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const showImportError = (error: unknown) => {
+    if (error instanceof LimitReachedError) {
+      router.push({ pathname: '/paywall', params: { reason: 'import' } });
+      return;
+    }
+    setImportResult('error');
+    setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+  };
 
   const handleImport = async () => {
     try {
@@ -63,8 +73,7 @@ export default function BackupMMBakScreen() {
       setImportResult('success');
     } catch (error) {
       console.error('Import error:', error);
-      setImportResult('error');
-      setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+      showImportError(error);
     } finally {
       setIsImporting(false);
     }
@@ -91,8 +100,7 @@ export default function BackupMMBakScreen() {
       setImportResult('success');
     } catch (error) {
       console.error('Import error:', error);
-      setImportResult('error');
-      setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+      showImportError(error);
     } finally {
       setIsImporting(false);
       // Reset file input

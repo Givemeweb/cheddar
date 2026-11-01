@@ -101,6 +101,7 @@
     "noExpenseCategories": "No expense categories yet.\nTap the + button to add one.",
     "subcategories": "Subcategories",
     "subcategoriesDesc": "Enable subcategories for this category type",
+    "reorderCategory": "Reorder category",
     "addSubcategory": "Add Subcategory",
     "subcategoryName": "Subcategory name",
     "noSubcategories": "No subcategories yet.\nTap the + button to add one."
@@ -135,6 +136,36 @@
     "backup": "Backup",
     "feedback": "Feedback",
     "recommend": "Recommend"
+  },
+  "premium": {
+    "title": "Cheddar Premium",
+    "subtitle": "One payment. Yours forever.",
+    "active": "Premium active",
+    "lifetime": "Lifetime access",
+    "benefits": {
+      "accounts": "Unlimited accounts",
+      "categories": "Unlimited categories",
+      "stats": "Full stats history",
+      "totalStats": "Total assets over time"
+    },
+    "limit": {
+      "accounts": "The free plan allows up to {{limit}} accounts. Delete one or upgrade to add more.",
+      "categories": "The free plan allows up to {{limit}} categories. Delete one or upgrade to add more.",
+      "import": "This file has more accounts or categories than the free plan allows ({{accounts}} accounts, {{categories}} categories). Upgrade to import it.",
+      "statsHistory": "The free plan covers the current and the previous month. Upgrade to browse your full history.",
+      "totalStats": "The total stats screen is part of Cheddar Premium."
+    },
+    "buy": "Unlock for {{price}}",
+    "restore": "Restore Purchases",
+    "restored": "Premium restored.",
+    "notRestored": "No previous purchase found.",
+    "purchased": "Premium is active. Thank you!",
+    "notGranted": "Purchase completed, but premium was not granted. Check the RevenueCat entitlement.",
+    "priceUnavailable": "Store unavailable",
+    "retry": "Retry",
+    "webUnavailable": "Premium purchases are available in the iOS and Android apps.",
+    "error": "Something went wrong. Please try again.",
+    "legal": "Payment is charged to your store account. Cheddar does not store payment details."
   },
   "backup": {
     "title": "Backup",
@@ -200,6 +231,8 @@
     "income": "Income",
     "expenses": "Expenses",
     "categories": "Categories",
+    "transfersOut": "Transfers out",
+    "transfersIn": "Transfers in",
     "noTransactions": "No {{tab}} transactions this month"
   },
   "totalStats": {

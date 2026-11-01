@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Upload } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useTheme } from '../src/components/ThemeProvider';
+import { LimitReachedError } from '../src/db/storage';
 import { importDatabaseFromZip, ImportResult } from '../src/utils/backup';
 
 // Previous format selection types and options (preserved for future restoration)
@@ -31,6 +32,15 @@ export default function BackupImportScreen() {
   const [importData, setImportData] = useState<ImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showImportError = (error: unknown) => {
+    if (error instanceof LimitReachedError) {
+      router.push({ pathname: '/paywall', params: { reason: 'import' } });
+      return;
+    }
+    setImportResult('error');
+    setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+  };
 
   const handleImport = async () => {
     if (Platform.OS === 'web') {
@@ -79,8 +89,7 @@ export default function BackupImportScreen() {
       setImportResult('success');
     } catch (error) {
       console.error('Import error:', error);
-      setImportResult('error');
-      setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+      showImportError(error);
     } finally {
       setIsImporting(false);
     }
@@ -139,8 +148,7 @@ export default function BackupImportScreen() {
       setImportResult('success');
     } catch (error) {
       console.error('Import error:', error);
-      setImportResult('error');
-      setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+      showImportError(error);
     } finally {
       setIsImporting(false);
       // Reset file input

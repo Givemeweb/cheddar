@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, ArrowLeftRight } from "lucide-react-native";
 import PieChart from "../../src/components/PieChart";
 import {
   getCategories,
@@ -21,7 +21,12 @@ import {
 import { renderIcon } from "../../src/components/TransactionItem";
 import { renderAccountIcon } from "../../src/components/accountIcons";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { usePremium } from "../../src/components/PremiumProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
+import {
+  canBrowseStatsMonth,
+  statsPaywallHref,
+} from "../../src/utils/premiumAccess";
 import {
   convertWithRates,
   getLatestRates,
@@ -34,6 +39,7 @@ type CategoryStat = {
   icon: string;
   total: number;
   color: string;
+  isTransfer?: boolean;
 };
 
 type Account = {
@@ -73,6 +79,7 @@ export default function StatsScreen() {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
+  const { isPremium, isEntitlementLoaded } = usePremium();
   const { t } = useTranslation();
   const router = useRouter();
 
@@ -81,20 +88,24 @@ export default function StatsScreen() {
     year: "numeric",
   });
 
-  const goToPreviousMonth = () => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
-      return newDate;
-    });
-  };
+  const goToMonth = (offset: number) => {
+    // The cached entitlement resolves in a frame; ignore input until then so
+    // a premium user is never sent to the paywall on a cold start.
+    if (!isEntitlementLoaded) return;
 
-  const goToNextMonth = () => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
-      return newDate;
-    });
+    const now = new Date();
+    const target = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + offset,
+      1
+    );
+    // The current month is the newest one with data.
+    if (target.getTime() > now.getTime()) return;
+    if (!canBrowseStatsMonth(target, now, isPremium)) {
+      router.push(statsPaywallHref("statsHistory"));
+      return;
+    }
+    setCurrentDate(target);
   };
 
   useFocusEffect(
@@ -164,6 +175,25 @@ export default function StatsScreen() {
             return cat?.type === activeTab;
           });
 
+          // Transfers have no category, so they are folded into the matching
+          // tab as one extra line. They only make sense for a single account:
+          // in the "All" view an internal transfer is neither income nor
+          // expense, it just moves money between the user's own accounts.
+          let transferTotal = 0;
+          if (selectedAccountId) {
+            monthTransactions.forEach((tx) => {
+              if (tx.type !== "transfer") return;
+              if (activeTab === "expense" && tx.accountId === selectedAccountId) {
+                transferTotal += Math.abs(toMain(tx.amount, tx.currency));
+              } else if (activeTab === "income" && tx.toAccountId === selectedAccountId) {
+                const hasConverted = typeof tx.toAmount === "number";
+                const amount = hasConverted ? (tx.toAmount as number) : tx.amount;
+                const currency = hasConverted ? (tx.toCurrency || tx.currency) : tx.currency;
+                transferTotal += Math.abs(toMain(amount, currency));
+              }
+            });
+          }
+
           // Calculate totals per category, converting each transaction to
           // the main currency so mixed-currency sums are meaningful.
           const categoryTotals = new Map<string, number>();
@@ -193,6 +223,21 @@ export default function StatsScreen() {
             }
           });
 
+          if (transferTotal > 0) {
+            stats.push({
+              id: `transfer-${activeTab}`,
+              name:
+                activeTab === "expense"
+                  ? t("stats.transfersOut")
+                  : t("stats.transfersIn"),
+              icon: "transfer",
+              total: transferTotal,
+              color: "#8B5CF6",
+              isTransfer: true,
+            });
+            totalAmount += transferTotal;
+          }
+
           // Sort by total descending
           stats.sort((a, b) => b.total - a.total);
           setCategoryStats(stats);
@@ -221,7 +266,7 @@ export default function StatsScreen() {
         {/* Month Navigation */}
         <View className="flex-row items-center mb-3">
           <Pressable
-            onPress={goToPreviousMonth}
+            onPress={() => goToMonth(-1)}
             className="p-1"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -233,7 +278,7 @@ export default function StatsScreen() {
             {monthYear}
           </Text>
           <Pressable
-            onPress={goToNextMonth}
+            onPress={() => goToMonth(1)}
             className="p-1"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -395,8 +440,10 @@ export default function StatsScreen() {
                   <Pressable
                     key={stat.id}
                     className="flex-row items-center py-2"
-                    onPress={() =>
-                      router.push(`/?categoryId=${stat.id}` as never)
+                    onPress={
+                      stat.isTransfer
+                        ? undefined
+                        : () => router.push(`/?categoryId=${stat.id}` as never)
                     }
                   >
                     <View
@@ -408,11 +455,18 @@ export default function StatsScreen() {
                       </Text>
                     </View>
                     <View className="mr-2">
-                      {renderIcon(
-                        stat.icon,
-                        18,
-                        isDark ? "#F9FAFB" : "#212226",
-                        showIcons
+                      {stat.isTransfer ? (
+                        <ArrowLeftRight
+                          size={18}
+                          color={isDark ? "#F9FAFB" : "#212226"}
+                        />
+                      ) : (
+                        renderIcon(
+                          stat.icon,
+                          18,
+                          isDark ? "#F9FAFB" : "#212226",
+                          showIcons
+                        )
                       )}
                     </View>
                     <View className="flex-1">

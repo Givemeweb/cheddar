@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { openDatabaseSync, SQLiteDatabase } from 'expo-sqlite';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { getStore, saveStore } from '../db/tinybase';
+import { assertImportWithinFreeCaps } from '../db/premium';
 
 // SQLite table types for Cheddar database
 interface CheddarCategory {
@@ -244,6 +245,13 @@ export async function importFromSql(uri: string): Promise<SqlImportResult> {
       imagePath: tx.imagePath,
     };
   }
+
+  // All-or-nothing: reject before any store write so a blocked import leaves
+  // the existing data intact.
+  await assertImportWithinFreeCaps({
+    accounts: Object.keys(accountsRecord).length,
+    categories: Object.keys(categoriesRecord).length,
+  });
 
   // Enable subcategories if any were imported
   if (Object.keys(subcategoriesRecord).length > 0) {

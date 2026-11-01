@@ -12,6 +12,7 @@ import {
     Image,
     ActionSheetIOS,
     Modal,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -106,6 +107,29 @@ export default function AddTransactionScreen() {
     const amountRef = useRef<TextInput>(null);
     const noteRef = useRef<TextInput>(null);
     const descRef = useRef<TextInput>(null);
+    const scrollRef = useRef<ScrollView>(null);
+    const noteCardY = useRef(0);
+    const descCardY = useRef(0);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    // Track the keyboard ourselves: on edge-to-edge Android the window is not
+    // resized, so the scroll view needs extra room to lift the focused field.
+    useEffect(() => {
+        const show = Keyboard.addListener('keyboardDidShow', (event) => {
+            setKeyboardHeight(event.endCoordinates.height);
+        });
+        const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+        return () => {
+            show.remove();
+            hide.remove();
+        };
+    }, []);
+
+    const scrollFieldIntoView = (y: number) => {
+        setTimeout(() => {
+            scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+        }, 300);
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -690,6 +714,10 @@ export default function AddTransactionScreen() {
       <SafeAreaView
         className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       >
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         {/* Header */}
         <View
           className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"}`}
@@ -722,7 +750,14 @@ export default function AddTransactionScreen() {
         </View>
 
         {/* Main Content Area - Scrollable */}
-        <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={scrollRef}
+          className="flex-1 p-4"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ paddingBottom: keyboardHeight > 0 ? keyboardHeight + 32 : 32 }}
+        >
           {/* Type Selector */}
           <View
             className={`flex-row mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-700" : "bg-gray-200"}`}
@@ -1015,6 +1050,9 @@ export default function AddTransactionScreen() {
 
           {/* Note */}
           <View
+            onLayout={(event) => {
+              noteCardY.current = event.nativeEvent.layout.y;
+            }}
             className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
           >
             <Pressable
@@ -1041,6 +1079,7 @@ export default function AddTransactionScreen() {
               }}
               onFocus={() => {
                 setSelectionMode('none');
+                scrollFieldIntoView(noteCardY.current);
                 if (note.trim().length > 0 && getMatchingNotes(note).length > 0) {
                     setShowNoteSuggestions(true);
                 }
@@ -1072,6 +1111,9 @@ export default function AddTransactionScreen() {
 
           {/* Description */}
           <View
+            onLayout={(event) => {
+              descCardY.current = event.nativeEvent.layout.y;
+            }}
             className={`rounded-xl p-4 mb-3 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
           >
             <Pressable
@@ -1087,14 +1129,17 @@ export default function AddTransactionScreen() {
             <TextInput
               ref={descRef}
               className={`text-base py-1 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-              style={{ minHeight: 80 }}
+              style={{ minHeight: 80, maxHeight: 160 }}
               value={description}
               onChangeText={setDescription}
               placeholder={t("transactions.addDescription")}
               placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
               multiline
               textAlignVertical="top"
-              onFocus={() => setSelectionMode('none')}
+              onFocus={() => {
+                setSelectionMode('none');
+                scrollFieldIntoView(descCardY.current);
+              }}
             />
           </View>
 
@@ -1342,6 +1387,7 @@ export default function AddTransactionScreen() {
             </View>
           </View>
         </Modal>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
 }
