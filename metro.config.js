@@ -23,8 +23,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
-// Strip console.* calls from release bundles. Metro only runs the minifier for
-// production builds, so development keeps its logs.
+// Terser options for non-Hermes bundles. Hermes release builds skip Metro's
+// minifier, so babel.config.js also strips console calls in production.
 config.transformer.minifierConfig = {
   ...(config.transformer.minifierConfig ?? {}),
   compress: {
