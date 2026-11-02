@@ -1,4 +1,4 @@
-import { getStore } from '../../db/tinybase';
+import { getStore, saveStore } from '../../db/tinybase';
 import {
   clearPendingInvoice,
   clearPurchaseState,
@@ -33,6 +33,7 @@ class FakeStore {
 }
 
 const getStoreMock = getStore as jest.Mock;
+const saveStoreMock = saveStore as jest.Mock;
 const INVOICE = {
   license: 'ABCDEFGHJKMNPQRSTVWX',
   licenseFormatted: 'ABCDE-FGHJK-MNPQR-STVWX',
@@ -47,6 +48,7 @@ let store: FakeStore;
 beforeEach(() => {
   store = new FakeStore();
   getStoreMock.mockReturnValue(store);
+  saveStoreMock.mockClear();
 });
 
 describe('SatSale purchase storage', () => {
@@ -76,6 +78,23 @@ describe('SatSale purchase storage', () => {
 
     expect(await getStoredLicense()).toBeNull();
     expect(await getPendingInvoice()).toBeNull();
+  });
+
+  it('skips the whole-store save when nothing changed', async () => {
+    await storeLicense(INVOICE.license);
+    await storePendingInvoice(INVOICE);
+    saveStoreMock.mockClear();
+
+    await storeLicense(INVOICE.license);
+    await storePendingInvoice(INVOICE);
+    expect(saveStoreMock).not.toHaveBeenCalled();
+
+    await clearPurchaseState();
+    expect(saveStoreMock).toHaveBeenCalledTimes(1);
+
+    saveStoreMock.mockClear();
+    await clearPurchaseState();
+    expect(saveStoreMock).not.toHaveBeenCalled();
   });
 
   it('ignores a corrupt stored invoice', async () => {

@@ -49,6 +49,7 @@ jest.mock('./storage', () => ({
 
 const LICENSE = 'ABCDEFGHJKMNPQRSTVWX';
 const LICENSE_FORMATTED = 'ABCDE-FGHJK-MNPQR-STVWX';
+const PAID_LICENSE = 'ZZZZZZZZZZZZZZZZZZZZ';
 
 const INVOICE = {
   license: LICENSE,
@@ -61,9 +62,12 @@ const INVOICE = {
 
 function status(
   name: 'pending' | 'detected' | 'paid' | 'expired' | 'invalid' | 'revoked',
+  license = LICENSE,
 ) {
   return {
     ...INVOICE,
+    license,
+    licenseFormatted: license === LICENSE ? LICENSE_FORMATTED : license,
     status: name,
     confirmedPaid: name === 'paid' ? INVOICE.btcValue : 0,
     unconfirmedPaid: name === 'detected' ? INVOICE.btcValue : 0,
@@ -281,6 +285,29 @@ describe('SatSaleProvider', () => {
     expect(clearPurchaseStateMock).not.toHaveBeenCalled();
   });
 
+  it('does not replace an active license with a pending restore', async () => {
+    getStoredLicenseMock.mockResolvedValue(PAID_LICENSE);
+    getCachedPremiumMock.mockResolvedValue(true);
+    fetchSatSaleStatusMock
+      .mockResolvedValueOnce(status('paid', PAID_LICENSE))
+      .mockResolvedValueOnce(status('pending', LICENSE));
+
+    const screen = renderProvider();
+    await waitFor(() => expect(premium.isLoading).toBe(false));
+    expect(premiumState(screen)).toBe('premium');
+
+    let restoredStatus = '';
+    await act(async () => {
+      restoredStatus = (await premium.crypto!.restoreLicense(LICENSE)).status;
+    });
+
+    expect(restoredStatus).toBe('pending');
+    expect(storeLicenseMock).not.toHaveBeenCalledWith(LICENSE);
+    expect(storePendingInvoiceMock).not.toHaveBeenCalled();
+    expect(premium.crypto?.pendingInvoice).toBeNull();
+    expect(premiumState(screen)).toBe('premium');
+  });
+
   it('rejects a malformed license without calling the API', async () => {
     renderProvider();
     await waitFor(() => expect(premium.isLoading).toBe(false));
@@ -324,6 +351,20 @@ describe('SatSaleProvider', () => {
 
     await waitFor(() => expect(fetchSatSaleStatusMock).toHaveBeenCalledTimes(2));
     expect(fetchSatSaleStatusMock).toHaveBeenLastCalledWith(LICENSE);
+  });
+
+  it('finishes loading when the stored purchase state cannot be read', async () => {
+    getStoredLicenseMock.mockRejectedValue(new Error('db broken'));
+
+    const screen = renderProvider();
+
+    await waitFor(() => expect(premium.isLoading).toBe(false));
+    expect(premium.isEntitlementLoaded).toBe(true);
+    expect(premiumState(screen)).toBe('free');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[satsale] Failed to load purchase state',
+      expect.any(Error),
+    );
   });
 
   it('removes the AppState listener on unmount', async () => {

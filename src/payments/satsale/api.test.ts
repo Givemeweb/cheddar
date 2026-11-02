@@ -163,6 +163,33 @@ describe('SatSale API client', () => {
     jest.advanceTimersByTime(60_000);
     await assertion;
   });
+
+  it('bounds the body read, not only the headers', async () => {
+    jest.useFakeTimers();
+    fetchMock.mockImplementation((_url: string, init: RequestInit) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          new Promise((_resolve, reject) => {
+            const abort = () =>
+              reject(
+                Object.assign(new Error('aborted'), { name: 'AbortError' }),
+              );
+            if (init.signal?.aborted) {
+              abort();
+              return;
+            }
+            init.signal?.addEventListener('abort', abort);
+          }),
+      } as unknown as Response),
+    );
+
+    const request = fetchSatSaleConfig();
+    const assertion = expect(request).rejects.toMatchObject({ code: 'timeout' });
+    jest.advanceTimersByTime(60_000);
+    await assertion;
+  });
 });
 
 describe('normalizeLicense', () => {

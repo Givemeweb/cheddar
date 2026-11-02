@@ -114,6 +114,11 @@ export function SatSaleProvider({ children }: PaymentProviderProps) {
 
       // pending or detected: keep the invoice so the modal can resume it.
       if (status.license) {
+        const current = licenseRef.current;
+        // Checking a pending code from the restore field must not replace
+        // the license that is already stored.
+        if (current && current !== status.license) return status;
+
         licenseRef.current = status.license;
         await storeLicense(status.license);
         if (status.address) {
@@ -191,38 +196,44 @@ export function SatSaleProvider({ children }: PaymentProviderProps) {
     let cancelled = false;
 
     async function loadPurchaseState() {
-      let cached = false;
       try {
-        cached = await getCachedPremium();
-      } catch (error) {
-        // A failed read must not leave the tier unknown forever.
-        console.warn('[satsale] Failed to read cached premium', error);
-      }
-      if (cancelled) return;
-      setIsPremium(cached);
-      setIsEntitlementLoaded(true);
-
-      const [license, invoice] = await Promise.all([
-        getStoredLicense(),
-        getPendingInvoice(),
-      ]);
-      if (cancelled) return;
-      licenseRef.current = license;
-      pendingRef.current = invoice;
-      setPendingInvoice(invoice);
-
-      const work: Promise<unknown>[] = [refreshOfferings()];
-      if (license) work.push(checkStatus(license));
-
-      const results = await Promise.allSettled(work);
-      if (cancelled) return;
-      for (const result of results) {
-        if (result.status === 'rejected') {
-          // Offline: the cached entitlement and license stay untouched.
-          console.warn('[satsale] Startup check failed', result.reason);
+        let cached = false;
+        try {
+          cached = await getCachedPremium();
+        } catch (error) {
+          // A failed read must not leave the tier unknown forever.
+          console.warn('[satsale] Failed to read cached premium', error);
         }
+        if (cancelled) return;
+        setIsPremium(cached);
+        setIsEntitlementLoaded(true);
+
+        const [license, invoice] = await Promise.all([
+          getStoredLicense(),
+          getPendingInvoice(),
+        ]);
+        if (cancelled) return;
+        licenseRef.current = license;
+        pendingRef.current = invoice;
+        setPendingInvoice(invoice);
+
+        const work: Promise<unknown>[] = [refreshOfferings()];
+        if (license) work.push(checkStatus(license));
+
+        const results = await Promise.allSettled(work);
+        if (cancelled) return;
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            // Offline: the cached entitlement and license stay untouched.
+            console.warn('[satsale] Startup check failed', result.reason);
+          }
+        }
+      } catch (error) {
+        // A failed storage read must not leave the paywall loading forever.
+        console.warn('[satsale] Failed to load purchase state', error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-      setIsLoading(false);
     }
 
     loadPurchaseState();

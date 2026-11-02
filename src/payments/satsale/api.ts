@@ -55,7 +55,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readInvoice(payload: unknown): CryptoInvoice | null {
+/**
+ * Validates the invoice shape shared by the invoice response, the status
+ * response, and the JSON kept in the local store.
+ */
+export function parseInvoice(payload: unknown): CryptoInvoice | null {
   if (!isRecord(payload)) return null;
 
   const { license, licenseFormatted, address, btcValue, uri, expiresAt } =
@@ -77,7 +81,7 @@ function readInvoice(payload: unknown): CryptoInvoice | null {
 }
 
 function readStatus(payload: unknown): CryptoStatus | null {
-  const invoice = readInvoice(payload);
+  const invoice = parseInvoice(payload);
   if (!invoice || !isRecord(payload)) return null;
 
   const { status, confirmedPaid, unconfirmedPaid, secondsRemaining } = payload;
@@ -108,43 +112,53 @@ async function request(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: { Accept: 'application/json', ...init.headers },
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (controller.signal.aborted) {
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        ...init,
+        headers: { Accept: 'application/json', ...init.headers },
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new SatSaleApiError(
+          'timeout',
+          'The payment server took too long to answer',
+        );
+      }
       throw new SatSaleApiError(
-        'timeout',
-        'The payment server took too long to answer',
+        'network',
+        'The payment server is unreachable',
       );
     }
-    throw new SatSaleApiError(
-      'network',
-      'The payment server is unreachable',
-    );
+
+    if (!response.ok) {
+      throw new SatSaleApiError(
+        'http',
+        `The payment server answered ${response.status}`,
+        response.status,
+      );
+    }
+
+    // Keep the abort timer armed until the body is read: a server can send
+    // headers and then stall, which would otherwise hang the modal.
+    try {
+      return await response.json();
+    } catch {
+      if (controller.signal.aborted) {
+        throw new SatSaleApiError(
+          'timeout',
+          'The payment server took too long to answer',
+        );
+      }
+      throw new SatSaleApiError(
+        'invalid_response',
+        'The payment server sent an invalid response',
+      );
+    }
   } finally {
     clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    throw new SatSaleApiError(
-      'http',
-      `The payment server answered ${response.status}`,
-      response.status,
-    );
-  }
-
-  try {
-    return await response.json();
-  } catch {
-    throw new SatSaleApiError(
-      'invalid_response',
-      'The payment server sent an invalid response',
-    );
   }
 }
 
@@ -196,7 +210,7 @@ export async function createSatSaleInvoice(
     INVOICE_TIMEOUT_MS,
   );
 
-  const invoice = readInvoice(payload);
+  const invoice = parseInvoice(payload);
   if (!invoice || !invoice.address || !invoice.uri) {
     throw new SatSaleApiError(
       'invalid_response',
