@@ -9,6 +9,9 @@
       ],
       "@payment-provider": [
         "./src/payments/selectPaymentProvider.ts"
+      ],
+      "@crypto-payment": [
+        "./src/payments/cryptoDisabled.tsx"
       ]
     }
   },

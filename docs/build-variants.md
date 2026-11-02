@@ -7,7 +7,7 @@ variable. Both variants use the same app name (`Cheddar`) and icon.
 | --- | --- | --- |
 | Android package | `com.cheddar.app` | `com.cheddar.app.bee` |
 | iOS bundle id | `com.cheddar.app` | `com.cheddar.app.bee` |
-| Payment provider | RevenueCat | SatSale (placeholder until ticket 03) |
+| Payment provider | RevenueCat | SatSale |
 | Native payment module | `react-native-purchases` | none |
 | Activation | Play Store | Zapstore / GitHub Releases |
 
@@ -46,6 +46,9 @@ variable in the shell first, for example
 - `metro.config.js` resolves `@payment-provider` to the RevenueCat selector or
   the SatSale provider. Only the selected provider, and therefore only its
   native SDK imports, enter the JS bundle.
+- The same resolver swaps `@crypto-payment` between the Bitcoin purchase UI
+  (`APP_VARIANT=satsale`) and a no-op stub (`APP_VARIANT=store`, the default).
+  The store bundle therefore carries no Bitcoin copy or flow.
 - `react-native.config.js` excludes `react-native-purchases` from Android and
   iOS autolinking when `APP_VARIANT=satsale`.
 
