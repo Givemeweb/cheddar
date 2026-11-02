@@ -1,4 +1,4 @@
-import { selectPaymentProvider } from '../payments/selectPaymentProvider';
+import { PaymentProvider } from '@payment-provider';
 
 export {
   PremiumNotGrantedError,
@@ -7,6 +7,7 @@ export {
 
 /**
  * Compatibility entry point for the screens. Renders whichever payment
- * provider the selector picks, RevenueCat by default.
+ * provider Metro selected for the build variant (RevenueCat for store,
+ * SatSale for the Bitcoin build).
  */
-export const PremiumProvider = selectPaymentProvider();
+export const PremiumProvider = PaymentProvider;

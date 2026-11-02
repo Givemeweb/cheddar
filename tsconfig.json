@@ -6,6 +6,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@payment-provider": [
+        "./src/payments/selectPaymentProvider.ts"
       ]
     }
   },

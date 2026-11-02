@@ -5,6 +5,7 @@ module.exports = {
   testMatch: ['**/*.test.{ts,tsx}'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^@payment-provider$': '<rootDir>/src/payments/selectPaymentProvider.ts',
     '^test-renderer$': '<rootDir>/node_modules/react-test-renderer',
   },
   setupFiles: ['<rootDir>/jest.setup.js'],

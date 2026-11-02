@@ -46,7 +46,7 @@ export class PremiumNotGrantedError extends Error {
   }
 }
 
-export const PaymentContext = createContext<PaymentContextValue>({
+export const defaultPaymentContextValue: PaymentContextValue = {
   isPremium: false,
   isLoading: true,
   isEntitlementLoaded: false,
@@ -54,7 +54,11 @@ export const PaymentContext = createContext<PaymentContextValue>({
   refreshOfferings: async () => {},
   purchaseLifetime: async () => false,
   restorePurchases: async () => false,
-});
+};
+
+export const PaymentContext = createContext<PaymentContextValue>(
+  defaultPaymentContextValue,
+);
 
 export interface PaymentProviderProps {
   children: ReactNode;
