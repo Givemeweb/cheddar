@@ -11,6 +11,62 @@ export type PaymentPackage = {
   };
 };
 
+export const CRYPTO_STATUS_NAMES = [
+  'pending',
+  'detected',
+  'paid',
+  'expired',
+  'invalid',
+  'revoked',
+] as const;
+
+export type CryptoStatusName = (typeof CRYPTO_STATUS_NAMES)[number];
+
+/** A SatSale invoice as returned by the purchase API. */
+export type CryptoInvoice = {
+  license: string;
+  licenseFormatted: string;
+  address: string;
+  btcValue: number;
+  uri: string;
+  /** ISO timestamp; empty for a status that has no invoice. */
+  expiresAt: string;
+};
+
+/**
+ * The invoice plus the live reconciliation state. Pending and detected
+ * responses carry the invoice fields so the payment modal can resume.
+ */
+export type CryptoStatus = CryptoInvoice & {
+  status: CryptoStatusName;
+  confirmedPaid: number | null;
+  unconfirmedPaid: number | null;
+  secondsRemaining: number;
+};
+
+export type CryptoPrice = {
+  amount: number;
+  currency: string;
+};
+
+/**
+ * The optional Bitcoin purchase flow. RevenueCat reports null; the SatSale
+ * build fills it in. Keeping it behind the shared context lets the paywall
+ * and the payment modal stay provider-neutral.
+ */
+export type CryptoPaymentValue = {
+  price: CryptoPrice | null;
+  supportEmail: string | null;
+  pendingInvoice: CryptoInvoice | null;
+  createInvoice: () => Promise<CryptoInvoice>;
+  /**
+   * Checks a license. Defaults to the stored or pending license and rejects
+   * when there is none; pass a license only for a code that is not stored.
+   */
+  checkStatus: (license?: string) => Promise<CryptoStatus>;
+  restoreLicense: (license: string) => Promise<CryptoStatus>;
+};
+
 export type PaymentContextValue = {
   isPremium: boolean;
   isLoading: boolean;
@@ -37,6 +93,8 @@ export type PaymentContextValue = {
    * state; rejects when the provider call fails.
    */
   restorePurchases: () => Promise<boolean>;
+  /** Non-null only in the build that sells with Bitcoin. */
+  crypto: CryptoPaymentValue | null;
 };
 
 export class PremiumNotGrantedError extends Error {
@@ -54,6 +112,7 @@ export const defaultPaymentContextValue: PaymentContextValue = {
   refreshOfferings: async () => {},
   purchaseLifetime: async () => false,
   restorePurchases: async () => false,
+  crypto: null,
 };
 
 export const PaymentContext = createContext<PaymentContextValue>(

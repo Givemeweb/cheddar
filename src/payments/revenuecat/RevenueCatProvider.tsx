@@ -202,6 +202,7 @@ export function RevenueCatProvider({ children }: PaymentProviderProps) {
         refreshOfferings,
         purchaseLifetime,
         restorePurchases,
+        crypto: null,
       }}
     >
       {children}
