@@ -63,3 +63,35 @@ APP_VARIANT=satsale npx expo config --type public
 APP_VARIANT=satsale npx expo-modules-autolinking react-native-config --platform android --json
 APP_VARIANT=store npx expo export --platform android --output-dir /tmp/cheddar-store
 ```
+
+## Release guardrail
+
+`npm run guardrail` is the release gate for both variants. It exports the
+Android release bundle for each variant and checks that:
+
+- the store bundle has no SatSale provider and no Bitcoin payment copy;
+- the store bundle still contains the RevenueCat provider, and the SatSale
+  bundle still contains the Bitcoin flow;
+- the SatSale bundle has no `cheddar_pro`, `$rc_lifetime`, or
+  `RevenueCatProvider` code;
+- Android and iOS autolinking includes `react-native-purchases` for the store
+  build and excludes it for the SatSale build;
+- the generated SatSale Android project has the right package id.
+
+Pass `--gradle` to also resolve each variant's `releaseRuntimeClasspath`: the
+store graph must include `react-native-purchases`, while the SatSale graph
+must not include `react-native-purchases`, `com.revenuecat.purchases`, or
+`com.android.billingclient`. This requires a Java/Android SDK setup, so the
+release workflow uses `npm run guardrail -- --gradle`.
+
+The bundle check matches SatSale and Bitcoin payment markers rather than the
+bare word `bitcoin`, because Lucide and Expo ship icon names such as `Bitcoin`,
+`LucideBitcoin`, and `currency_bitcoin` in every bundle. Any other `bitcoin`
+text in the store bundle fails the check.
+
+The guardrail generates each Android project in a temporary copy, so it does
+not touch your local `android/` or `ios/` folders. The GitHub Actions APK
+workflow runs the guardrail before `expo prebuild`, so every release build is
+checked. The release pipeline and any local release build should do the same.
+The paywall tests (`npm test`) cover the store price/buy/restore actions and
+the SatSale Bitcoin-only flow.

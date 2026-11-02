@@ -14,6 +14,7 @@
     "ios:satsale": "APP_VARIANT=satsale expo run:ios",
     "prebuild:store": "APP_VARIANT=store expo prebuild --clean",
     "prebuild:satsale": "APP_VARIANT=satsale expo prebuild --clean",
+    "guardrail": "node scripts/checkBuildVariants.js",
     "web": "expo start --web",
     "test": "jest"
   },

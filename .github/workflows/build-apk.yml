@@ -38,6 +38,10 @@ jobs:
             echo "::warning::EXPO_PUBLIC_RC_API_KEY_ANDROID is not set; premium will be disabled in this build."
           fi
 
+      - name: Build variant guardrail
+        timeout-minutes: 20
+        run: npm run guardrail -- --gradle
+
       - name: Expo prebuild
         run: npx expo prebuild --platform android --no-install
 
