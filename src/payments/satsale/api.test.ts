@@ -3,6 +3,7 @@ import {
   fetchSatSaleConfig,
   fetchSatSaleStatus,
   normalizeLicense,
+  resolveSatSaleApiBaseUrl,
 } from './api';
 
 const INVOICE = {
@@ -189,6 +190,136 @@ describe('SatSale API client', () => {
     const assertion = expect(request).rejects.toMatchObject({ code: 'timeout' });
     jest.advanceTimersByTime(60_000);
     await assertion;
+  });
+});
+
+describe('SatSale API base URL', () => {
+  const PRODUCTION = 'https://api.example.com/api/satsale';
+  const STAGING = 'https://staging.example.com/api/satsale';
+
+  it('uses the staging URL only in a debug build', () => {
+    expect(
+      resolveSatSaleApiBaseUrl({
+        production: PRODUCTION,
+        staging: STAGING,
+        isDev: true,
+      }),
+    ).toBe(STAGING);
+  });
+
+  it('ignores a staging URL in a release build', () => {
+    expect(
+      resolveSatSaleApiBaseUrl({
+        production: PRODUCTION,
+        staging: STAGING,
+        isDev: false,
+      }),
+    ).toBe(PRODUCTION);
+  });
+
+  it('never falls back to production in a debug build', () => {
+    expect(
+      resolveSatSaleApiBaseUrl({
+        production: PRODUCTION,
+        staging: '  ',
+        isDev: true,
+      }),
+    ).toBe('http://localhost:3000/api/satsale');
+  });
+
+  it('removes trailing slashes and falls back to localhost in debug', () => {
+    expect(
+      resolveSatSaleApiBaseUrl({
+        production: '',
+        staging: `${STAGING}///`,
+        isDev: true,
+      }),
+    ).toBe(STAGING);
+    expect(
+      resolveSatSaleApiBaseUrl({
+        production: undefined,
+        staging: undefined,
+        isDev: true,
+      }),
+    ).toBe('http://localhost:3000/api/satsale');
+  });
+
+  it('fails instead of guessing when a release build has no URL', () => {
+    expect(() =>
+      resolveSatSaleApiBaseUrl({
+        production: '  ',
+        staging: STAGING,
+        isDev: false,
+      }),
+    ).toThrow('EXPO_PUBLIC_SATSALE_API_URL');
+  });
+
+  it('rejects a non-HTTPS URL in a release build', () => {
+    for (const production of [
+      'http://api.example.com/api/satsale',
+      'api.example.com/api/satsale',
+      'ftp://api.example.com/api/satsale',
+    ]) {
+      expect(() =>
+        resolveSatSaleApiBaseUrl({
+          production,
+          staging: STAGING,
+          isDev: false,
+        }),
+      ).toThrow('https://');
+    }
+  });
+
+  it('rejects a malformed or cleartext remote staging URL', () => {
+    for (const staging of [
+      'staging.example.com/api/satsale',
+      'ftp://staging.example.com/api/satsale',
+      'http://staging.example.com/api/satsale',
+      'http://192.168.1.5:3000/api/satsale',
+      'http://localhost.attacker.com/api/satsale',
+      'http://127.evil.com/api/satsale',
+    ]) {
+      expect(() =>
+        resolveSatSaleApiBaseUrl({
+          production: PRODUCTION,
+          staging,
+          isDev: true,
+        }),
+      ).toThrow('https://');
+    }
+  });
+
+  it('allows cleartext staging on loopback', () => {
+    for (const staging of [
+      'http://localhost:3000/api/satsale',
+      'http://127.0.0.1:3000/api/satsale',
+      'http://[::1]:3000/api/satsale',
+    ]) {
+      expect(
+        resolveSatSaleApiBaseUrl({
+          production: PRODUCTION,
+          staging,
+          isDev: true,
+        }),
+      ).toBe(staging);
+    }
+  });
+
+  it('rejects a local production URL in a release build', () => {
+    for (const production of [
+      'https://localhost:3000/api/satsale',
+      'https://127.0.0.1:3000/api/satsale',
+      'https://0.0.0.0:3000/api/satsale',
+      'https://[::1]:3000/api/satsale',
+    ]) {
+      expect(() =>
+        resolveSatSaleApiBaseUrl({
+          production,
+          staging: STAGING,
+          isDev: false,
+        }),
+      ).toThrow('local host');
+    }
   });
 });
 

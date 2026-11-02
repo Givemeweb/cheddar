@@ -11,10 +11,86 @@ import {
  * reconciles the payment status. Every call is bounded by a timeout so a
  * flaky node cannot leave the payment modal spinning.
  */
-const API_BASE_URL = (
-  process.env.EXPO_PUBLIC_SATSALE_API_URL ||
-  'http://localhost:3000/api/satsale'
-).replace(/\/+$/, '');
+const DEFAULT_API_BASE_URL = 'http://localhost:3000/api/satsale';
+
+// Expo inlines EXPO_PUBLIC_* values at bundle time. The staging URL is only
+// consulted by a debug build; a release build always uses the configured
+// production URL even if a local .env file contains a staging value.
+const CONFIGURED_API_BASE_URL = process.env.EXPO_PUBLIC_SATSALE_API_URL;
+const STAGING_API_BASE_URL =
+  process.env.EXPO_PUBLIC_SATSALE_STAGING_API_URL;
+
+function normalizeBaseUrl(value: string | undefined): string | null {
+  const url = value?.trim().replace(/\/+$/, '');
+  return url ? url : null;
+}
+
+function isLoopbackUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host === 'localhost' ||
+      host === '0.0.0.0' ||
+      host === '[::1]' ||
+      /^127(?:\.\d{1,3}){3}$/.test(host)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isCleartextLoopback(url: string): boolean {
+  return /^http:\/\//i.test(url) && isLoopbackUrl(url);
+}
+
+export function resolveSatSaleApiBaseUrl({
+  production = CONFIGURED_API_BASE_URL,
+  staging = STAGING_API_BASE_URL,
+  isDev = __DEV__,
+}: {
+  production?: string;
+  staging?: string;
+  isDev?: boolean;
+} = {}): string {
+  const productionUrl = normalizeBaseUrl(production);
+
+  if (!isDev) {
+    // A release build must never guess. A missing or non-HTTPS URL is a broken
+    // build; the release workflow already verifies that this value reaches the
+    // APK, but local release builds need the same guard.
+    if (!productionUrl) {
+      throw new Error(
+        'EXPO_PUBLIC_SATSALE_API_URL must be set for a release build.',
+      );
+    }
+    if (!/^https:\/\//i.test(productionUrl)) {
+      throw new Error(
+        'EXPO_PUBLIC_SATSALE_API_URL must be an absolute https:// URL.',
+      );
+    }
+    if (isLoopbackUrl(productionUrl)) {
+      throw new Error(
+        'EXPO_PUBLIC_SATSALE_API_URL must not point at a local host.',
+      );
+    }
+    return productionUrl;
+  }
+
+  // A debug build only reaches staging or localhost. Falling back to the
+  // production URL here would let a forgotten staging variable spend real
+  // money, so the safer default wins even when a production URL is configured.
+  const stagingUrl = normalizeBaseUrl(staging);
+  if (
+    stagingUrl &&
+    !/^https:\/\//i.test(stagingUrl) &&
+    !isCleartextLoopback(stagingUrl)
+  ) {
+    throw new Error(
+      'EXPO_PUBLIC_SATSALE_STAGING_API_URL must be an absolute https:// URL, except for localhost.',
+    );
+  }
+  return stagingUrl ?? DEFAULT_API_BASE_URL;
+}
 
 const REQUEST_TIMEOUT_MS = 10_000;
 // The backend itself waits up to 20s for SatSale to create the invoice.
@@ -31,7 +107,8 @@ export type SatSaleApiErrorCode =
   | 'timeout'
   | 'http'
   | 'invalid_response'
-  | 'invalid_license';
+  | 'invalid_license'
+  | 'configuration';
 
 export class SatSaleApiError extends Error {
   readonly code: SatSaleApiErrorCode;
@@ -109,13 +186,27 @@ async function request(
   init: RequestInit,
   timeoutMs: number,
 ): Promise<unknown> {
+  let baseUrl: string;
+  try {
+    // Resolved per request rather than at import time so a release build with
+    // a broken configuration fails the request instead of crashing on launch.
+    baseUrl = resolveSatSaleApiBaseUrl();
+  } catch (error) {
+    throw new SatSaleApiError(
+      'configuration',
+      error instanceof Error
+        ? error.message
+        : 'The payment server is not configured',
+    );
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     let response: Response;
     try {
-      response = await fetch(`${API_BASE_URL}${path}`, {
+      response = await fetch(`${baseUrl}${path}`, {
         ...init,
         headers: { Accept: 'application/json', ...init.headers },
         signal: controller.signal,
