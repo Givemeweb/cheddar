@@ -353,6 +353,26 @@ describe('SatSaleProvider', () => {
     expect(fetchSatSaleStatusMock).toHaveBeenLastCalledWith(LICENSE);
   });
 
+  it('clears the cached premium when a foreground check reports it revoked', async () => {
+    getCachedPremiumMock.mockResolvedValue(true);
+    getStoredLicenseMock.mockResolvedValue(LICENSE);
+    fetchSatSaleStatusMock
+      .mockResolvedValueOnce(status('paid'))
+      .mockResolvedValueOnce(status('revoked'));
+
+    const screen = renderProvider();
+    await waitFor(() => expect(premiumState(screen)).toBe('premium'));
+    expect(premium.isLoading).toBe(false);
+
+    await act(async () => {
+      appStateHandler?.('active');
+    });
+
+    await waitFor(() => expect(premiumState(screen)).toBe('free'));
+    expect(setCachedPremiumMock).toHaveBeenLastCalledWith(false);
+    expect(clearPurchaseStateMock).toHaveBeenCalled();
+  });
+
   it('finishes loading when the stored purchase state cannot be read', async () => {
     getStoredLicenseMock.mockRejectedValue(new Error('db broken'));
 

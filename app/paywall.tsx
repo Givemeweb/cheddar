@@ -11,7 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Check, Crown } from 'lucide-react-native';
-import { CryptoPaywallAction, CryptoPaywallLegal, CryptoPaymentModal } from '@crypto-payment';
+import {
+  CryptoPaywallAction,
+  CryptoPaywallLegal,
+  CryptoPaymentModal,
+  CryptoRestoreForm,
+} from '@crypto-payment';
 import { useTheme } from '../src/components/ThemeProvider';
 import {
   PremiumNotGrantedError,
@@ -142,6 +147,7 @@ export default function PaywallScreen() {
 
       <ScrollView
         className="flex-1 px-4"
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingTop: 32, paddingBottom: 40 }}
       >
         <View className="items-center">
@@ -291,6 +297,8 @@ export default function PaywallScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
+
+        {crypto ? <CryptoRestoreForm /> : null}
 
         {message ? (
           <Text

@@ -2,6 +2,7 @@ import type {
   CryptoPaywallActionProps,
   CryptoPaywallLegalProps,
   CryptoPaymentModalProps,
+  CryptoRestoreFormProps,
 } from './cryptoPaymentContract';
 
 /**
@@ -13,6 +14,7 @@ export type {
   CryptoPaywallActionProps,
   CryptoPaywallLegalProps,
   CryptoPaymentModalProps,
+  CryptoRestoreFormProps,
 };
 
 export function CryptoPaywallAction(_props: CryptoPaywallActionProps) {
@@ -20,6 +22,10 @@ export function CryptoPaywallAction(_props: CryptoPaywallActionProps) {
 }
 
 export function CryptoPaywallLegal(_props: CryptoPaywallLegalProps) {
+  return null;
+}
+
+export function CryptoRestoreForm(_props: CryptoRestoreFormProps) {
   return null;
 }
 

@@ -12,8 +12,10 @@ import {
   CryptoPaymentModal,
   CryptoPaywallAction,
   CryptoPaywallLegal,
+  CryptoRestoreForm,
   formatCountdown,
 } from './CryptoPayment';
+import { SatSaleApiError } from './api';
 
 jest.mock('../../components/ThemeProvider', () => ({
   useTheme: () => ({ isDark: false }),
@@ -628,6 +630,100 @@ describe('CryptoPaywallAction', () => {
     );
     expect(screen.getByTestId('paywall-bitcoin-support')).toHaveTextContent(
       /support@example\.com/,
+    );
+  });
+});
+
+describe('CryptoRestoreForm', () => {
+  function renderRestore(payment: CryptoPaymentValue) {
+    return render(
+      <PaymentContext.Provider value={paymentContext(payment)}>
+        <CryptoRestoreForm />
+      </PaymentContext.Provider>,
+    );
+  }
+
+  async function submit(
+    screen: ReturnType<typeof render>,
+    code: string,
+  ): Promise<void> {
+    fireEvent.changeText(screen.getByTestId('paywall-license-input'), code);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('paywall-license-restore'));
+    });
+  }
+
+  it('normalizes a formatted code and restores premium', async () => {
+    const restoreLicense = jest.fn().mockResolvedValue(makeStatus('paid'));
+    const screen = renderRestore(makePayment({ restoreLicense }));
+
+    await submit(screen, 'abcde-fghjk-mnpqr-stvwx');
+
+    expect(restoreLicense).toHaveBeenCalledWith(LICENSE);
+    expect(screen.getByTestId('paywall-license-message')).toHaveTextContent(
+      'Premium restored.',
+    );
+  });
+
+  it('rejects a malformed code without calling the provider', async () => {
+    const restoreLicense = jest.fn();
+    const screen = renderRestore(makePayment({ restoreLicense }));
+
+    await submit(screen, 'not-a-license');
+
+    expect(restoreLicense).not.toHaveBeenCalled();
+    expect(screen.getByTestId('paywall-license-message')).toHaveTextContent(
+      'That license code is not valid.',
+    );
+  });
+
+  it.each([
+    ['invalid', 'That license code is not valid.'],
+    ['expired', 'That license code has expired.'],
+    ['revoked', 'That license code has been revoked.'],
+    ['pending', 'That license code is valid, but the payment is still pending.'],
+    [
+      'detected',
+      'The payment was detected. Wait for the network to confirm it, then try again.',
+    ],
+  ] as const)('explains a %s code', async (name, message) => {
+    const restoreLicense = jest.fn().mockResolvedValue(makeStatus(name));
+    const screen = renderRestore(makePayment({ restoreLicense }));
+
+    await submit(screen, LICENSE_FORMATTED);
+
+    expect(screen.getByTestId('paywall-license-message')).toHaveTextContent(
+      message,
+    );
+  });
+
+  it('reports an invalid response from the provider', async () => {
+    const restoreLicense = jest.fn().mockRejectedValue(
+      new SatSaleApiError('invalid_license', 'The license code is not valid'),
+    );
+    const screen = renderRestore(makePayment({ restoreLicense }));
+
+    await submit(screen, LICENSE_FORMATTED);
+
+    expect(screen.getByTestId('paywall-license-message')).toHaveTextContent(
+      'That license code is not valid.',
+    );
+  });
+
+  it('keeps the offline error separate from an invalid code', async () => {
+    const restoreLicense = jest
+      .fn()
+      .mockRejectedValue(new SatSaleApiError('network', 'offline'));
+    const screen = renderRestore(makePayment({ restoreLicense }));
+
+    await submit(screen, LICENSE_FORMATTED);
+
+    expect(screen.getByTestId('paywall-license-message')).toHaveTextContent(
+      /Could not check the license\./,
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[crypto] Failed to restore the license',
+      expect.any(SatSaleApiError),
     );
   });
 });

@@ -12,6 +12,8 @@ export type CryptoPaywallActionProps = {
 
 export type CryptoPaywallLegalProps = Record<string, never>;
 
+export type CryptoRestoreFormProps = Record<string, never>;
+
 export type CryptoPaymentModalProps = {
   onClose: () => void;
 };

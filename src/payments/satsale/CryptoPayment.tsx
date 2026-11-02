@@ -7,6 +7,7 @@ import {
   ScrollView,
   Share,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -22,10 +23,12 @@ import {
 import { useTheme } from '../../components/ThemeProvider';
 import { usePremium } from '../PaymentContext';
 import type { CryptoInvoice, CryptoStatus } from '../PaymentContext';
+import { SatSaleApiError, normalizeLicense } from './api';
 import type {
   CryptoPaywallActionProps,
   CryptoPaywallLegalProps,
   CryptoPaymentModalProps,
+  CryptoRestoreFormProps,
 } from '../cryptoPaymentContract';
 
 /**
@@ -67,6 +70,19 @@ const COPY = {
   payWithBitcoin: 'Pay with Bitcoin',
   completePayment: 'Complete payment',
   shareLicenseMessage: 'Cheddar Premium license: {{license}}',
+  restoreTitle: 'Restore Premium',
+  restoreHint: 'Enter the license code you saved when you paid with Bitcoin.',
+  restorePlaceholder: 'ABCDE-FGHJK-MNPQR-STVWX',
+  restoreButton: 'Restore Premium',
+  restoreSuccess: 'Premium restored.',
+  restorePending: 'That license code is valid, but the payment is still pending.',
+  restoreDetected:
+    'The payment was detected. Wait for the network to confirm it, then try again.',
+  restoreExpired: 'That license code has expired.',
+  restoreRevoked: 'That license code has been revoked.',
+  restoreInvalid: 'That license code is not valid.',
+  restoreError:
+    'Could not check the license. Check your connection and try again.',
 } as const;
 
 type Phase =
@@ -84,6 +100,7 @@ export type {
   CryptoPaywallActionProps,
   CryptoPaywallLegalProps,
   CryptoPaymentModalProps,
+  CryptoRestoreFormProps,
 } from '../cryptoPaymentContract';
 
 /** Legal footer; shared by the paywall and the modal invoice screen. */
@@ -162,6 +179,127 @@ export function CryptoPaywallAction({
         {pending ? COPY.completePayment : COPY.payWithBitcoin}
       </Text>
     </TouchableOpacity>
+  );
+}
+
+type RestoreMessage = { kind: 'success' | 'info' | 'error'; text: string };
+
+function restoreMessage(status: CryptoStatus['status']): RestoreMessage {
+  switch (status) {
+    case 'paid':
+      return { kind: 'success', text: COPY.restoreSuccess };
+    case 'pending':
+      return { kind: 'info', text: COPY.restorePending };
+    case 'detected':
+      return { kind: 'info', text: COPY.restoreDetected };
+    case 'expired':
+      return { kind: 'error', text: COPY.restoreExpired };
+    case 'revoked':
+      return { kind: 'error', text: COPY.restoreRevoked };
+    case 'invalid':
+      return { kind: 'error', text: COPY.restoreInvalid };
+  }
+}
+
+/**
+ * Restores Premium from a saved license. The provider does the network call
+ * and the reconciliation, so a paid, revoked, or expired code flips the same
+ * cached entitlement as a startup check.
+ */
+export function CryptoRestoreForm(_props: CryptoRestoreFormProps) {
+  const { crypto } = usePremium();
+  const { isDark } = useTheme();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<RestoreMessage | null>(null);
+
+  if (!crypto) return null;
+
+  const strong = isDark ? 'text-cheddar-light' : 'text-cheddar-dark';
+  const muted = isDark ? 'text-gray-400' : 'text-gray-500';
+
+  const handleRestore = async () => {
+    if (busy) return;
+
+    const license = normalizeLicense(code);
+    if (!license) {
+      setMessage({ kind: 'error', text: COPY.restoreInvalid });
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+    try {
+      const status = await crypto.restoreLicense(license);
+      setMessage(restoreMessage(status.status));
+    } catch (error) {
+      if (
+        error instanceof SatSaleApiError &&
+        error.code === 'invalid_license'
+      ) {
+        setMessage({ kind: 'error', text: COPY.restoreInvalid });
+      } else {
+        console.warn('[crypto] Failed to restore the license', error);
+        setMessage({ kind: 'error', text: COPY.restoreError });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View
+      testID="paywall-restore-license"
+      className={`mt-6 rounded-2xl p-5 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}
+    >
+      <Text className={`text-base font-semibold ${strong}`}>
+        {COPY.restoreTitle}
+      </Text>
+      <Text className={`mt-1 text-sm ${muted}`}>{COPY.restoreHint}</Text>
+      <TextInput
+        testID="paywall-license-input"
+        value={code}
+        onChangeText={(value) => {
+          setCode(value);
+          if (message) setMessage(null);
+        }}
+        placeholder={COPY.restorePlaceholder}
+        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        editable={!busy}
+        className={`mt-4 rounded-xl border px-4 py-3 text-base ${isDark ? 'border-gray-700 bg-cheddar-dark text-cheddar-light' : 'border-gray-200 bg-cheddar-light text-cheddar-dark'}`}
+      />
+      <TouchableOpacity
+        testID="paywall-license-restore"
+        className={`mt-4 flex-row items-center justify-center rounded-xl px-4 py-3 ${busy ? 'bg-gray-400' : 'bg-cheddar-yellow'}`}
+        activeOpacity={0.8}
+        disabled={busy}
+        onPress={() => void handleRestore()}
+      >
+        {busy ? (
+          <ActivityIndicator color="#212226" />
+        ) : (
+          <Text className="text-base font-bold text-cheddar-dark">
+            {COPY.restoreButton}
+          </Text>
+        )}
+      </TouchableOpacity>
+      {message ? (
+        <Text
+          testID="paywall-license-message"
+          className={`mt-3 text-center text-sm ${
+            message.kind === 'success'
+              ? 'text-green-500'
+              : message.kind === 'info'
+                ? 'text-amber-500'
+                : 'text-cheddar-expense'
+          }`}
+        >
+          {message.text}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
