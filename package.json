@@ -1,6 +1,7 @@
 {
   "name": "cheddar",
   "version": "1.0.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
