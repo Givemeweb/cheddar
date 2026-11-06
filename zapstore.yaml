@@ -22,6 +22,7 @@ description: |
   A purchase returns a license code that can be saved and restored on a new
   install.
 website: https://github.com/Givemeweb/cheddar
+license: PolyForm-Noncommercial-1.0.0
 tags: [finance]
 icon: ./assets/icon.png
 metadata_sources: []
