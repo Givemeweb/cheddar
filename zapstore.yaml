@@ -1,0 +1,25 @@
+# Project Nostr identity (NIP-C1 proof owner):
+#   npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
+#
+# zsp 2.x reads the owner from the signed NIP-C1 proof, not from a `pubkey`
+# field. The certificate-to-identity link and the CI delegate key are managed
+# by that proof.
+
+repository: https://github.com/juan-vilas/cheddar
+release_source: https://github.com/juan-vilas/cheddar
+release_filter: '^satsale-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$'
+match: '^cheddar-satsale-(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)-universal\.apk$'
+
+name: Cheddar
+summary: Private, offline-first personal finance tracker with an optional Bitcoin premium.
+description: |
+  Cheddar is a private, offline-first personal finance tracker. Budgets,
+  transactions, categories, and reports stay on your device.
+
+  The SatSale build sells the optional premium upgrade directly with Bitcoin.
+  A purchase returns a license code that can be saved and restored on a new
+  install.
+website: https://github.com/juan-vilas/cheddar
+tags: [finance]
+icon: ./assets/icon.png
+metadata_sources: []

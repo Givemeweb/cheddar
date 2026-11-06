@@ -68,6 +68,12 @@ export default function BackupExportScreen() {
           >
             {t('backup.exportInfo')}
           </Text>
+          <Text
+            testID="backup-premium-note"
+            className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} leading-5`}
+          >
+            {t('backup.premiumNotIncluded')}
+          </Text>
         </View>
 
         {/* Format Selection — hidden for unified ZIP+SQL export */}

@@ -192,6 +192,7 @@
     "importFailed": "Import failed. Please try again.",
     "importSummary": "{{categories}} categories, {{accounts}} accounts, {{transactions}} transactions restored.",
     "importWarning": "Warning: Importing a backup will replace all your current data. Make sure to export your current data first if you want to keep it.",
+    "premiumNotIncluded": "Finance backups include accounts, categories, and transactions only. Restoring a backup does not restore Premium.",
     "resetData": "Reset Data",
     "resetDataDesc": "Clear all data and start fresh",
     "resetButton": "Reset All Data",

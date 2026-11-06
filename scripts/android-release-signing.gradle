@@ -1,0 +1,66 @@
+// Injected into the generated Android project for release builds:
+//
+//   ./gradlew assembleRelease -I ../scripts/android-release-signing.gradle
+//
+// The SatSale keystore and its passwords stay in the environment. The
+// generated android/ tree is gitignored, so no signing material is committed.
+
+def required = [
+    'SATSALE_KEYSTORE_FILE',
+    'SATSALE_KEYSTORE_PASSWORD',
+    'SATSALE_KEY_ALIAS',
+    'SATSALE_KEY_PASSWORD',
+]
+def env = System.getenv()
+
+gradle.allprojects { project ->
+    project.plugins.withId('com.android.application') {
+        // finalizeDsl runs after the generated build.gradle has set its debug
+        // fallback but before AGP locks the DSL, which is the only window
+        // where a new signing config can be added.
+        project.androidComponents.finalizeDsl { android ->
+            // The init script is only injected for releases, but skip other
+            // invocations so an IDE sync or a debug build cannot fail on
+            // signing variables it does not need.
+            def releaseRequested = gradle.startParameter.taskNames.any {
+                it.toLowerCase().contains('release')
+            }
+            if (!releaseRequested) return
+
+            def missing = required.findAll { !env[it] }
+
+            if (!missing.isEmpty()) {
+                throw new GradleException(
+                    "Missing release signing variables: ${missing.join(', ')}. " +
+                        'Set all SATSALE_* signing variables before building a release.'
+                )
+            }
+
+            def keystore = project.rootProject.file(env.SATSALE_KEYSTORE_FILE)
+
+            if (!keystore.isFile() || !keystore.canRead()) {
+                throw new GradleException(
+                    "SATSALE_KEYSTORE_FILE is not a readable file: ${keystore}"
+                )
+            }
+
+            def releaseBuildType = android.buildTypes.findByName('release')
+
+            if (releaseBuildType == null) {
+                throw new GradleException(
+                    "Android project has no 'release' build type; cannot wire SatSale signing."
+                )
+            }
+
+            def releaseSigning = android.signingConfigs.findByName('release') ?:
+                android.signingConfigs.create('release')
+
+            releaseSigning.storeFile = keystore
+            releaseSigning.storePassword = env.SATSALE_KEYSTORE_PASSWORD
+            releaseSigning.keyAlias = env.SATSALE_KEY_ALIAS
+            releaseSigning.keyPassword = env.SATSALE_KEY_PASSWORD
+
+            releaseBuildType.signingConfig = releaseSigning
+        }
+    }
+}

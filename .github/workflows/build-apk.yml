@@ -27,6 +27,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Write RevenueCat key
+        env:
+          RC_ANDROID: ${{ secrets.EXPO_PUBLIC_RC_API_KEY_ANDROID }}
+        run: |
+          if [ -n "$RC_ANDROID" ]; then
+            printf 'EXPO_PUBLIC_RC_API_KEY_ANDROID=%s\n' "$RC_ANDROID" > .env
+            echo "RevenueCat Android key loaded."
+          else
+            echo "::warning::EXPO_PUBLIC_RC_API_KEY_ANDROID is not set; premium will be disabled in this build."
+          fi
+
+      - name: Build variant guardrail
+        timeout-minutes: 20
+        run: npm run guardrail -- --gradle
+
       - name: Expo prebuild
         run: npx expo prebuild --platform android --no-install
 

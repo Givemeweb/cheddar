@@ -11,6 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Check, Crown } from 'lucide-react-native';
+import {
+  CryptoPaywallAction,
+  CryptoPaywallLegal,
+  CryptoPaymentModal,
+  CryptoRestoreForm,
+} from '@crypto-payment';
 import { useTheme } from '../src/components/ThemeProvider';
 import {
   PremiumNotGrantedError,
@@ -30,9 +36,11 @@ export default function PaywallScreen() {
     refreshOfferings,
     purchaseLifetime,
     restorePurchases,
+    crypto,
   } = usePremium();
   const [busy, setBusy] = useState<'purchase' | 'restore' | null>(null);
   const [retryingOfferings, setRetryingOfferings] = useState(false);
+  const [showBitcoinPayment, setShowBitcoinPayment] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -139,6 +147,7 @@ export default function PaywallScreen() {
 
       <ScrollView
         className="flex-1 px-4"
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingTop: 32, paddingBottom: 40 }}
       >
         <View className="items-center">
@@ -222,14 +231,7 @@ export default function PaywallScreen() {
             )}
           </View>
 
-          {Platform.OS === 'web' ? (
-            <Text
-              testID="paywall-web-notice"
-              className={`mt-5 text-center text-base ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-            >
-              {t('premium.webUnavailable')}
-            </Text>
-          ) : isPremium ? (
+          {isPremium ? (
             <View
               testID="paywall-status"
               className="mt-5 flex-row items-center justify-center rounded-xl bg-green-500 px-4 py-4"
@@ -239,6 +241,19 @@ export default function PaywallScreen() {
                 {t('premium.active')}
               </Text>
             </View>
+          ) : Platform.OS === 'web' ? (
+            <Text
+              testID="paywall-web-notice"
+              className={`mt-5 text-center text-base ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+            >
+              {t('premium.webUnavailable')}
+            </Text>
+          ) : crypto ? (
+            <CryptoPaywallAction
+              pending={crypto.pendingInvoice !== null}
+              disabled={isLoading || retryingOfferings}
+              onPress={() => setShowBitcoinPayment(true)}
+            />
           ) : (
             <TouchableOpacity
               testID="paywall-buy"
@@ -265,7 +280,7 @@ export default function PaywallScreen() {
             </TouchableOpacity>
           )}
 
-          {Platform.OS !== 'web' ? (
+          {Platform.OS !== 'web' && !crypto ? (
             <TouchableOpacity
               testID="paywall-restore"
               className="mt-4 items-center py-3"
@@ -282,6 +297,8 @@ export default function PaywallScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
+
+        {crypto ? <CryptoRestoreForm /> : null}
 
         {message ? (
           <Text
@@ -300,12 +317,20 @@ export default function PaywallScreen() {
           </Text>
         ) : null}
 
-        <Text
-          className={`mt-8 text-center text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
-        >
-          {t('premium.legal')}
-        </Text>
+        {crypto ? (
+          <CryptoPaywallLegal />
+        ) : (
+          <Text
+            className={`mt-8 text-center text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+          >
+            {t('premium.legal')}
+          </Text>
+        )}
       </ScrollView>
+
+      {showBitcoinPayment ? (
+        <CryptoPaymentModal onClose={() => setShowBitcoinPayment(false)} />
+      ) : null}
     </SafeAreaView>
   );
 }
