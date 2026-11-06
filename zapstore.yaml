@@ -1,12 +1,14 @@
-# Project Nostr identity (NIP-C1 proof owner):
+# Project Nostr identity (owner of the NIP-C1 certificate proof):
 #   npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
 #
-# zsp 2.x reads the owner from the signed NIP-C1 proof, not from a `pubkey`
-# field. The certificate-to-identity link and the CI delegate key are managed
-# by that proof.
+# The Zapstore relay fetches this file from the repository to whitelist a first
+# publish, so `pubkey` must match the key that signs releases
+# (ZAPSTORE_SIGN_WITH in CI). The certificate-to-identity link is the NIP-C1
+# proof created once with `zsp identity --link-key`.
 
-repository: https://github.com/juan-vilas/cheddar
-release_source: https://github.com/juan-vilas/cheddar
+repository: https://github.com/Givemeweb/cheddar
+release_source: https://github.com/Givemeweb/cheddar
+pubkey: npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
 release_filter: '^satsale-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$'
 match: '^cheddar-satsale-(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)-universal\.apk$'
 
