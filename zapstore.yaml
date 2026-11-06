@@ -21,7 +21,7 @@ description: |
   The SatSale build sells the optional premium upgrade directly with Bitcoin.
   A purchase returns a license code that can be saved and restored on a new
   install.
-website: https://github.com/juan-vilas/cheddar
+website: https://github.com/Givemeweb/cheddar
 tags: [finance]
 icon: ./assets/icon.png
 metadata_sources: []
