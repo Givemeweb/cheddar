@@ -1,14 +1,13 @@
 # Project Nostr identity (owner of the NIP-C1 certificate proof):
 #   npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
 #
-# The Zapstore relay fetches this file from the repository to whitelist a first
-# publish, so `pubkey` must match the key that signs releases
-# (ZAPSTORE_SIGN_WITH in CI). The owner key delegates release publishing to
-# the CI key through the NIP-C1 proof, so the value here is the CI npub.
+# The Zapstore relay fetches this file from the repository to whitelist the
+# first publish, which is signed by the owner key together with the C1 proof.
+# Later releases are signed by the CI delegate named in that proof.
 
 repository: https://github.com/Givemeweb/cheddar
 release_source: https://github.com/Givemeweb/cheddar
-pubkey: npub1ptywpgs4kkzqsh80pj77pa4xqqp6gd686xrrujess0cdydxnc0gqh06r3h
+pubkey: npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
 release_filter: '^satsale-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$'
 match: '^cheddar-satsale-(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)-universal\.apk$'
 
