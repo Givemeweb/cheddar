@@ -20,6 +20,8 @@ description: |
   The SatSale build sells the optional premium upgrade directly with Bitcoin.
   A purchase returns a license code that can be saved and restored on a new
   install.
+
+  Source code: https://github.com/Givemeweb/cheddar
 website: https://github.com/Givemeweb/cheddar
 license: PolyForm-Noncommercial-1.0.0
 tags: [finance]
