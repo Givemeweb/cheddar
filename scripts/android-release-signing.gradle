@@ -60,6 +60,16 @@ gradle.allprojects { project ->
             releaseSigning.keyAlias = env.SATSALE_KEY_ALIAS
             releaseSigning.keyPassword = env.SATSALE_KEY_PASSWORD
 
+            // The workflow names the decoded secret .jks, but modern keytool
+            // writes PKCS#12 by default. Detect the container by its magic
+            // bytes instead of trusting the extension, or Gradle fails with
+            // "Invalid keystore format" after a full build.
+            def header = new byte[4]
+            new FileInputStream(keystore).withCloseable { it.read(header) }
+            def isJks = header[0] == (byte) 0xFE && header[1] == (byte) 0xED &&
+                header[2] == (byte) 0xFE && header[3] == (byte) 0xED
+            releaseSigning.storeType = isJks ? 'JKS' : 'PKCS12'
+
             releaseBuildType.signingConfig = releaseSigning
         }
     }
