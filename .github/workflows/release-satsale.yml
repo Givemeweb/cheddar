@@ -56,9 +56,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate release secrets
+        env:
+          API_URL: ${{ vars.EXPO_PUBLIC_SATSALE_API_URL || secrets.EXPO_PUBLIC_SATSALE_API_URL }}
+          KEYSTORE_B64: ${{ secrets.SATSALE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SATSALE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SATSALE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SATSALE_KEY_PASSWORD }}
+          CERT_SHA: ${{ secrets.SATSALE_CERT_SHA256 }}
+          SIGN_WITH: ${{ secrets.ZAPSTORE_SIGN_WITH }}
+        run: |
+          missing=""
+          for name in API_URL KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD CERT_SHA SIGN_WITH; do
+            if [ -z "${!name}" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing release configuration:$missing"
+            exit 1
+          fi
+          echo "All release secrets and variables are set."
+
       - name: Write SatSale API URL
         env:
-          SATSALE_API_URL: ${{ secrets.EXPO_PUBLIC_SATSALE_API_URL }}
+          SATSALE_API_URL: ${{ vars.EXPO_PUBLIC_SATSALE_API_URL || secrets.EXPO_PUBLIC_SATSALE_API_URL }}
         run: |
           case "$SATSALE_API_URL" in
             https://localhost*|https://127.*|https://0.0.0.0*|https://\[::1\]*)
@@ -117,7 +139,7 @@ jobs:
       - name: Verify certificate, version, URL, and ABIs
         env:
           SATSALE_CERT_SHA256: ${{ secrets.SATSALE_CERT_SHA256 }}
-          SATSALE_API_URL: ${{ secrets.EXPO_PUBLIC_SATSALE_API_URL }}
+          SATSALE_API_URL: ${{ vars.EXPO_PUBLIC_SATSALE_API_URL || secrets.EXPO_PUBLIC_SATSALE_API_URL }}
         run: |
           : "${ANDROID_HOME:?ANDROID_HOME must be set to locate apksigner and aapt}"
 
