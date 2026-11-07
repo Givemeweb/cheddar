@@ -3,12 +3,12 @@
 #
 # The Zapstore relay fetches this file from the repository to whitelist a first
 # publish, so `pubkey` must match the key that signs releases
-# (ZAPSTORE_SIGN_WITH in CI). The certificate-to-identity link is the NIP-C1
-# proof created once with `zsp identity --link-key`.
+# (ZAPSTORE_SIGN_WITH in CI). The owner key delegates release publishing to
+# the CI key through the NIP-C1 proof, so the value here is the CI npub.
 
 repository: https://github.com/Givemeweb/cheddar
 release_source: https://github.com/Givemeweb/cheddar
-pubkey: npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
+pubkey: npub1ptywpgs4kkzqsh80pj77pa4xqqp6gd686xrrujess0cdydxnc0gqh06r3h
 release_filter: '^satsale-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$'
 match: '^cheddar-satsale-(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)-universal\.apk$'
 
