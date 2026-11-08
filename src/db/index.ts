@@ -25,6 +25,8 @@ export {
   deleteTransaction,
   initializeDatabase,
   clearAllData,
+  shouldOfferReminderPrompt,
+  markReminderPromptSeen,
 } from './storage';
 
 export { getShowIcons, setShowIcons } from './icons';

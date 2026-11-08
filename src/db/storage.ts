@@ -688,6 +688,26 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
   };
 }
 
+// Reminder prompt
+/**
+ * The reminder prompt is offered once, right after the first transaction is
+ * saved. The flag is stored before the modal is shown so a dismissed modal
+ * never comes back.
+ */
+export async function shouldOfferReminderPrompt(): Promise<boolean> {
+  if (!isDatabaseReady()) return false;
+  const store = getStore();
+  if (store.getValue('reminderPromptSeen') === 'true') return false;
+  const transactions = store.getTable('transactions');
+  return !transactions || Object.keys(transactions).length === 0;
+}
+
+export async function markReminderPromptSeen(): Promise<void> {
+  if (!isDatabaseReady()) return;
+  getStore().setValue('reminderPromptSeen', 'true');
+  await saveStore();
+}
+
 // Alarm settings
 export interface AlarmSettings {
   enabled: boolean;

@@ -306,7 +306,11 @@
     "timeDesc": "Set reminder time",
     "repeat": "Repeat",
     "notificationTitle": "Time to track your expenses!",
-    "notificationBody": "Don't forget to add your transactions for today."
+    "notificationBody": "Don't forget to add your transactions for today.",
+    "reminderPromptTitle": "Want a reminder to log your spending?",
+    "reminderPromptBody": "We can send you a gentle nudge to add expenses, so your records stay up to date. You can change the time or turn reminders off anytime in settings.",
+    "reminderPromptAccept": "Remind me",
+    "reminderPromptDecline": "No thanks"
   },
   "app": {
     "name": "Cheddar"

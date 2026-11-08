@@ -19,10 +19,12 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
-import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account } from '@/src/db/storage';
+import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account, shouldOfferReminderPrompt, markReminderPromptSeen } from '@/src/db/storage';
 import { getSubcategoriesEnabled, getSubcategories, type Subcategory } from '@/src/db';
 import { saveImage, deleteImage, getImageUri } from '@/src/utils/imageStorage';
+import { enableReminderWithPermission } from '@/src/utils/notifications';
 import DateTimePicker from '@/src/components/DateTimePicker';
+import { ReminderPromptModal } from '@/src/components/ReminderPromptModal';
 import { categoryIconMap } from '@/src/components/categoryIcons';
 import {
     StopCircle,
@@ -102,6 +104,8 @@ export default function AddTransactionScreen() {
     const [imagePath, setImagePath] = useState<string | null>(null);
     const [displayImageUri, setDisplayImageUri] = useState<string | null>(null);
     const [imageLoading, setImageLoading] = useState(false);
+    const [showReminderPrompt, setShowReminderPrompt] = useState(false);
+    const [reminderBusy, setReminderBusy] = useState(false);
 
     // Refs for auto-focus
     const amountRef = useRef<TextInput>(null);
@@ -298,6 +302,10 @@ export default function AddTransactionScreen() {
 
         const parsedAmount = parseFloat(amount.replace(',', '.'));
 
+        // Decide before saving: this is the only moment the transaction table is
+        // still empty and we can tell this is the user's first transaction.
+        const isFirstTransaction = !isEditing && Platform.OS !== 'web' && await shouldOfferReminderPrompt();
+
         // Convert into the account currency, because account balances are kept
         // in that currency. Same-currency entries skip the network entirely.
         const targetCurrency = accountCurrency;
@@ -388,6 +396,35 @@ export default function AddTransactionScreen() {
             }
         }
 
+        if (isFirstTransaction) {
+            // Mark it before showing the modal: dismissing it still counts as
+            // the one-time offer, so it never appears again.
+            await markReminderPromptSeen();
+            Keyboard.dismiss();
+            setShowReminderPrompt(true);
+            return;
+        }
+
+        router.back();
+    };
+
+    const handleReminderAccept = async () => {
+        if (reminderBusy) return;
+        setReminderBusy(true);
+        try {
+            await enableReminderWithPermission();
+        } catch (error) {
+            console.warn("Could not enable reminder:", error);
+        } finally {
+            setReminderBusy(false);
+            setShowReminderPrompt(false);
+            router.back();
+        }
+    };
+
+    const handleReminderDecline = () => {
+        if (reminderBusy) return;
+        setShowReminderPrompt(false);
         router.back();
     };
 
@@ -1337,6 +1374,14 @@ export default function AddTransactionScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {/* One-time reminder prompt, shown after the first saved transaction */}
+        <ReminderPromptModal
+          visible={showReminderPrompt}
+          busy={reminderBusy}
+          onAccept={handleReminderAccept}
+          onDecline={handleReminderDecline}
+        />
 
         {/* Currency Picker */}
         <Modal
