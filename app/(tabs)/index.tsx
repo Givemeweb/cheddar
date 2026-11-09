@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   getTransactions,
   getCategories,
+  consumeReminderPrompt,
 } from "../../src/db/storage";
 import { TransactionGroup } from "../../src/components/TransactionGroup";
 import {
@@ -23,7 +24,9 @@ import {
   TransactionWithDetails,
 } from "../../src/components/TransactionItem";
 import { FAB } from "../../src/components/FAB";
+import { ReminderPromptModal } from "../../src/components/ReminderPromptModal";
 import { useTheme } from "../../src/components/ThemeProvider";
+import { enableReminderWithPermission } from "../../src/utils/notifications";
 
 import { formatNumber } from "../../src/utils/formatNumber";
 import {
@@ -43,6 +46,8 @@ export default function TransactionsScreen() {
     null,
   );
   const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
+  const [showReminderPrompt, setShowReminderPrompt] = useState(false);
+  const [reminderBusy, setReminderBusy] = useState(false);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, currencySymbol, currencyCode } = useTheme();
@@ -199,10 +204,59 @@ export default function TransactionsScreen() {
     }, [currentDate, categoryId]),
   );
 
+  // The first-transaction prompt is queued by the add screen and consumed here,
+  // after the home screen regains focus.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      consumeReminderPrompt()
+        .then((shouldShow) => {
+          if (active && shouldShow) {
+            setShowReminderPrompt(true);
+          }
+        })
+        .catch((error) => {
+          console.warn("Could not read reminder prompt state:", error);
+        });
+
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchTransactions();
   };
+
+  const handleReminderAccept = async () => {
+    if (reminderBusy) return;
+    setReminderBusy(true);
+    try {
+      await enableReminderWithPermission();
+    } catch (error) {
+      console.warn("Could not enable reminder:", error);
+    } finally {
+      setReminderBusy(false);
+      setShowReminderPrompt(false);
+    }
+  };
+
+  const handleReminderDecline = () => {
+    if (reminderBusy) return;
+    setShowReminderPrompt(false);
+  };
+
+  const reminderPromptModal = (
+    <ReminderPromptModal
+      visible={showReminderPrompt}
+      busy={reminderBusy}
+      onAccept={handleReminderAccept}
+      onDecline={handleReminderDecline}
+    />
+  );
 
   // Calculate totals
   const totalIncome = groupedTransactions.reduce(
@@ -360,6 +414,7 @@ export default function TransactionsScreen() {
         }
       />
       <FAB isDark={isDark} />
+      {reminderPromptModal}
     </SafeAreaView>
   );
 }

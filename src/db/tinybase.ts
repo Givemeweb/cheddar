@@ -78,6 +78,7 @@ export interface ValuesSchema {
   alarmTime: string;
   alarmDays: string;
   reminderPromptSeen: string;
+  reminderPromptPending: string;
 }
 
 let store: Store | null = null;

@@ -6,7 +6,9 @@ import {
   getAccounts,
   getCategories,
   LimitReachedError,
+  consumeReminderPrompt,
   markReminderPromptSeen,
+  requestReminderPrompt,
   shouldOfferReminderPrompt,
   updateAccount,
   updateCategory,
@@ -207,6 +209,13 @@ describe('reminder prompt state', () => {
     await expect(shouldOfferReminderPrompt()).resolves.toBe(true);
 
     await markReminderPromptSeen();
+    await expect(shouldOfferReminderPrompt()).resolves.toBe(false);
+  });
+
+  it('queues the prompt and consumes it only once', async () => {
+    await requestReminderPrompt();
+    await expect(consumeReminderPrompt()).resolves.toBe(true);
+    await expect(consumeReminderPrompt()).resolves.toBe(false);
     await expect(shouldOfferReminderPrompt()).resolves.toBe(false);
   });
 });

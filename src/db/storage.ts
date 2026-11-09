@@ -691,8 +691,9 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
 // Reminder prompt
 /**
  * The reminder prompt is offered once, right after the first transaction is
- * saved. The flag is stored before the modal is shown so a dismissed modal
- * never comes back.
+ * saved. The transaction screen queues it, then the home screen consumes it
+ * when it regains focus. The seen flag is stored when it is consumed so a
+ * dismissed modal never comes back.
  */
 export async function shouldOfferReminderPrompt(): Promise<boolean> {
   if (!isDatabaseReady()) return false;
@@ -700,6 +701,30 @@ export async function shouldOfferReminderPrompt(): Promise<boolean> {
   if (store.getValue('reminderPromptSeen') === 'true') return false;
   const transactions = store.getTable('transactions');
   return !transactions || Object.keys(transactions).length === 0;
+}
+
+export async function requestReminderPrompt(): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  if (store.getValue('reminderPromptSeen') === 'true') return;
+  store.setValue('reminderPromptPending', 'true');
+  await saveStore();
+}
+
+export async function consumeReminderPrompt(): Promise<boolean> {
+  if (!isDatabaseReady()) return false;
+  const store = getStore();
+  if (store.getValue('reminderPromptPending') !== 'true') return false;
+
+  store.setValue('reminderPromptPending', 'false');
+  if (store.getValue('reminderPromptSeen') === 'true') {
+    await saveStore();
+    return false;
+  }
+
+  store.setValue('reminderPromptSeen', 'true');
+  await saveStore();
+  return true;
 }
 
 export async function markReminderPromptSeen(): Promise<void> {

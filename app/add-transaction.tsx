@@ -19,12 +19,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
-import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account, shouldOfferReminderPrompt, markReminderPromptSeen } from '@/src/db/storage';
+import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account, shouldOfferReminderPrompt, requestReminderPrompt } from '@/src/db/storage';
 import { getSubcategoriesEnabled, getSubcategories, type Subcategory } from '@/src/db';
 import { saveImage, deleteImage, getImageUri } from '@/src/utils/imageStorage';
-import { enableReminderWithPermission } from '@/src/utils/notifications';
 import DateTimePicker from '@/src/components/DateTimePicker';
-import { ReminderPromptModal } from '@/src/components/ReminderPromptModal';
 import { categoryIconMap } from '@/src/components/categoryIcons';
 import {
     StopCircle,
@@ -104,8 +102,6 @@ export default function AddTransactionScreen() {
     const [imagePath, setImagePath] = useState<string | null>(null);
     const [displayImageUri, setDisplayImageUri] = useState<string | null>(null);
     const [imageLoading, setImageLoading] = useState(false);
-    const [showReminderPrompt, setShowReminderPrompt] = useState(false);
-    const [reminderBusy, setReminderBusy] = useState(false);
 
     // Refs for auto-focus
     const amountRef = useRef<TextInput>(null);
@@ -397,34 +393,18 @@ export default function AddTransactionScreen() {
         }
 
         if (isFirstTransaction) {
-            // Mark it before showing the modal: dismissing it still counts as
-            // the one-time offer, so it never appears again.
-            await markReminderPromptSeen();
+            // Queue the prompt for the home screen. The add screen closes first,
+            // so the modal appears over the transaction list, not this form.
+            try {
+                await requestReminderPrompt();
+            } catch (error) {
+                console.warn("Could not queue reminder prompt:", error);
+            }
             Keyboard.dismiss();
-            setShowReminderPrompt(true);
+            router.back();
             return;
         }
 
-        router.back();
-    };
-
-    const handleReminderAccept = async () => {
-        if (reminderBusy) return;
-        setReminderBusy(true);
-        try {
-            await enableReminderWithPermission();
-        } catch (error) {
-            console.warn("Could not enable reminder:", error);
-        } finally {
-            setReminderBusy(false);
-            setShowReminderPrompt(false);
-            router.back();
-        }
-    };
-
-    const handleReminderDecline = () => {
-        if (reminderBusy) return;
-        setShowReminderPrompt(false);
         router.back();
     };
 
@@ -1374,14 +1354,6 @@ export default function AddTransactionScreen() {
             </Text>
           </Pressable>
         </View>
-
-        {/* One-time reminder prompt, shown after the first saved transaction */}
-        <ReminderPromptModal
-          visible={showReminderPrompt}
-          busy={reminderBusy}
-          onAccept={handleReminderAccept}
-          onDecline={handleReminderDecline}
-        />
 
         {/* Currency Picker */}
         <Modal
