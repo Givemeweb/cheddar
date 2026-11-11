@@ -1,4 +1,4 @@
-import { getStore, saveStore, generateId, isDatabaseReady } from './tinybase';
+import { getStore, saveStore, generateId, generateTransactionId, isDatabaseReady } from './tinybase';
 import { DEFAULT_CURRENCY_CODE, convertAmountWithRates } from './currency';
 import {
   FREE_LIMITS,
@@ -208,7 +208,7 @@ export async function addTransaction(tx: {
     throw new Error('Database not initialized');
   }
   const store = getStore();
-  const id = generateId();
+  const id = generateTransactionId();
 
   // Currency: explicit value, else the account's currency, else app default.
   const currency = tx.currency

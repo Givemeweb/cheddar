@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { uuid } from 'expo-modules-core';
 import { createStore, Store } from 'tinybase';
 import {
   createExpoSqlitePersister,
@@ -277,6 +278,11 @@ export async function getPersister() {
 // Helper to generate unique IDs
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+/** RFC 4122 version 4 UUID for newly created transactions. */
+export function generateTransactionId(): string {
+  return uuid.v4();
 }
 
 // Helper to save changes
