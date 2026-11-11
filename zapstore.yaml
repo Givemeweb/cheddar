@@ -25,4 +25,13 @@ website: https://github.com/Givemeweb/cheddar
 license: PolyForm-Noncommercial-1.0.0
 tags: [finance]
 icon: ./assets/icon.png
+images:
+  - ./screenshots/ios-6.9-01-transactions-light.png
+  - ./screenshots/ios-6.9-02-stats-light.png
+  - ./screenshots/ios-6.9-03-accounts-light.png
+  - ./screenshots/ios-6.9-04-total-stats-light.png
+  - ./screenshots/ios-6.9-05-transactions-dark.png
+  - ./screenshots/ios-6.9-06-stats-dark.png
+  - ./screenshots/ios-6.9-07-accounts-dark.png
+  - ./screenshots/ios-6.9-08-total-stats-dark.png
 metadata_sources: []
