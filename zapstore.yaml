@@ -1,12 +1,13 @@
-# Project Nostr identity (NIP-C1 proof owner):
+# Project Nostr identity (owner of the NIP-C1 certificate proof):
 #   npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
 #
-# zsp 2.x reads the owner from the signed NIP-C1 proof, not from a `pubkey`
-# field. The certificate-to-identity link and the CI delegate key are managed
-# by that proof.
+# The Zapstore relay fetches this file from the repository to whitelist the
+# first publish, which is signed by the owner key together with the C1 proof.
+# Later releases are signed by the CI delegate named in that proof.
 
-repository: https://github.com/juan-vilas/cheddar
-release_source: https://github.com/juan-vilas/cheddar
+repository: https://github.com/Givemeweb/cheddar
+release_source: https://github.com/Givemeweb/cheddar
+pubkey: npub1sv7rj90w7p2nd77vjj8n7vq8ttg7vshvxsdv4495dgd9xj0j3pnqqlsndj
 release_filter: '^satsale-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$'
 match: '^cheddar-satsale-(0|[1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)-universal\.apk$'
 
@@ -16,10 +17,12 @@ description: |
   Cheddar is a private, offline-first personal finance tracker. Budgets,
   transactions, categories, and reports stay on your device.
 
-  The SatSale build sells the optional premium upgrade directly with Bitcoin.
-  A purchase returns a license code that can be saved and restored on a new
-  install.
-website: https://github.com/juan-vilas/cheddar
+  There is a lifetime premium upgrade. A purchase returns a license code that
+  can be saved and restored on a new install.
+
+  Source code: https://github.com/Givemeweb/cheddar
+website: https://github.com/Givemeweb/cheddar
+license: PolyForm-Noncommercial-1.0.0
 tags: [finance]
 icon: ./assets/icon.png
 metadata_sources: []
