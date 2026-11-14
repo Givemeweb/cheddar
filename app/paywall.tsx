@@ -291,7 +291,7 @@ export default function PaywallScreen() {
               pending={crypto.pendingInvoice !== null}
               disabled={isLoading || retryingOfferings}
               onPress={() => {
-                trackEvent('paywall.bitcoin_open');
+                trackEvent('paywall.crypto_open');
                 setShowBitcoinPayment(true);
               }}
             />
