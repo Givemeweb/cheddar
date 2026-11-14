@@ -18,6 +18,7 @@ import { GripVertical } from 'lucide-react-native';
 import { renderAccountIcon } from '@/src/components/accountIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '@/src/lib/analytics';
 
 export default function ReorderAccountsScreen() {
   const router = useRouter();
@@ -60,6 +61,7 @@ export default function ReorderAccountsScreen() {
   const handleSave = async () => {
     const accountIds = accounts.map(a => a.id);
     await reorderAccounts(accountIds);
+    trackEvent('accounts.reordered');
     router.back();
   };
 

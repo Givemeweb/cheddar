@@ -16,6 +16,7 @@ import { accountIconOptions } from '@/src/components/accountIcons';
 import CurrencyPicker from '@/src/components/CurrencyPicker';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '@/src/lib/analytics';
 
 type IconOption = {
   name: string;
@@ -65,6 +66,7 @@ export default function EditAccountScreen() {
         description: description.trim() || null,
         currency,
       });
+      trackEvent('accounts.saved', { mode: 'edit', currency });
       router.back();
     } catch (error) {
       console.error('Failed to update account:', error);

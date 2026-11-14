@@ -4,12 +4,14 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Smartphone, Trash2, ChevronRight } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
+import { trackEvent } from "../src/lib/analytics";
 
 type MenuItem = {
   label: string;
   sublabel: string;
   icon: React.ReactNode;
   route: string;
+  target: "device" | "reset";
 };
 
 export default function BackupScreen() {
@@ -25,12 +27,14 @@ export default function BackupScreen() {
       sublabel: t('backup.onDeviceDesc'),
       icon: <Smartphone size={22} color={iconColor} />,
       route: "/backup-device",
+      target: "device",
     },
     {
       label: t('backup.resetData'),
       sublabel: t('backup.resetDataDesc'),
       icon: <Trash2 size={22} color="#EF4444" />,
       route: "/backup-reset",
+      target: "reset",
     },
   ];
 
@@ -67,7 +71,10 @@ export default function BackupScreen() {
                 : ""
             } ${isDark ? "bg-[#26282D]" : "bg-white"}`}
             activeOpacity={0.7}
-            onPress={() => router.push(item.route as never)}
+            onPress={() => {
+              trackEvent('backup.row_open', { target: item.target });
+              router.push(item.route as never);
+            }}
           >
             <View className="flex-row items-center flex-1">
               <View className="mr-3">{item.icon}</View>

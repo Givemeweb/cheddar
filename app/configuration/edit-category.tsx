@@ -15,6 +15,7 @@ import { getCategoryById, updateCategory } from '@/src/db/storage';
 import { categoryIconOptions } from '@/src/components/categoryIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '@/src/lib/analytics';
 
 type IconOption = {
   name: string;
@@ -28,6 +29,7 @@ export default function EditCategoryScreen() {
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('trending-up');
+  const [categoryType, setCategoryType] = useState<'income' | 'expense'>('expense');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +40,7 @@ export default function EditCategoryScreen() {
       if (category) {
         setName(category.name);
         setSelectedIcon(category.icon);
+        setCategoryType(category.type);
       }
       setLoading(false);
     }
@@ -55,6 +58,7 @@ export default function EditCategoryScreen() {
         name: name.trim(),
         icon: selectedIcon,
       });
+      trackEvent('categories.saved', { type: categoryType, mode: 'edit' });
       router.back();
     } catch (error) {
       console.error('Failed to update category:', error);

@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { uuid } from 'expo-modules-core';
 import { createStore, Store } from 'tinybase';
 import {
   createExpoSqlitePersister,
@@ -77,6 +78,12 @@ export interface ValuesSchema {
   alarmEnabled: string;
   alarmTime: string;
   alarmDays: string;
+  reminderPromptSeen: string;
+  reminderPromptPending: string;
+  /** Anonymous per-install id for Umami; random, no PII. */
+  analyticsId: string;
+  /** Opt-out flag; absent means enabled. */
+  analyticsEnabled: string;
 }
 
 let store: Store | null = null;
@@ -275,6 +282,11 @@ export async function getPersister() {
 // Helper to generate unique IDs
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+/** RFC 4122 version 4 UUID for newly created transactions. */
+export function generateTransactionId(): string {
+  return uuid.v4();
 }
 
 // Helper to save changes

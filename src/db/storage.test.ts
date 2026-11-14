@@ -6,6 +6,10 @@ import {
   getAccounts,
   getCategories,
   LimitReachedError,
+  consumeReminderPrompt,
+  markReminderPromptSeen,
+  requestReminderPrompt,
+  shouldOfferReminderPrompt,
   updateAccount,
   updateCategory,
 } from './storage';
@@ -191,5 +195,27 @@ describe('free-tier create guards', () => {
     await addCategory({ name: 'Allowed category', icon: 'gift', type: 'expense' });
     expect(await getAccounts()).toHaveLength(3);
     expect(await getCategories()).toHaveLength(10);
+  });
+});
+
+describe('reminder prompt state', () => {
+  it('offers the prompt once, only while there are no transactions', async () => {
+    await expect(shouldOfferReminderPrompt()).resolves.toBe(true);
+
+    store.setRow('transactions', 'first', { type: 'expense' });
+    await expect(shouldOfferReminderPrompt()).resolves.toBe(false);
+
+    store.delRow('transactions', 'first');
+    await expect(shouldOfferReminderPrompt()).resolves.toBe(true);
+
+    await markReminderPromptSeen();
+    await expect(shouldOfferReminderPrompt()).resolves.toBe(false);
+  });
+
+  it('queues the prompt and consumes it only once', async () => {
+    await requestReminderPrompt();
+    await expect(consumeReminderPrompt()).resolves.toBe(true);
+    await expect(consumeReminderPrompt()).resolves.toBe(false);
+    await expect(shouldOfferReminderPrompt()).resolves.toBe(false);
   });
 });

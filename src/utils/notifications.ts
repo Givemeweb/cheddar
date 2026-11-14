@@ -1,11 +1,12 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { getAlarmSettings } from "../db/storage";
+import { getAlarmSettings, saveAlarmSettings } from "../db/storage";
 
 // Configure notifications
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -21,6 +22,22 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   }
 
   return finalStatus === "granted";
+}
+
+/**
+ * Called only after the user accepts the reminder prompt. Requests the OS
+ * permission, then turns on the existing reminder settings and schedules them.
+ */
+export async function enableReminderWithPermission(): Promise<boolean> {
+  const granted = await requestNotificationPermissions();
+  if (!granted) {
+    return false;
+  }
+
+  const settings = await getAlarmSettings();
+  await saveAlarmSettings({ ...settings, enabled: true });
+  await scheduleAlarmNotification();
+  return true;
 }
 
 export async function scheduleAlarmNotification(): Promise<string | null> {
@@ -90,14 +107,8 @@ export async function getScheduledNotifications(): Promise<Notifications.Notific
 }
 
 export async function initializeNotifications(): Promise<void> {
-  // Request permissions on app start
-  const granted = await requestNotificationPermissions();
-  if (!granted) {
-    console.log("Notification permissions not granted");
-    return;
-  }
-
-  // Configure Android channel
+  // Configure Android channel without prompting for permission. The prompt is
+  // shown once, after the first transaction is saved.
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("alarms", {
       name: "Expense Reminders",

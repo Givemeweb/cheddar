@@ -21,6 +21,7 @@ import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 import { getSubcategoriesEnabled, getSubcategories, addSubcategory, deleteSubcategory, getCategoryById } from '@/src/db';
 import { Category } from '@/src/db/storage';
+import { trackEvent } from '@/src/lib/analytics';
 
 interface Subcategory {
   id: string;
@@ -73,6 +74,7 @@ export default function SubcategoriesScreen() {
     if (!newSubcategoryName.trim() || !categoryId) return;
 
     await addSubcategory(categoryId, newSubcategoryName.trim());
+    trackEvent('subcategories.add');
     setNewSubcategoryName('');
     setShowAddModal(false);
 
@@ -80,7 +82,7 @@ export default function SubcategoriesScreen() {
     setSubcategories(subs);
   };
 
-  const handleDeleteSubcategory = (subcategory: Subcategory) => {
+  const handleDeleteSubcategory = async (subcategory: Subcategory) => {
     if (!categoryId) return;
 
     if (Platform.OS === 'web') {
@@ -88,8 +90,15 @@ export default function SubcategoriesScreen() {
         t('categories.deleteConfirmMessage', { name: subcategory.name })
       );
       if (confirmed) {
-        deleteSubcategory(subcategory.id);
-        setSubcategories(prev => prev.filter(s => s.id !== subcategory.id));
+        try {
+          await deleteSubcategory(subcategory.id);
+          setSubcategories(prev => prev.filter(s => s.id !== subcategory.id));
+          trackEvent('subcategories.deleted');
+        } catch (error) {
+          console.error('Failed to delete subcategory:', error);
+        }
+      } else {
+        trackEvent('subcategories.delete_cancel');
       }
     } else {
       Alert.alert(
@@ -99,6 +108,7 @@ export default function SubcategoriesScreen() {
           {
             text: t('common.cancel'),
             style: 'cancel',
+            onPress: () => trackEvent('subcategories.delete_cancel'),
           },
           {
             text: t('common.delete'),
@@ -106,6 +116,7 @@ export default function SubcategoriesScreen() {
             onPress: async () => {
               await deleteSubcategory(subcategory.id);
               setSubcategories(prev => prev.filter(s => s.id !== subcategory.id));
+              trackEvent('subcategories.deleted');
             },
           },
         ]

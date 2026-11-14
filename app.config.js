@@ -93,6 +93,14 @@ module.exports = {
       '@react-native-community/datetimepicker',
       'expo-localization',
       'expo-sharing',
+      [
+        'expo-notifications',
+        {
+          icon: './assets/notification-icon.png',
+          color: '#FFB800',
+          defaultChannel: 'alarms',
+        },
+      ],
     ],
     extra: {
       appVariant,

@@ -15,6 +15,7 @@ import { getAccounts, deleteAccount, Account } from '@/src/db/storage';
 import { renderAccountIcon } from '@/src/components/accountIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '@/src/lib/analytics';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -40,12 +41,14 @@ export default function DeleteAccountScreen() {
     try {
       await deleteAccount(account.id);
       setAccounts(prev => prev.filter(a => a.id !== account.id));
+      trackEvent('accounts.deleted');
     } catch (error) {
       console.error('Failed to delete account:', error);
     }
   };
 
   const handleDelete = (account: Account) => {
+    trackEvent('accounts.delete_pressed');
     if (Platform.OS === 'web') {
       // Use browser confirm on web
       const confirmed = window.confirm(
@@ -53,6 +56,8 @@ export default function DeleteAccountScreen() {
       );
       if (confirmed) {
         performDelete(account);
+      } else {
+        trackEvent('accounts.delete_cancel');
       }
     } else {
       Alert.alert(
@@ -62,6 +67,7 @@ export default function DeleteAccountScreen() {
           {
             text: t('common.cancel'),
             style: 'cancel',
+            onPress: () => trackEvent('accounts.delete_cancel'),
           },
           {
             text: t('common.delete'),

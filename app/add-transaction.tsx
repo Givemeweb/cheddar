@@ -19,7 +19,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
-import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account } from '@/src/db/storage';
+import { getCategories, getAccounts, getTransactions, addTransaction, updateTransaction, getTransactionById, deleteTransaction, Category, Account, shouldOfferReminderPrompt, requestReminderPrompt } from '@/src/db/storage';
 import { getSubcategoriesEnabled, getSubcategories, type Subcategory } from '@/src/db';
 import { saveImage, deleteImage, getImageUri } from '@/src/utils/imageStorage';
 import DateTimePicker from '@/src/components/DateTimePicker';
@@ -38,6 +38,7 @@ import {
 import { useTheme } from '@/src/components/ThemeProvider';
 import { CURRENCIES, getCurrencySymbol, resolveAccountCurrency, convertAmountWithRates } from '@/src/db/currency';
 import { formatNumber } from '@/src/utils/formatNumber';
+import { trackEvent } from '@/src/lib/analytics';
 
 type TransactionType = 'income' | 'expense' | 'transfer';
 type SelectionMode = 'none' | 'account' | 'category' | 'subcategory' | 'fromAccount' | 'toAccount';
@@ -298,6 +299,17 @@ export default function AddTransactionScreen() {
 
         const parsedAmount = parseFloat(amount.replace(',', '.'));
 
+        // Decide before saving: this is the only moment the transaction table is
+        // still empty and we can tell this is the user's first transaction.
+        // The analytics flag is a true count; the native reminder has its own
+        // once-ever gate.
+        const isFirstTransaction =
+            !isEditing && (await getTransactions()).length === 0;
+        const shouldShowReminderPrompt =
+            !isEditing &&
+            Platform.OS !== 'web' &&
+            (await shouldOfferReminderPrompt());
+
         // Convert into the account currency, because account balances are kept
         // in that currency. Same-currency entries skip the network entirely.
         const targetCurrency = accountCurrency;
@@ -388,11 +400,32 @@ export default function AddTransactionScreen() {
             }
         }
 
+        trackEvent(isEditing ? 'transaction.updated' : 'transaction.created', {
+            type,
+            currency: effectiveCurrency,
+            hasImage: !!imagePath,
+            ...(isEditing ? {} : { first: isFirstTransaction }),
+        });
+
+        if (shouldShowReminderPrompt) {
+            // Queue the prompt for the home screen. The add screen closes first,
+            // so the modal appears over the transaction list, not this form.
+            try {
+                await requestReminderPrompt();
+            } catch (error) {
+                console.warn("Could not queue reminder prompt:", error);
+            }
+            Keyboard.dismiss();
+            router.back();
+            return;
+        }
+
         router.back();
     };
 
     const handleDelete = () => {
         if (!isEditing || !transactionId) return;
+        trackEvent('transaction_form.delete_pressed');
 
         const performDelete = async () => {
             // Delete associated image if exists
@@ -400,6 +433,7 @@ export default function AddTransactionScreen() {
                 await deleteImage(imagePath);
             }
             await deleteTransaction(transactionId);
+            trackEvent('transaction_form.deleted');
             router.back();
         };
 
@@ -408,13 +442,19 @@ export default function AddTransactionScreen() {
             const confirmed = window.confirm(t('transactions.deleteConfirm'));
             if (confirmed) {
                 performDelete();
+            } else {
+                trackEvent('transaction_form.delete_cancel');
             }
         } else {
             Alert.alert(
                 t('transactions.deleteTransaction'),
                 t('transactions.deleteConfirm'),
                 [
-                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                        text: t('common.cancel'),
+                        style: 'cancel',
+                        onPress: () => trackEvent('transaction_form.delete_cancel'),
+                    },
                     {
                         text: t('common.delete'),
                         style: 'destructive',
@@ -458,6 +498,7 @@ export default function AddTransactionScreen() {
                     setImagePath(savedPath);
                     // For display, use the constructed path for saved images
                     setDisplayImageUri(getImageUri(savedPath));
+                    trackEvent('transaction_form.image_add', { source: 'library' });
                 }
                 setImageLoading(false);
             }
@@ -499,6 +540,7 @@ export default function AddTransactionScreen() {
                     setImagePath(savedPath);
                     // For display, use the constructed path for saved images
                     setDisplayImageUri(getImageUri(savedPath));
+                    trackEvent('transaction_form.image_add', { source: 'camera' });
                 }
                 setImageLoading(false);
             }
@@ -560,6 +602,7 @@ export default function AddTransactionScreen() {
             await deleteImage(imagePath);
             setImagePath(null);
             setDisplayImageUri(null);
+            trackEvent('transaction_form.image_remove');
         }
     };
 
@@ -639,6 +682,9 @@ export default function AddTransactionScreen() {
     };
 
     const handleTypeChange = (newType: TransactionType) => {
+        if (newType !== type) {
+            trackEvent('transaction_form.type_change', { type: newType });
+        }
         setType(newType);
         setCurrency(null);
         setSelectedCategoryId(null);
@@ -723,7 +769,10 @@ export default function AddTransactionScreen() {
           className={`flex-row items-center justify-between px-4 py-3 border-b ${isDark ? "bg-[#26282D] border-gray-700" : "bg-white border-gray-200"}`}
         >
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              trackEvent('transaction_form.close');
+              router.back();
+            }}
             className="w-8 items-center justify-center"
           >
             <Text
@@ -854,7 +903,10 @@ export default function AddTransactionScreen() {
                     {t("transactions.category")}
                   </Text>
                   <Pressable
-                    onPress={() => router.push(type === 'income' ? '/configuration/income-categories' as never : '/configuration/expense-categories' as never)}
+                    onPress={() => {
+                      trackEvent('transaction_form.category_manage');
+                      router.push(type === 'income' ? '/configuration/income-categories' as never : '/configuration/expense-categories' as never);
+                    }}
                     className="p-1"
                   >
                     <Pencil size={16} color="#FFB800" />
@@ -1097,6 +1149,7 @@ export default function AddTransactionScreen() {
                     key={index}
                     className={`p-3 border-b ${isDark ? "border-gray-600" : "border-gray-200"}`}
                     onPress={() => {
+                      trackEvent('transaction_form.note_suggestion_used');
                       setNote(suggestion);
                       setShowNoteSuggestions(false);
                       Keyboard.dismiss();
@@ -1363,6 +1416,7 @@ export default function AddTransactionScreen() {
                     <Pressable
                       key={c.code}
                       onPress={() => {
+                        trackEvent('transaction_form.currency_change', { currency: c.code });
                         setCurrency(c.code === accountCurrency ? null : c.code);
                         setShowCurrencyPicker(false);
                       }}

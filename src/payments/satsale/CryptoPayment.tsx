@@ -23,6 +23,7 @@ import {
 import { useTheme } from '../../components/ThemeProvider';
 import { usePremium } from '../PaymentContext';
 import type { CryptoInvoice, CryptoStatus } from '../PaymentContext';
+import { trackEvent } from '../../lib/analytics';
 import { SatSaleApiError, normalizeLicense } from './api';
 import type {
   CryptoPaywallActionProps,
@@ -231,15 +232,18 @@ export function CryptoRestoreForm(_props: CryptoRestoreFormProps) {
     setMessage(null);
     try {
       const status = await crypto.restoreLicense(license);
+      trackEvent('bitcoin.restore_checked', { status: status.status });
       setMessage(restoreMessage(status.status));
     } catch (error) {
       if (
         error instanceof SatSaleApiError &&
         error.code === 'invalid_license'
       ) {
+        trackEvent('bitcoin.restore_failed', { reason: 'invalid' });
         setMessage({ kind: 'error', text: COPY.restoreInvalid });
       } else {
         console.warn('[crypto] Failed to restore the license', error);
+        trackEvent('bitcoin.restore_failed', { reason: 'error' });
         setMessage({ kind: 'error', text: COPY.restoreError });
       }
     } finally {
@@ -368,6 +372,7 @@ export function CryptoPaymentModal({ onClose }: CryptoPaymentModalProps) {
   const applyStatus = useCallback(
     (next: CryptoStatus) => {
       if (next.status === 'paid') {
+        trackEvent('bitcoin.payment_confirmed');
         setLicense(next.licenseFormatted || next.license);
         setPhaseSafe('confirmed');
         return;
@@ -378,6 +383,7 @@ export function CryptoPaymentModal({ onClose }: CryptoPaymentModalProps) {
         next.status === 'invalid' ||
         next.status === 'revoked'
       ) {
+        trackEvent('bitcoin.invoice_closed', { status: next.status });
         setPhaseSafe('expired');
         return;
       }
@@ -419,11 +425,13 @@ export function CryptoPaymentModal({ onClose }: CryptoPaymentModalProps) {
     try {
       const created = await payment.createInvoice();
       if (!mountedRef.current) return;
+      trackEvent('bitcoin.invoice_created');
       applyInvoice(created);
       setPhaseSafe('awaiting');
     } catch (error) {
       if (!mountedRef.current) return;
       console.warn('[crypto] Failed to create an invoice', error);
+      trackEvent('bitcoin.invoice_failed');
       setErrorActionSafe('create');
       setPhaseSafe('error');
     }
@@ -434,6 +442,10 @@ export function CryptoPaymentModal({ onClose }: CryptoPaymentModalProps) {
       const payment = cryptoRef.current;
       const current = invoiceRef.current;
       if (!payment || !current) return;
+
+      if (manual) {
+        trackEvent('bitcoin.check_pressed');
+      }
 
       if (checkingRef.current) {
         // A poll is already in flight. A manual tap still gets feedback; the

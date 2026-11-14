@@ -32,6 +32,7 @@ import {
   getLatestRates,
   RatesCache,
 } from "../../src/services/exchangeRates";
+import { trackEvent } from "../../src/lib/analytics";
 
 type CategoryStat = {
   id: string;
@@ -105,6 +106,9 @@ export default function StatsScreen() {
       router.push(statsPaywallHref("statsHistory"));
       return;
     }
+    trackEvent('stats.month_change', {
+      direction: offset < 0 ? 'prev' : 'next',
+    });
     setCurrentDate(target);
   };
 
@@ -257,6 +261,12 @@ export default function StatsScreen() {
   const isAccountSelected = (accountId: string | null) =>
     selectedAccountId === accountId;
 
+  const handleTabChange = (tab: "income" | "expense") => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    trackEvent('stats.tab_change', { tab });
+  };
+
   return (
     <SafeAreaView
       className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
@@ -295,7 +305,11 @@ export default function StatsScreen() {
             contentContainerStyle={{ paddingRight: 16 }}
           >
             <Pressable
-              onPress={() => setSelectedAccountId(null)}
+              onPress={() => {
+                if (selectedAccountId === null) return;
+                setSelectedAccountId(null);
+                trackEvent('stats.account_filter', { scope: 'all' });
+              }}
               className={`flex-row items-center mr-2 px-3 py-2 rounded-full border ${
                 isAccountSelected(null)
                   ? "bg-cheddar-yellow border-cheddar-yellow"
@@ -319,7 +333,11 @@ export default function StatsScreen() {
             {accounts.map((account) => (
               <Pressable
                 key={account.id}
-                onPress={() => setSelectedAccountId(account.id)}
+                onPress={() => {
+                  if (selectedAccountId === account.id) return;
+                  setSelectedAccountId(account.id);
+                  trackEvent('stats.account_filter', { scope: 'account' });
+                }}
                 className={`flex-row items-center mr-2 px-3 py-2 rounded-full border ${
                   isAccountSelected(account.id)
                     ? "bg-cheddar-yellow border-cheddar-yellow"
@@ -364,7 +382,7 @@ export default function StatsScreen() {
           className={`flex-row ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
         >
           <Pressable
-            onPress={() => setActiveTab("income")}
+            onPress={() => handleTabChange("income")}
             className={`flex-1 py-3 rounded-lg ${activeTab === "income" ? "bg-cheddar-yellow" : ""}`}
           >
             <Text
@@ -374,7 +392,7 @@ export default function StatsScreen() {
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => setActiveTab("expense")}
+            onPress={() => handleTabChange("expense")}
             className={`flex-1 py-3 rounded-lg ${activeTab === "expense" ? "bg-cheddar-yellow" : ""}`}
           >
             <Text
@@ -443,7 +461,13 @@ export default function StatsScreen() {
                     onPress={
                       stat.isTransfer
                         ? undefined
-                        : () => router.push(`/?categoryId=${stat.id}` as never)
+                        : () => {
+                            trackEvent('stats.category_open', {
+                              tab: activeTab,
+                              kind: 'category',
+                            });
+                            router.push(`/?categoryId=${stat.id}` as never);
+                          }
                     }
                   >
                     <View

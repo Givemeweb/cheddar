@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -23,12 +23,28 @@ import {
   usePremium,
 } from '../src/components/PremiumProvider';
 import { FREE_LIMITS } from '../src/db/premium';
+import { trackEvent } from '../src/lib/analytics';
+
+const PAYWALL_REASONS = [
+  'import',
+  'accounts',
+  'categories',
+  'statsHistory',
+  'totalStats',
+] as const;
+type PaywallReason = (typeof PAYWALL_REASONS)[number];
+
+const isPaywallReason = (value: unknown): value is PaywallReason =>
+  typeof value === 'string' &&
+  (PAYWALL_REASONS as readonly string[]).includes(value);
 
 export default function PaywallScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const { t } = useTranslation();
-  const { reason } = useLocalSearchParams<{ reason?: string }>();
+  const { reason } = useLocalSearchParams<{ reason?: string | string[] }>();
+  const rawReason = Array.isArray(reason) ? reason[0] : reason;
+  const paywallReason = isPaywallReason(rawReason) ? rawReason : undefined;
   const {
     isPremium,
     isLoading,
@@ -44,6 +60,16 @@ export default function PaywallScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (paywallReason) {
+      trackEvent(
+        'paywall.limit_shown',
+        { reason: paywallReason },
+        '/paywall',
+      );
+    }
+  }, [paywallReason]);
+
   const price = lifetimePackage?.product.priceString;
   const benefits = (
     ['accounts', 'categories', 'stats', 'totalStats'] as const
@@ -52,7 +78,7 @@ export default function PaywallScreen() {
     label: t(`premium.benefits.${id}`),
   }));
   let limitMessage: string | null = null;
-  switch (reason) {
+  switch (paywallReason) {
     case 'import':
       limitMessage = t('premium.limit.import', {
         accounts: FREE_LIMITS.accounts,
@@ -61,18 +87,19 @@ export default function PaywallScreen() {
       break;
     case 'accounts':
     case 'categories':
-      limitMessage = t(`premium.limit.${reason}`, {
-        limit: FREE_LIMITS[reason],
+      limitMessage = t(`premium.limit.${paywallReason}`, {
+        limit: FREE_LIMITS[paywallReason],
       });
       break;
     case 'statsHistory':
     case 'totalStats':
-      limitMessage = t(`premium.limit.${reason}`);
+      limitMessage = t(`premium.limit.${paywallReason}`);
       break;
   }
 
   const handleRetryOfferings = async () => {
     if (busy !== null || retryingOfferings) return;
+    trackEvent('paywall.offerings_retry');
     setError(null);
     setMessage(null);
     setRetryingOfferings(true);
@@ -88,6 +115,7 @@ export default function PaywallScreen() {
 
   const handlePurchase = async () => {
     if (busy !== null || retryingOfferings) return;
+    trackEvent('paywall.purchase_pressed');
     setError(null);
     setMessage(null);
     setBusy('purchase');
@@ -95,11 +123,16 @@ export default function PaywallScreen() {
       const active = await purchaseLifetime();
       if (active) {
         setMessage(t('premium.purchased'));
+        trackEvent('paywall.purchase_success');
+      } else {
+        trackEvent('paywall.purchase_cancelled');
       }
     } catch (purchaseError) {
       if (purchaseError instanceof PremiumNotGrantedError) {
+        trackEvent('paywall.purchase_failed', { reason: 'not_granted' });
         setError(t('premium.notGranted'));
       } else {
+        trackEvent('paywall.purchase_failed', { reason: 'error' });
         setError(t('premium.error'));
       }
     } finally {
@@ -109,14 +142,19 @@ export default function PaywallScreen() {
 
   const handleRestore = async () => {
     if (busy !== null || retryingOfferings) return;
+    trackEvent('paywall.restore_pressed');
     setError(null);
     setMessage(null);
     setBusy('restore');
     try {
       const active = await restorePurchases();
+      trackEvent(
+        active ? 'paywall.restore_success' : 'paywall.restore_no_entitlement',
+      );
       setMessage(active ? t('premium.restored') : t('premium.notRestored'));
     } catch (restoreError) {
       console.warn('[premium] Restore failed', restoreError);
+      trackEvent('paywall.restore_failed');
       setError(t('premium.error'));
     } finally {
       setBusy(null);
@@ -252,7 +290,10 @@ export default function PaywallScreen() {
             <CryptoPaywallAction
               pending={crypto.pendingInvoice !== null}
               disabled={isLoading || retryingOfferings}
-              onPress={() => setShowBitcoinPayment(true)}
+              onPress={() => {
+                trackEvent('paywall.bitcoin_open');
+                setShowBitcoinPayment(true);
+              }}
             />
           ) : (
             <TouchableOpacity

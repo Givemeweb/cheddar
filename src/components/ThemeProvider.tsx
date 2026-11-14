@@ -10,6 +10,7 @@ import { getTheme, setTheme, ThemeMode } from '../db/theme';
 import { getShowIcons, setShowIcons } from '../db/icons';
 import { getMainCurrencyCode, setMainCurrencyCode, getTotalAssetsCurrencyCode, setTotalAssetsCurrencyCode, getCurrencySymbol, DEFAULT_CURRENCY_SYMBOL, DEFAULT_CURRENCY_CODE } from '../db/currency';
 import { getSubcategoriesEnabled, setSubcategoriesEnabled as persistSubcategoriesEnabled } from '../db/subcategories';
+import { trackEvent } from '../lib/analytics';
 import { useDatabase } from './DatabaseProvider';
 
 export type { ThemeMode } from '../db/theme';
@@ -100,17 +101,20 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const handleSetThemeMode = async (mode: ThemeMode) => {
     setThemeModeState(mode);
+    trackEvent('settings.theme_select', { theme: mode });
     await setTheme(mode);
   };
 
   const handleSetShowIcons = async (show: boolean) => {
     setShowIconsState(show);
+    trackEvent('settings.icons_toggle', { enabled: show });
     await setShowIcons(show);
   };
 
   const handleSetCurrency = async (code: string) => {
     setCurrencyCodeState(code);
     setCurrencySymbolState(getCurrencySymbol(code));
+    trackEvent('settings.currency_select', { currency: code });
     await setMainCurrencyCode(code);
     // When the total-assets card follows the main currency, keep its symbol in sync.
     setTotalAssetsCurrencyCodeState((prev) => {
@@ -124,11 +128,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const handleSetTotalAssetsCurrency = async (code: string | null) => {
     setTotalAssetsCurrencyCodeState(code);
     setTotalAssetsCurrencySymbolState(getCurrencySymbol(code ?? currencyCode));
+    trackEvent('settings.total_assets_currency_select', {
+      currency: code ?? 'main',
+    });
     await setTotalAssetsCurrencyCode(code);
   };
 
   const handleSetSubcategoriesEnabled = async (enabled: boolean) => {
     setSubcategoriesEnabledState(enabled);
+    trackEvent('settings.subcategories_toggle', { enabled });
     await persistSubcategoriesEnabled(enabled);
   };
 

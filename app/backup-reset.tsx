@@ -6,6 +6,7 @@ import { Trash2, AlertTriangle } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
 import { clearAllData } from "../src/db";
 import { initDatabase } from "../src/db/tinybase";
+import { trackEvent } from "../src/lib/analytics";
 
 export default function BackupResetScreen() {
   const router = useRouter();
@@ -15,12 +16,16 @@ export default function BackupResetScreen() {
   const resetInfoParts = t("backup.resetInfo").split("export a backup");
 
   const handleReset = () => {
+    trackEvent('backup.reset_pressed');
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(
         `${t("backup.resetConfirmTitle")}\n\n${t("backup.resetConfirmMessage")}`
       );
       if (confirmed) {
+        trackEvent('backup.reset_confirmed');
         confirmReset();
+      } else {
+        trackEvent('backup.reset_cancelled');
       }
     } else {
       Alert.alert(
@@ -30,11 +35,15 @@ export default function BackupResetScreen() {
           {
             text: t("common.cancel"),
             style: "cancel",
+            onPress: () => trackEvent('backup.reset_cancelled'),
           },
           {
             text: t("backup.resetButton"),
             style: "destructive",
-            onPress: confirmReset,
+            onPress: () => {
+              trackEvent('backup.reset_confirmed');
+              confirmReset();
+            },
           },
         ]
       );
@@ -46,6 +55,7 @@ export default function BackupResetScreen() {
       await clearAllData();
       // Re-initialize database with default data (force reinit to seed defaults)
       await initDatabase(true);
+      trackEvent('backup.reset_success');
       if (Platform.OS === 'web') {
         window.alert(`${t("backup.resetSuccessTitle")}\n\n${t("backup.resetSuccessMessage")}`);
         router.back();
@@ -58,6 +68,7 @@ export default function BackupResetScreen() {
       }
     } catch (error) {
       console.error("Reset failed:", error);
+      trackEvent('backup.reset_failed');
       if (Platform.OS === 'web') {
         window.alert(`${t("backup.resetError")}\n\n${t("backup.resetFailed")}`);
       } else {
