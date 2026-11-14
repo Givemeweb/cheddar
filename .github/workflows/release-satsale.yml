@@ -96,6 +96,44 @@ jobs:
           esac
           printf 'EXPO_PUBLIC_SATSALE_API_URL=%s\n' "$SATSALE_API_URL" > .env
 
+      - name: Write Umami analytics config
+        env:
+          UMAMI_URL: ${{ vars.EXPO_PUBLIC_UMAMI_URL || secrets.EXPO_PUBLIC_UMAMI_URL }}
+          UMAMI_WEBSITE_ID: ${{ vars.EXPO_PUBLIC_UMAMI_WEBSITE_ID || secrets.EXPO_PUBLIC_UMAMI_WEBSITE_ID }}
+          UMAMI_DASHBOARD_URL: ${{ vars.EXPO_PUBLIC_UMAMI_DASHBOARD_URL || secrets.EXPO_PUBLIC_UMAMI_DASHBOARD_URL }}
+        run: |
+          case "$UMAMI_URL" in
+            "")
+              ;;
+            https://localhost*|https://127.*|https://0.0.0.0*|https://\[::1\]*)
+              echo "::error::EXPO_PUBLIC_UMAMI_URL must not point at a local host."
+              exit 1
+              ;;
+            https://*)
+              ;;
+            *)
+              echo "::error::EXPO_PUBLIC_UMAMI_URL must be a non-local https:// endpoint."
+              exit 1
+              ;;
+          esac
+
+          if { [ -n "$UMAMI_URL" ] && [ -z "$UMAMI_WEBSITE_ID" ]; } ||
+             { [ -z "$UMAMI_URL" ] && [ -n "$UMAMI_WEBSITE_ID" ]; }; then
+            echo "::error::Set both EXPO_PUBLIC_UMAMI_URL and EXPO_PUBLIC_UMAMI_WEBSITE_ID, or neither."
+            exit 1
+          fi
+
+          if [ -z "$UMAMI_URL" ]; then
+            echo "::warning::Umami analytics is not configured; analytics will be disabled."
+          else
+            printf 'EXPO_PUBLIC_UMAMI_URL=%s\n' "$UMAMI_URL" >> .env
+            printf 'EXPO_PUBLIC_UMAMI_WEBSITE_ID=%s\n' "$UMAMI_WEBSITE_ID" >> .env
+            if [ -n "$UMAMI_DASHBOARD_URL" ]; then
+              printf 'EXPO_PUBLIC_UMAMI_DASHBOARD_URL=%s\n' "$UMAMI_DASHBOARD_URL" >> .env
+            fi
+            echo "Umami analytics config written."
+          fi
+
       - name: Build variant guardrail
         timeout-minutes: 20
         run: npm run guardrail -- --gradle
@@ -147,6 +185,8 @@ jobs:
         env:
           SATSALE_CERT_SHA256: ${{ secrets.SATSALE_CERT_SHA256 }}
           SATSALE_API_URL: ${{ vars.EXPO_PUBLIC_SATSALE_API_URL || secrets.EXPO_PUBLIC_SATSALE_API_URL }}
+          UMAMI_URL: ${{ vars.EXPO_PUBLIC_UMAMI_URL || secrets.EXPO_PUBLIC_UMAMI_URL }}
+          UMAMI_WEBSITE_ID: ${{ vars.EXPO_PUBLIC_UMAMI_WEBSITE_ID || secrets.EXPO_PUBLIC_UMAMI_WEBSITE_ID }}
         run: |
           : "${ANDROID_HOME:?ANDROID_HOME must be set to locate apksigner and aapt}"
 
@@ -223,6 +263,27 @@ jobs:
             rm -f "$BUNDLE"
             exit 1
           fi
+
+          if [ -n "$UMAMI_URL" ]; then
+            if [ -z "$UMAMI_WEBSITE_ID" ]; then
+              echo "::error::EXPO_PUBLIC_UMAMI_WEBSITE_ID is not set."
+              rm -f "$BUNDLE"
+              exit 1
+            fi
+
+            if ! grep -qF "$UMAMI_URL" "$BUNDLE"; then
+              echo "::error::APK bundle does not contain EXPO_PUBLIC_UMAMI_URL; analytics config was not bundled."
+              rm -f "$BUNDLE"
+              exit 1
+            fi
+
+            if ! grep -qF "$UMAMI_WEBSITE_ID" "$BUNDLE"; then
+              echo "::error::APK bundle does not contain EXPO_PUBLIC_UMAMI_WEBSITE_ID; analytics config was not bundled."
+              rm -f "$BUNDLE"
+              exit 1
+            fi
+          fi
+
           rm -f "$BUNDLE"
 
           ABIS=$(unzip -Z1 "$APK" | sed -n 's#^lib/\([^/]*\)/.*#\1#p' | sort -u | tr '\n' ' ')
