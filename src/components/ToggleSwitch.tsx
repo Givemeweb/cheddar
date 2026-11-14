@@ -16,9 +16,14 @@ const PADDING = 4;
 type ToggleSwitchProps = {
   value: boolean;
   onValueChange: (value: boolean) => void;
+  accessibilityLabel?: string;
 };
 
-export function ToggleSwitch({ value, onValueChange }: ToggleSwitchProps) {
+export function ToggleSwitch({
+  value,
+  onValueChange,
+  accessibilityLabel,
+}: ToggleSwitchProps) {
   const { isDark } = useTheme();
 
   const thumbPosition = useSharedValue(value ? 1 : 0);
@@ -63,13 +68,18 @@ export function ToggleSwitch({ value, onValueChange }: ToggleSwitchProps) {
     transform: [{ translateX: value ? (TOGGLE_WIDTH - THUMB_SIZE - PADDING * 2) : 0 }],
   };
 
+  const touchableProps = {
+    style: styles.container,
+    onPress: () => onValueChange(!value),
+    activeOpacity: 0.8,
+    accessibilityRole: "switch" as const,
+    accessibilityState: { checked: value },
+    accessibilityLabel,
+  };
+
   if (Platform.OS === "web") {
     return (
-      <TouchableOpacity
-        style={styles.container}
-        onPress={() => onValueChange(!value)}
-        activeOpacity={0.8}
-      >
+      <TouchableOpacity {...touchableProps}>
         <View style={[styles.track, styles.trackWeb, webTrackStyle]}>
           <View style={[styles.thumb, styles.thumbWeb, webThumbStyle]} />
         </View>
@@ -78,11 +88,7 @@ export function ToggleSwitch({ value, onValueChange }: ToggleSwitchProps) {
   }
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={() => onValueChange(!value)}
-      activeOpacity={0.8}
-    >
+    <TouchableOpacity {...touchableProps}>
       <Animated.View style={[styles.track, animatedTrackStyle]}>
         <Animated.View style={[styles.thumb, animatedThumbStyle]} />
       </Animated.View>

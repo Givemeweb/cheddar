@@ -80,6 +80,10 @@ export interface ValuesSchema {
   alarmDays: string;
   reminderPromptSeen: string;
   reminderPromptPending: string;
+  /** Anonymous per-install id for Umami; random, no PII. */
+  analyticsId: string;
+  /** Opt-out flag; absent means enabled. */
+  analyticsEnabled: string;
 }
 
 let store: Store | null = null;

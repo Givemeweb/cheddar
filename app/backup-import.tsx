@@ -9,6 +9,7 @@ import { File } from 'expo-file-system';
 import { useTheme } from '../src/components/ThemeProvider';
 import { LimitReachedError } from '../src/db/storage';
 import { importDatabaseFromZip, ImportResult } from '../src/utils/backup';
+import { trackEvent } from '../src/lib/analytics';
 
 // Previous format selection types and options (preserved for future restoration)
 // type ImportFormat = 'zip' | 'sql' | 'json';
@@ -38,6 +39,7 @@ export default function BackupImportScreen() {
       router.push({ pathname: '/paywall', params: { reason: 'import' } });
       return;
     }
+    trackEvent('backup.import_failed', { kind: 'zip' });
     setImportResult('error');
     setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
   };
@@ -67,8 +69,7 @@ export default function BackupImportScreen() {
         await processFileNative(asset.uri, asset.name);
       } catch (error) {
         console.error('Import error:', error);
-        setImportResult('error');
-        setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
+        showImportError(error);
       }
     }
   };
@@ -80,6 +81,7 @@ export default function BackupImportScreen() {
     setErrorMessage(null);
 
     try {
+      trackEvent('backup.import_started', { kind: 'zip' });
       // Read the file as base64 using the File API
       const file = new File(uri);
       const base64 = await file.base64();
@@ -87,6 +89,7 @@ export default function BackupImportScreen() {
 
       setImportData(result);
       setImportResult('success');
+      trackEvent('backup.import_success', { kind: 'zip' });
     } catch (error) {
       console.error('Import error:', error);
       showImportError(error);
@@ -140,12 +143,14 @@ export default function BackupImportScreen() {
     setErrorMessage(null);
 
     try {
+      trackEvent('backup.import_started', { kind: 'zip' });
       const arrayBuffer = await file.arrayBuffer();
       const base64 = arrayBufferToBase64(arrayBuffer);
       const result = await importDatabaseFromZip(base64);
 
       setImportData(result);
       setImportResult('success');
+      trackEvent('backup.import_success', { kind: 'zip' });
     } catch (error) {
       console.error('Import error:', error);
       showImportError(error);

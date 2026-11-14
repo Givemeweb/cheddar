@@ -14,6 +14,7 @@ import { addCategory, LimitReachedError } from '@/src/db/storage';
 import { categoryIconOptions } from '@/src/components/categoryIcons';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '@/src/lib/analytics';
 
 type IconOption = {
   name: string;
@@ -40,6 +41,7 @@ export default function AddExpenseCategoryScreen() {
         icon: selectedIcon,
         type: 'expense',
       });
+      trackEvent('categories.saved', { type: 'expense', mode: 'create' });
       router.back();
     } catch (error) {
       if (error instanceof LimitReachedError) {

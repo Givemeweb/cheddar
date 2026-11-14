@@ -126,7 +126,15 @@
     "themeDarkDesc": "Always use dark theme",
     "display": "Display",
     "showIcons": "Show Icons",
-    "showIconsDesc": "Display category icons in transactions"
+    "showIconsDesc": "Display category icons in transactions",
+    "privacy": "Privacy",
+    "analytics": "Share anonymous usage data",
+    "analyticsDesc": "See which screens and buttons get used. No amounts, notes, or account details.",
+    "analyticsNote": "Nothing hidden. The same anonymous numbers we see are public.",
+    "analyticsNoteNoLink": "No amounts, notes, or account details are ever sent.",
+    "analyticsDashboard": "Open the dashboard",
+    "analyticsSaveError": "Could not save the privacy setting",
+    "analyticsSaveErrorDesc": "Your change was not saved. Please try again."
   },
   "more": {
     "title": "More",

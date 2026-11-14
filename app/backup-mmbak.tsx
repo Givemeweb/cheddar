@@ -8,6 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../src/components/ThemeProvider';
 import { LimitReachedError } from '../src/db/storage';
 import type { MMBakImportResult } from '../src/utils/mmbakImport';
+import { trackEvent } from '../src/lib/analytics';
 
 // Platform-specific imports
 // Note: We use require() directly as Metro bundler handles platform resolution
@@ -30,6 +31,7 @@ export default function BackupMMBakScreen() {
       router.push({ pathname: '/paywall', params: { reason: 'import' } });
       return;
     }
+    trackEvent('backup.import_failed', { kind: 'mmbak' });
     setImportResult('error');
     setErrorMessage(error instanceof Error ? error.message : t('backup.importFailed'));
   };
@@ -61,6 +63,7 @@ export default function BackupMMBakScreen() {
       setImportResult(null);
       setImportData(null);
       setErrorMessage(null);
+      trackEvent('backup.import_started', { kind: 'mmbak' });
 
       // Validate file (throws with detailed error message)
       // @ts-ignore - Platform-specific module
@@ -71,6 +74,7 @@ export default function BackupMMBakScreen() {
       const importResult = await importFromMMBak(asset.uri);
       setImportData(importResult);
       setImportResult('success');
+      trackEvent('backup.import_success', { kind: 'mmbak' });
     } catch (error) {
       console.error('Import error:', error);
       showImportError(error);
@@ -89,6 +93,7 @@ export default function BackupMMBakScreen() {
     setErrorMessage(null);
 
     try {
+      trackEvent('backup.import_started', { kind: 'mmbak' });
       // Validate file (throws with detailed error message)
       // @ts-ignore - Platform-specific module
       const { validateMMBakFile, importFromMMBak } = require('../src/utils/mmbakImport.web');
@@ -98,6 +103,7 @@ export default function BackupMMBakScreen() {
       const importResult = await importFromMMBak(file);
       setImportData(importResult);
       setImportResult('success');
+      trackEvent('backup.import_success', { kind: 'mmbak' });
     } catch (error) {
       console.error('Import error:', error);
       showImportError(error);

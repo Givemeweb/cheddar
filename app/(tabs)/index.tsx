@@ -34,6 +34,7 @@ import {
   getLatestRates,
   RatesCache,
 } from "../../src/services/exchangeRates";
+import { trackEvent } from "../../src/lib/analytics";
 
 export default function TransactionsScreen() {
   const [groupedTransactions, setGroupedTransactions] = useState<
@@ -61,6 +62,7 @@ export default function TransactionsScreen() {
   });
 
   const goToPreviousMonth = () => {
+    trackEvent('transactions.month_change', { direction: 'prev' });
     setCurrentDate((prev) => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() - 1);
@@ -69,6 +71,7 @@ export default function TransactionsScreen() {
   };
 
   const goToNextMonth = () => {
+    trackEvent('transactions.month_change', { direction: 'next' });
     setCurrentDate((prev) => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() + 1);
@@ -233,6 +236,7 @@ export default function TransactionsScreen() {
 
   const handleReminderAccept = async () => {
     if (reminderBusy) return;
+    trackEvent('reminder_prompt.accept');
     setReminderBusy(true);
     try {
       await enableReminderWithPermission();
@@ -246,6 +250,7 @@ export default function TransactionsScreen() {
 
   const handleReminderDecline = () => {
     if (reminderBusy) return;
+    trackEvent('reminder_prompt.decline');
     setShowReminderPrompt(false);
   };
 
@@ -380,6 +385,7 @@ export default function TransactionsScreen() {
             />
             <Pressable
               onPress={() => {
+                trackEvent('transactions.filter_clear');
                 router.setParams({ categoryId: undefined });
               }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

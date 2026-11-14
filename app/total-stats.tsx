@@ -17,6 +17,7 @@ import {
 } from "../src/services/exchangeRates";
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
+import { trackEvent } from "../src/lib/analytics";
 
 type ChartDimensions = { width: number; height: number } | null;
 
@@ -64,6 +65,9 @@ export default function TotalStatsScreen() {
     );
     // The current month is the newest one with data.
     if (target.getTime() > now.getTime()) return;
+    trackEvent('total_stats.month_change', {
+      direction: offset < 0 ? 'prev' : 'next',
+    });
     setCurrentDate(target);
   };
 

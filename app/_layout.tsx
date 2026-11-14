@@ -1,5 +1,6 @@
 import "../global.css";
-import { Stack } from "expo-router";
+import { useEffect } from "react";
+import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Platform, View, useWindowDimensions, StyleSheet } from "react-native";
 import { DatabaseProvider } from "../src/components/DatabaseProvider";
@@ -8,6 +9,7 @@ import { PremiumProvider } from "../src/components/PremiumProvider";
 import { PasscodeProvider, usePasscode } from "../src/components/PasscodeProvider";
 import { LockScreen } from "../src/components/LockScreen";
 import { SideNav } from "../src/components/SideNav";
+import { trackScreenView } from "../src/lib/analytics";
 import "../src/i18n";
 
 function ThemedApp() {
@@ -15,6 +17,13 @@ function ThemedApp() {
   const { needsAuthentication } = usePasscode();
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
+  const pathname = usePathname();
+
+  // One page view per route change, after the database (and the anonymous
+  // analytics id) is ready. The home tab shows as `/transactions`.
+  useEffect(() => {
+    trackScreenView(pathname === '/' ? '/transactions' : pathname);
+  }, [pathname]);
 
   if (needsAuthentication) {
     return (

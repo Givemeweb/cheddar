@@ -4,6 +4,25 @@
 delete process.env.EXPO_PUBLIC_SATSALE_API_URL;
 delete process.env.EXPO_PUBLIC_SATSALE_STAGING_API_URL;
 
+// Analytics must never reach the network from tests. Clearing the config makes
+// every tracking call a no-op; the storage module is mocked below so importing
+// analytics does not pull TinyBase's ESM build into Jest.
+delete process.env.EXPO_PUBLIC_UMAMI_URL;
+delete process.env.EXPO_PUBLIC_UMAMI_WEBSITE_ID;
+delete process.env.EXPO_PUBLIC_UMAMI_DASHBOARD_URL;
+
+jest.mock('./src/db/analytics', () => ({
+  getAnalyticsId: () => 'test-analytics-id',
+  isAnalyticsEnabled: () => true,
+  setAnalyticsEnabled: jest.fn(async () => {}),
+}));
+
+// EXPO_PUBLIC_* values can be inlined at transform time, so deleting the env
+// vars above is not enough on its own. Fail any accidental network call.
+global.fetch = jest.fn(() =>
+  Promise.reject(new Error('Network access is not allowed in tests')),
+);
+
 jest.mock('expo-file-system', () => ({
   File: jest.fn().mockImplementation(() => ({
     exists: true,

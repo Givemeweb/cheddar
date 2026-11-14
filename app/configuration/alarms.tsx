@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell } from "lucide-react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "../../src/components/ThemeProvider";
@@ -13,6 +13,7 @@ import {
   scheduleAlarmNotification,
   cancelAlarmNotifications,
 } from "../../src/utils/notifications";
+import { trackEvent } from "../../src/lib/analytics";
 
 const DAYS = [
   { key: 0, shortKey: "sun" },
@@ -35,6 +36,9 @@ export default function AlarmSettingsScreen() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  // iOS renders the picker inline, so onChange fires on every wheel movement.
+  // Debounce the analytics event until the user pauses.
+  const timeChangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -52,6 +56,7 @@ export default function AlarmSettingsScreen() {
       const granted = await requestNotificationPermissions();
       if (!granted) {
         // Show alert that permissions were denied
+        trackEvent('alarm.permission_denied');
         return;
       }
     }
@@ -59,6 +64,7 @@ export default function AlarmSettingsScreen() {
     const newSettings = { ...settings, enabled: value };
     setSettings(newSettings);
     await saveAlarmSettings(newSettings);
+    trackEvent('alarm.toggle', { enabled: value });
 
     if (value) {
       // Schedule notifications when enabled
@@ -78,6 +84,10 @@ export default function AlarmSettingsScreen() {
       const newSettings = { ...settings, time: newTime };
       setSettings(newSettings);
       await saveAlarmSettings(newSettings);
+      if (timeChangeTimer.current) clearTimeout(timeChangeTimer.current);
+      timeChangeTimer.current = setTimeout(() => {
+        trackEvent('alarm.time_change');
+      }, 600);
 
       if (settings.enabled) {
         // Reschedule notifications with updated time
@@ -100,6 +110,7 @@ export default function AlarmSettingsScreen() {
     const newSettings = { ...settings, days: newDays };
     setSettings(newSettings);
     await saveAlarmSettings(newSettings);
+    trackEvent('alarm.day_toggle', { day: dayKey });
 
     if (settings.enabled) {
       // Reschedule notifications with updated days

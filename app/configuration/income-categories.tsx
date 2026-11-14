@@ -26,6 +26,7 @@ import { useTheme } from '@/src/components/ThemeProvider';
 import { ToggleSwitch } from '@/src/components/ToggleSwitch';
 import { DraggableCategoryList } from '@/src/components/DraggableCategoryList';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '@/src/lib/analytics';
 
 export default function IncomeCategoriesScreen() {
   const router = useRouter();
@@ -47,14 +48,21 @@ export default function IncomeCategoriesScreen() {
     }, [loadCategories])
   );
 
-  const handleDelete = (category: Category) => {
+  const handleDelete = async (category: Category) => {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(
         t('categories.deleteConfirmMessage', { name: category.name })
       );
       if (confirmed) {
-        deleteCategory(category.id);
-        setCategories(prev => prev.filter(c => c.id !== category.id));
+        try {
+          await deleteCategory(category.id);
+          setCategories(prev => prev.filter(c => c.id !== category.id));
+          trackEvent('categories.deleted', { type: 'income' });
+        } catch (error) {
+          console.error('Failed to delete category:', error);
+        }
+      } else {
+        trackEvent('categories.delete_cancel', { type: 'income' });
       }
     } else {
       Alert.alert(
@@ -64,6 +72,7 @@ export default function IncomeCategoriesScreen() {
           {
             text: t('common.cancel'),
             style: 'cancel',
+            onPress: () => trackEvent('categories.delete_cancel', { type: 'income' }),
           },
           {
             text: t('common.delete'),
@@ -71,6 +80,7 @@ export default function IncomeCategoriesScreen() {
             onPress: async () => {
               await deleteCategory(category.id);
               setCategories(prev => prev.filter(c => c.id !== category.id));
+              trackEvent('categories.deleted', { type: 'income' });
             },
           },
         ]
@@ -119,7 +129,10 @@ export default function IncomeCategoriesScreen() {
           {t('categories.incomeCategories')}
         </Text>
         <TouchableOpacity
-          onPress={() => router.push('/configuration/add-income-category' as never)}
+          onPress={() => {
+            trackEvent('categories.add_open', { type: 'income' });
+            router.push('/configuration/add-income-category' as never);
+          }}
           className="p-1"
         >
           <Plus size={24} color="#FFB800" />
@@ -158,6 +171,10 @@ export default function IncomeCategoriesScreen() {
             subcategoriesEnabled={subcategoriesEnabled}
             renderIcon={renderIcon}
             onPressCategory={(category) => {
+              trackEvent('categories.open', {
+                type: 'income',
+                kind: subcategoriesEnabled ? 'subcategories' : 'edit',
+              });
               if (subcategoriesEnabled) {
                 router.push(`/configuration/subcategories?categoryId=${category.id}` as never);
               } else {
@@ -168,6 +185,7 @@ export default function IncomeCategoriesScreen() {
             onReorder={(next) => {
               setCategories(next);
               reorderCategories(next.map(c => c.id));
+              trackEvent('categories.reordered', { type: 'income' });
             }}
           />
         )}

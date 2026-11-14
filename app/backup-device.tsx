@@ -4,12 +4,14 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Upload, Download, ChevronRight, FileJson } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
+import { trackEvent } from "../src/lib/analytics";
 
 type MenuItem = {
   label: string;
   sublabel: string;
   icon: React.ReactNode;
   route: string;
+  target: "export" | "import" | "mmbak";
 };
 
 type MenuGroup = {
@@ -35,6 +37,7 @@ export default function BackupDeviceScreen() {
           sublabel: t('backup.exportBackupDesc'),
           icon: <Upload size={22} color="#10B981" />,
           route: "/backup-export",
+          target: "export",
         },
       ],
     },
@@ -47,12 +50,14 @@ export default function BackupDeviceScreen() {
           sublabel: t('backup.importBackupDesc'),
           icon: <Download size={22} color="#3B82F6" />,
           route: "/backup-import",
+          target: "import",
         },
         {
           label: t('backup.importMMBak'),
           sublabel: t('backup.importMMBakDesc'),
           icon: <FileJson size={22} color="#8B5CF6" />,
           route: "/backup-mmbak",
+          target: "mmbak",
         },
       ],
     },
@@ -115,7 +120,10 @@ export default function BackupDeviceScreen() {
                         : ""
                     }`}
                     activeOpacity={0.7}
-                    onPress={() => router.push(item.route as never)}
+                    onPress={() => {
+                      trackEvent('backup.row_open', { target: item.target });
+                      router.push(item.route as never);
+                    }}
                   >
                     <View className="flex-row items-center flex-1">
                       <View className="mr-3">{item.icon}</View>

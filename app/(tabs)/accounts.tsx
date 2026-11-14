@@ -21,6 +21,7 @@ import { usePremium } from "../../src/components/PremiumProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
 import { totalStatsDestination } from "../../src/utils/premiumAccess";
 import { Globe } from "lucide-react-native";
+import { trackEvent } from "../../src/lib/analytics";
 
 export default function AccountsScreen() {
   const router = useRouter();
@@ -102,6 +103,7 @@ export default function AccountsScreen() {
             <Pressable
               onPress={() => {
                 if (!isEntitlementLoaded) return;
+                trackEvent('accounts.total_stats_open', { premium: isPremium });
                 router.push(totalStatsDestination(isPremium));
               }}
               className="p-2 mr-1"
@@ -112,7 +114,10 @@ export default function AccountsScreen() {
               />
             </Pressable>
             <Pressable
-              onPress={() => setMenuVisible(!menuVisible)}
+              onPress={() => {
+                if (!menuVisible) trackEvent('accounts.menu_open');
+                setMenuVisible(!menuVisible);
+              }}
               className="p-2"
             >
               <Text
@@ -133,6 +138,7 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
+              trackEvent('accounts.menu_action', { action: 'add' });
               router.push("/configuration/add-account");
             }}
             className="px-4 py-3"
@@ -146,6 +152,7 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
+              trackEvent('accounts.menu_action', { action: 'delete' });
               router.push("/configuration/delete-account");
             }}
             className="px-4 py-3"
@@ -159,6 +166,7 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
+              trackEvent('accounts.menu_action', { action: 'reorder' });
               router.push("/configuration/reorder-accounts");
             }}
             className="px-4 py-3"
@@ -172,6 +180,9 @@ export default function AccountsScreen() {
           <Pressable
             onPress={() => {
               setMenuVisible(false);
+              trackEvent('accounts.menu_action', {
+                action: 'total_assets_currency',
+              });
               router.push("/configuration/total-assets-currency");
             }}
             className="px-4 py-3"
@@ -215,9 +226,10 @@ export default function AccountsScreen() {
         renderItem={({ item }) => {
           return (
             <Pressable
-              onPress={() =>
-                router.push(`/configuration/edit-account?id=${item.id}`)
-              }
+              onPress={() => {
+                trackEvent('accounts.open_account');
+                router.push(`/configuration/edit-account?id=${item.id}`);
+              }}
               className={`rounded-xl p-4 mb-3 flex-row items-center shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
             >
               {showIcons && (

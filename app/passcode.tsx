@@ -21,6 +21,7 @@ import {
   isBiometricEnabled,
   setBiometricEnabled,
 } from '../src/db/passcode';
+import { trackEvent } from '../src/lib/analytics';
 
 type Mode = 'disabled' | 'enable_step1' | 'enable_step2' | 'change_verify' | 'change_step1' | 'change_step2' | 'disable_verify';
 
@@ -97,6 +98,7 @@ export default function PasscodeScreen() {
             await setPasscode(newInput);
             await setPasscodeEnabled(true);
             setPasscodeEnabledState(true);
+            trackEvent(mode === 'change_step2' ? 'passcode.changed' : 'passcode.enabled');
             setMode('disabled');
             setInput('');
             setNewPasscode('');
@@ -118,6 +120,7 @@ export default function PasscodeScreen() {
           if (newInput === storedPasscode) {
             await setPasscodeEnabled(false);
             setPasscodeEnabledState(false);
+            trackEvent('passcode.disabled');
             setMode('disabled');
             setInput('');
             setError('');
@@ -159,6 +162,7 @@ export default function PasscodeScreen() {
   };
 
   const handleChangePasscode = () => {
+    trackEvent('passcode.change_started');
     setMode('change_verify');
     setInput('');
   };
@@ -176,6 +180,7 @@ export default function PasscodeScreen() {
       // Disable biometric
       await setBiometricEnabled(false);
       setBiometricEnabledState(false);
+      trackEvent('passcode.biometric_toggle', { enabled: false });
     } else {
       // Enable biometric - require authentication first
       const result = await LocalAuthentication.authenticateAsync({
@@ -188,6 +193,7 @@ export default function PasscodeScreen() {
       if (result.success) {
         await setBiometricEnabled(true);
         setBiometricEnabledState(true);
+        trackEvent('passcode.biometric_toggle', { enabled: true });
       }
     }
   };

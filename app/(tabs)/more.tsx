@@ -13,12 +13,21 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "../../src/components/ThemeProvider";
 import { usePremium } from "../../src/components/PremiumProvider";
+import { trackEvent } from "../../src/lib/analytics";
 
 type MenuItem = {
   label: string;
   sublabel?: string;
   icon: React.ReactNode;
   route: Href;
+  target:
+    | "premium"
+    | "configuration"
+    | "accounts"
+    | "passcode"
+    | "backup"
+    | "feedback"
+    | "recommend";
 };
 
 export default function MoreScreen() {
@@ -37,36 +46,43 @@ export default function MoreScreen() {
       sublabel: isPremium ? t('premium.active') : t('premium.subtitle'),
       icon: <Crown size={24} color="#FFB800" />,
       route: "/paywall",
+      target: "premium",
     },
     {
       label: t('more.configuration'),
       icon: <Settings size={24} color={iconColor} />,
       route: "/configuration",
+      target: "configuration",
     },
     {
       label: t('more.accounts'),
       icon: <Wallet size={24} color={iconColor} />,
       route: "/accounts",
+      target: "accounts",
     },
     {
       label: t('more.passcode'),
       icon: <Lock size={24} color={iconColor} />,
       route: "/passcode",
+      target: "passcode",
     },
     {
       label: t('more.backup'),
       icon: <Cloud size={24} color={iconColor} />,
       route: "/backup",
+      target: "backup",
     },
     {
       label: t('more.feedback'),
       icon: <MessageCircle size={24} color={iconColor} />,
       route: "/feedback",
+      target: "feedback",
     },
     {
       label: t('more.recommend'),
       icon: <Star size={24} color={iconColor} />,
       route: "/recommend",
+      target: "recommend",
     },
   ];
 
@@ -97,7 +113,10 @@ export default function MoreScreen() {
                 : ""
             } ${isDark ? "bg-[#26282D]" : "bg-white"}`}
             activeOpacity={0.7}
-            onPress={() => router.push(item.route)}
+            onPress={() => {
+              trackEvent('more.row_open', { target: item.target });
+              router.push(item.route);
+            }}
           >
             <View className="mr-4">{item.icon}</View>
             <View className="flex-1">

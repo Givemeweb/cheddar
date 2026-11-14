@@ -8,6 +8,7 @@ import { renderCategoryIcon } from './categoryIcons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './ThemeProvider';
 import { formatNumber } from '../utils/formatNumber';
+import { trackEvent } from '../lib/analytics';
 
 export const renderIcon = renderCategoryIcon;
 
@@ -57,6 +58,7 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
   const isExpense = transaction.amount < 0;
 
   const handlePress = () => {
+    trackEvent('transactions.open_transaction', { type: transaction.type });
     router.push(`/add-transaction?transactionId=${transaction.id}` as never);
   };
 

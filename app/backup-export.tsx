@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle } from 'lucide-react-native';
 import { useTheme } from '../src/components/ThemeProvider';
 import { exportDatabaseToZip } from '../src/utils/backup';
+import { trackEvent } from '../src/lib/analytics';
 
 // Previous format selection state (preserved for future restoration)
 // type ExportFormat = 'json' | 'sql';
@@ -21,6 +22,7 @@ export default function BackupExportScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleExport = async () => {
+    trackEvent('backup.export_started');
     setIsExporting(true);
     setExportResult(null);
     setErrorMessage(null);
@@ -28,10 +30,12 @@ export default function BackupExportScreen() {
     try {
       await exportDatabaseToZip();
       setExportResult('success');
+      trackEvent('backup.export_success');
     } catch (error) {
       console.error('Export error:', error);
       setExportResult('error');
       setErrorMessage(error instanceof Error ? error.message : t('backup.exportFailed'));
+      trackEvent('backup.export_failed');
     } finally {
       setIsExporting(false);
     }
