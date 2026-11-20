@@ -28,6 +28,8 @@ export interface Account {
   balance: number;
   order: number;
   currency: string;
+  /** Managed-source marker; anything but 'mercury' reads as manual. */
+  source: 'manual' | 'mercury';
 }
 
 export interface Transaction {
@@ -124,6 +126,7 @@ export async function getAccounts(): Promise<Account[]> {
       balance: data.balance as number,
       order: (data.order as number) ?? 0,
       currency: (data.currency as string) || DEFAULT_CURRENCY_CODE,
+      source: data.source === 'mercury' ? 'mercury' as const : 'manual' as const,
     }))
     .sort((a, b) => a.order - b.order);
 }
@@ -142,6 +145,7 @@ export async function getAccountById(id: string): Promise<Account | undefined> {
     balance: row.balance as number,
     order: (row.order as number) ?? 0,
     currency: (row.currency as string) || DEFAULT_CURRENCY_CODE,
+    source: row.source === 'mercury' ? 'mercury' : 'manual',
   };
 }
 
@@ -590,6 +594,7 @@ export async function addAccount(account: {
     balance: 0,
     order: maxOrder + 1,
     currency: accountCurrency,
+    source: 'manual',
   });
 
   await saveStore();
@@ -602,6 +607,7 @@ export async function addAccount(account: {
     balance: 0,
     order: maxOrder + 1,
     currency: accountCurrency,
+    source: 'manual',
   };
 }
 
@@ -654,6 +660,7 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
     balance: newBalance,
     order: currentAccount.order,
     currency: newCurrency,
+    source: currentAccount.source,
   });
 
   // Update all transactions that reference this account
@@ -685,6 +692,7 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
     balance: newBalance,
     order: currentAccount.order,
     currency: newCurrency,
+    source: currentAccount.source,
   };
 }
 

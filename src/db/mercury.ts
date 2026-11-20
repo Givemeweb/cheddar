@@ -1,0 +1,189 @@
+import { getStore, isDatabaseReady, saveStore } from './tinybase';
+
+/**
+ * Local persistence for the Mercury bank connection: one connection row, the
+ * linked accounts, the transaction links (the dedupe map), the per-account
+ * sync cursors, and the sync debounce timestamp.
+ *
+ * Every write goes through the helpers below, which build rows from a fixed
+ * cell list. That whitelist is what keeps the API token out of the local
+ * database (it lives only in secure storage, ticket 03) and therefore out of
+ * every backup.
+ *
+ * Flags are stored as 'true'/'false' strings, not real booleans: the SQLite
+ * persister and the SQL backup round-trip are proven for strings, numbers and
+ * nulls (no existing table stores booleans), so the helpers convert at the
+ * boundary.
+ */
+
+export const MERCURY_CONNECTION_TABLE = 'mercuryConnection';
+export const MERCURY_ACCOUNTS_TABLE = 'mercuryAccounts';
+export const MERCURY_TRANSACTION_LINKS_TABLE = 'mercuryTransactionLinks';
+export const MERCURY_CURSORS_TABLE = 'mercuryCursors';
+export const MERCURY_SYNC_STATE_TABLE = 'mercurySyncState';
+
+/** One connection per install; the row id is fixed. */
+export const MERCURY_CONNECTION_ROW_ID = 'default';
+export const MERCURY_DEBOUNCE_ROW_ID = 'debounce';
+
+/** Linked accounts are always USD: Mercury reports no currency field. */
+export const MERCURY_ACCOUNT_CURRENCY = 'USD';
+
+export type MercuryTokenStatus = 'active' | 'needs_reauth';
+
+export interface MercuryConnection {
+  id: string;
+  tokenStatus: MercuryTokenStatus;
+  createdAt: number | null;
+  lastSyncedAt: number | null;
+}
+
+export interface MercuryLinkedAccount {
+  id: string; // Mercury account id
+  localAccountId: string;
+  enabled: boolean;
+  currency: string;
+  /** Account-level FX/anomaly flag: true when any imported row was flagged. */
+  mixedCurrency: boolean;
+  /** Backfill window in days (30/90/365); null means all history. */
+  cursorWindowDays: number | null;
+  lastSyncedAt: number | null;
+  stale: boolean;
+  lastError: string | null;
+}
+
+export interface MercuryTransactionLink {
+  id: string; // Mercury transaction id
+  localTransactionId: string;
+  mercuryAccountId: string;
+  /** Per-row FX/anomaly flag (reconnaissance rule 4). */
+  anomaly: boolean;
+}
+
+export interface MercuryCursor {
+  id: string; // Mercury account id
+  cursor: string | null;
+}
+
+type StoredCell = string | number | null;
+
+const boolCell = (value: boolean): StoredCell => (value ? 'true' : 'false');
+const cellBool = (value: unknown): boolean => value === 'true';
+const cellNumber = (value: unknown): number | null =>
+  typeof value === 'number' ? value : null;
+const cellString = (value: unknown): string | null =>
+  typeof value === 'string' && value !== '' ? value : null;
+
+export async function upsertMercuryConnection(cells: {
+  tokenStatus?: MercuryTokenStatus;
+  createdAt?: number;
+  lastSyncedAt?: number | null;
+}): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  const current = store.getRow(MERCURY_CONNECTION_TABLE, MERCURY_CONNECTION_ROW_ID);
+  store.setRow(MERCURY_CONNECTION_TABLE, MERCURY_CONNECTION_ROW_ID, {
+    tokenStatus: cells.tokenStatus
+      ?? ((current?.tokenStatus as MercuryTokenStatus) ?? 'active'),
+    createdAt: cells.createdAt ?? cellNumber(current?.createdAt),
+    lastSyncedAt: cells.lastSyncedAt !== undefined
+      ? cells.lastSyncedAt
+      : cellNumber(current?.lastSyncedAt),
+  });
+  await saveStore();
+}
+
+export function getMercuryConnection(): MercuryConnection | null {
+  if (!isDatabaseReady()) return null;
+  const row = getStore().getRow(MERCURY_CONNECTION_TABLE, MERCURY_CONNECTION_ROW_ID);
+  if (!row) return null;
+  return {
+    id: MERCURY_CONNECTION_ROW_ID,
+    tokenStatus: (row.tokenStatus as MercuryTokenStatus) ?? 'active',
+    createdAt: cellNumber(row.createdAt),
+    lastSyncedAt: cellNumber(row.lastSyncedAt),
+  };
+}
+
+export async function markConnectionNeedsReauthentication(): Promise<void> {
+  await upsertMercuryConnection({ tokenStatus: 'needs_reauth' });
+}
+
+export async function putMercuryLinkedAccount(account: MercuryLinkedAccount): Promise<void> {
+  if (!isDatabaseReady()) return;
+  getStore().setRow(MERCURY_ACCOUNTS_TABLE, account.id, {
+    localAccountId: account.localAccountId,
+    enabled: boolCell(account.enabled),
+    currency: account.currency,
+    mixedCurrency: boolCell(account.mixedCurrency),
+    cursorWindowDays: account.cursorWindowDays,
+    lastSyncedAt: account.lastSyncedAt,
+    stale: boolCell(account.stale),
+    lastError: account.lastError,
+  });
+  await saveStore();
+}
+
+export function getMercuryLinkedAccounts(): MercuryLinkedAccount[] {
+  if (!isDatabaseReady()) return [];
+  const table = getStore().getTable(MERCURY_ACCOUNTS_TABLE);
+  if (!table) return [];
+  return Object.entries(table).map(([id, row]) => ({
+    id,
+    localAccountId: (row.localAccountId as string) ?? '',
+    enabled: cellBool(row.enabled),
+    currency: (row.currency as string) ?? '',
+    mixedCurrency: cellBool(row.mixedCurrency),
+    cursorWindowDays: cellNumber(row.cursorWindowDays),
+    lastSyncedAt: cellNumber(row.lastSyncedAt),
+    stale: cellBool(row.stale),
+    lastError: cellString(row.lastError),
+  }));
+}
+
+export async function putMercuryTransactionLink(link: MercuryTransactionLink): Promise<void> {
+  if (!isDatabaseReady()) return;
+  getStore().setRow(MERCURY_TRANSACTION_LINKS_TABLE, link.id, {
+    localTransactionId: link.localTransactionId,
+    mercuryAccountId: link.mercuryAccountId,
+    anomaly: boolCell(link.anomaly),
+  });
+  await saveStore();
+}
+
+export function getMercuryTransactionLinks(): MercuryTransactionLink[] {
+  if (!isDatabaseReady()) return [];
+  const table = getStore().getTable(MERCURY_TRANSACTION_LINKS_TABLE);
+  if (!table) return [];
+  return Object.entries(table).map(([id, row]) => ({
+    id,
+    localTransactionId: (row.localTransactionId as string) ?? '',
+    mercuryAccountId: (row.mercuryAccountId as string) ?? '',
+    anomaly: cellBool(row.anomaly),
+  }));
+}
+
+export async function setMercuryCursor(mercuryAccountId: string, cursor: string | null): Promise<void> {
+  if (!isDatabaseReady()) return;
+  getStore().setRow(MERCURY_CURSORS_TABLE, mercuryAccountId, { cursor });
+  await saveStore();
+}
+
+export function getMercuryCursor(mercuryAccountId: string): string | null {
+  if (!isDatabaseReady()) return null;
+  return cellString(getStore().getCell(MERCURY_CURSORS_TABLE, mercuryAccountId, 'cursor'));
+}
+
+/** Debounce for the sync trigger; the timestamp of the last recorded attempt. */
+export async function setSyncDebounceTimestamp(at: number): Promise<void> {
+  if (!isDatabaseReady()) return;
+  getStore().setRow(MERCURY_SYNC_STATE_TABLE, MERCURY_DEBOUNCE_ROW_ID, { lastAttemptAt: at });
+  await saveStore();
+}
+
+export function getSyncDebounceTimestamp(): number | null {
+  if (!isDatabaseReady()) return null;
+  return cellNumber(
+    getStore().getCell(MERCURY_SYNC_STATE_TABLE, MERCURY_DEBOUNCE_ROW_ID, 'lastAttemptAt'),
+  );
+}
