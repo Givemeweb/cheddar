@@ -8,7 +8,7 @@ import {
     Platform,
     StyleSheet,
 } from 'react-native';
-import DateTimePickerNative from '@react-native-community/datetimepicker';
+import DateTimePickerNative, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 type DateTimePickerProps = {
     value: Date;
@@ -57,6 +57,53 @@ export default function DateTimePicker({
     // Keep onChange stable so the Android native dialog isn't dismissed on parent re-renders
     const onChangeRef = useRef(onChange);
     onChangeRef.current = onChange;
+
+    // Android implementation - native picker dialog
+    // Android does not support mode="datetime", so we use two sequential pickers.
+    // The onChange callback MUST be stable (via ref) so parent re-renders don't
+    // dismiss the dialog. The library's Android component re-opens the native
+    // dialog whenever onChange changes (it's in a useEffect dep array).
+    // Hooks live above the platform branches below: on web/iOS those branches
+    // return early, and hook calls must not be conditional.
+    const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time' | null>(null);
+    const [androidDate, setAndroidDate] = useState<Date>(new Date(value));
+
+    // Stable callback that never changes - calls the latest ref implementation
+    const stableOnChange = useCallback((_event: DateTimePickerEvent, selectedDate?: Date) => {
+        if (!selectedDate) {
+            setAndroidPickerMode(null);
+            return;
+        }
+
+        if (mode === 'datetime' && androidPickerMode === 'date') {
+            // Date selected, preserve time and open time picker
+            const updated = new Date(selectedDate);
+            updated.setHours(value.getHours());
+            updated.setMinutes(value.getMinutes());
+            setAndroidDate(updated);
+            setAndroidPickerMode('time');
+        } else {
+            // Time selected (or single-mode picker)
+            setAndroidPickerMode(null);
+            if (mode === 'datetime') {
+                const final = new Date(androidDate);
+                final.setHours(selectedDate.getHours());
+                final.setMinutes(selectedDate.getMinutes());
+                onChangeRef.current(final);
+            } else {
+                onChangeRef.current(selectedDate);
+            }
+        }
+    }, [mode, androidPickerMode, value, androidDate]);
+
+    const openAndroidPicker = useCallback(() => {
+        setAndroidDate(new Date(value));
+        if (mode === 'datetime') {
+            setAndroidPickerMode('date');
+        } else {
+            setAndroidPickerMode(mode);
+        }
+    }, [mode, value]);
 
     // Web implementation using native HTML inputs
     if (Platform.OS === 'web') {
@@ -203,50 +250,7 @@ export default function DateTimePicker({
         );
     }
 
-    // Android implementation - native picker dialog
-    // Android does not support mode="datetime", so we use two sequential pickers.
-    // The onChange callback MUST be stable (via ref) so parent re-renders don't
-    // dismiss the dialog. The library's Android component re-opens the native
-    // dialog whenever onChange changes (it's in a useEffect dep array).
-    const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time' | null>(null);
-    const [androidDate, setAndroidDate] = useState<Date>(new Date(value));
-
-    // Stable callback that never changes - calls the latest ref implementation
-    const stableOnChange = useCallback((event: any, selectedDate?: Date) => {
-        if (!selectedDate) {
-            setAndroidPickerMode(null);
-            return;
-        }
-
-        if (mode === 'datetime' && androidPickerMode === 'date') {
-            // Date selected, preserve time and open time picker
-            const updated = new Date(selectedDate);
-            updated.setHours(value.getHours());
-            updated.setMinutes(value.getMinutes());
-            setAndroidDate(updated);
-            setAndroidPickerMode('time');
-        } else {
-            // Time selected (or single-mode picker)
-            setAndroidPickerMode(null);
-            if (mode === 'datetime') {
-                const final = new Date(androidDate);
-                final.setHours(selectedDate.getHours());
-                final.setMinutes(selectedDate.getMinutes());
-                onChangeRef.current(final);
-            } else {
-                onChangeRef.current(selectedDate);
-            }
-        }
-    }, [mode, androidPickerMode, value, androidDate]);
-
-    const openAndroidPicker = useCallback(() => {
-        setAndroidDate(new Date(value));
-        if (mode === 'datetime') {
-            setAndroidPickerMode('date');
-        } else {
-            setAndroidPickerMode(mode);
-        }
-    }, [mode, value]);
+    // Android implementation - native picker dialog (hooks declared above)
 
     return (
         <>

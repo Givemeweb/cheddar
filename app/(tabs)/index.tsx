@@ -32,7 +32,6 @@ import { formatNumber } from "../../src/utils/formatNumber";
 import {
   convertWithRates,
   getLatestRates,
-  RatesCache,
 } from "../../src/services/exchangeRates";
 import { trackEvent } from "../../src/lib/analytics";
 
@@ -46,7 +45,6 @@ export default function TransactionsScreen() {
   const [filterCategoryName, setFilterCategoryName] = useState<string | null>(
     null,
   );
-  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
   const [reminderBusy, setReminderBusy] = useState(false);
   const { width } = useWindowDimensions();
@@ -79,12 +77,11 @@ export default function TransactionsScreen() {
     });
   };
 
-  async function fetchTransactions() {
+  const fetchTransactions = useCallback(async () => {
     try {
       const allTransactions = await getTransactions();
       // Load rates before converting amounts to the main currency
       const rates = await getLatestRates();
-      setRatesCache(rates);
       const toMain = (amount: number, currency: string): number => {
         if (!rates || currency === currencyCode) return amount;
         return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
@@ -198,13 +195,13 @@ export default function TransactionsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, [currencyCode, currentDate, categoryId]);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       fetchTransactions();
-    }, [currentDate, categoryId]),
+    }, [fetchTransactions]),
   );
 
   // The first-transaction prompt is queued by the add screen and consumed here,

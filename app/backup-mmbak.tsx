@@ -67,6 +67,7 @@ export default function BackupMMBakScreen() {
 
       // Validate file (throws with detailed error message)
       // @ts-ignore - Platform-specific module
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- runtime platform require keeps the other platform's module out of the Metro bundle
       const { validateMMBakFile, importFromMMBak } = require('../src/utils/mmbakImport.native');
       await validateMMBakFile(asset.uri);
 
@@ -96,6 +97,7 @@ export default function BackupMMBakScreen() {
       trackEvent('backup.import_started', { kind: 'mmbak' });
       // Validate file (throws with detailed error message)
       // @ts-ignore - Platform-specific module
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- runtime platform require keeps the other platform's module out of the Metro bundle
       const { validateMMBakFile, importFromMMBak } = require('../src/utils/mmbakImport.web');
       await validateMMBakFile(file);
 

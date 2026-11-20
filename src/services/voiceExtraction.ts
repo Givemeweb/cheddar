@@ -2,9 +2,9 @@ import { EXTRACTION_ENDPOINT } from "@/src/config/api";
 
 export interface ExtractionRequest {
   transcription: string;
-  accounts: Array<{ id: string; name: string }>;
-  categories: Array<{ id: string; name: string }>;
-  recentNotes: Array<{ id: string; text: string }>;
+  accounts: { id: string; name: string }[];
+  categories: { id: string; name: string }[];
+  recentNotes: { id: string; text: string }[];
   recordedAt: Date;
 }
 

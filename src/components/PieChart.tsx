@@ -3,11 +3,11 @@
 import { PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 type PieChartProps = {
-  data: Array<{
+  data: {
     key: string;
     value: number;
     color: string;
-  }>;
+  }[];
   innerRadius?: number;
   width: number;
   height: number;

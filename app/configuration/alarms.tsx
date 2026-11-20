@@ -34,7 +34,6 @@ export default function AlarmSettingsScreen() {
     time: "21:00",
     days: [0, 1, 2, 3, 4, 5, 6],
   });
-  const [isLoading, setIsLoading] = useState(true);
   const [showTimePicker, setShowTimePicker] = useState(false);
   // iOS renders the picker inline, so onChange fires on every wheel movement.
   // Debounce the analytics event until the user pauses.
@@ -47,7 +46,6 @@ export default function AlarmSettingsScreen() {
   const loadSettings = async () => {
     const savedSettings = await getAlarmSettings();
     setSettings(savedSettings);
-    setIsLoading(false);
   };
 
   const handleToggleEnabled = async (value: boolean) => {

@@ -30,7 +30,6 @@ import {
 import {
   convertWithRates,
   getLatestRates,
-  RatesCache,
 } from "../../src/services/exchangeRates";
 import { trackEvent } from "../../src/lib/analytics";
 
@@ -76,7 +75,6 @@ export default function StatsScreen() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
     null
   );
-  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
@@ -122,7 +120,6 @@ export default function StatsScreen() {
 
           // Load rates before converting amounts to the main currency
           const rates = await getLatestRates();
-          setRatesCache(rates);
           const toMain = (amount: number, currency: string): number => {
             if (!rates || currency === currencyCode) return amount;
             return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
@@ -255,7 +252,7 @@ export default function StatsScreen() {
 
       setLoading(true);
       fetchStats();
-    }, [activeTab, currentDate, selectedAccountId])
+    }, [activeTab, currentDate, selectedAccountId, currencyCode, t])
   );
 
   const isAccountSelected = (accountId: string | null) =>

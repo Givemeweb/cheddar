@@ -14,8 +14,6 @@ export interface BackupData {
   data: Tables;
 }
 
-const BACKUP_VERSION = '1.1.0';
-
 /**
  * Collect all image paths from transactions
  * For native: returns relative file paths

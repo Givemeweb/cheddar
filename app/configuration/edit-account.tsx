@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LucideIcon } from 'lucide-react-native';
 import { getAccountById, updateAccount } from '@/src/db/storage';
 import { accountIconOptions } from '@/src/components/accountIcons';
-import CurrencyPicker from '@/src/components/CurrencyPicker';
+import { CurrencyPicker } from '@/src/components/CurrencyPicker';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 import { trackEvent } from '@/src/lib/analytics';

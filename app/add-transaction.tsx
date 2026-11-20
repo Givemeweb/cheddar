@@ -30,7 +30,6 @@ import {
     Trash2,
     ChevronDown,
     ChevronUp,
-    Camera,
     Image as ImageIcon,
     X,
     Check,
@@ -135,6 +134,7 @@ export default function AddTransactionScreen() {
     useFocusEffect(
         useCallback(() => {
             loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per focus; loadData closes over useLocalSearchParams(), whose identity changes every render, so it cannot join the dep array
         }, [])
     );
 

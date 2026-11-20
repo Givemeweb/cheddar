@@ -4,16 +4,6 @@ import { Directory, File, Paths } from 'expo-file-system';
 const IMAGES_DIR = 'transaction_images';
 
 /**
- * Get the directory path for storing transaction images
- */
-function getImagesDirectory(): string {
-  if (Platform.OS === 'web') {
-    return 'transaction_images';
-  }
-  return `${Paths.document.uri}/${IMAGES_DIR}`;
-}
-
-/**
  * Ensure the images directory exists
  */
 async function ensureImagesDirectory(): Promise<void> {

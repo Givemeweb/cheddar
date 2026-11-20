@@ -3,10 +3,10 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type DotChartProps = {
-  data: Array<{
+  data: {
     month: string;
     value: number;
-  }>;
+  }[];
   width?: number;
   height?: number;
   currencySymbol?: string;

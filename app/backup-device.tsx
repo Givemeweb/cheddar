@@ -25,8 +25,6 @@ export default function BackupDeviceScreen() {
   const { isDark } = useTheme();
   const { t } = useTranslation();
 
-  const iconColor = isDark ? "#F9FAFB" : "#212226";
-
   const menuGroups: MenuGroup[] = [
     {
       title: t('backup.dataBackup'),
