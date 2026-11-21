@@ -183,14 +183,27 @@ export default function AddTransactionScreen() {
                 }
             }
         } else {
-            // Default account selections for new transaction
-            if (accs.length > 0) {
-                setSelectedAccountId(params.accountId || accs[0].id);
-                setFromAccountId(params.fromAccountId || accs[0].id);
-                if (accs.length > 1) {
-                    setToAccountId(params.toAccountId || accs[1].id);
+            // Default account selections for new transaction. Managed
+            // (Mercury) accounts are excluded: manual entries never target
+            // them, so the mirrored balance cannot drift.
+            const pickable = accs.filter(a => a.source !== 'mercury');
+            if (pickable.length > 0) {
+                // Deep-link params only apply when they name a pickable
+                // account; a linked account can never be preselected.
+                setSelectedAccountId(params.accountId && pickable.some(a => a.id === params.accountId)
+                    ? params.accountId
+                    : pickable[0].id);
+                setFromAccountId(params.fromAccountId && pickable.some(a => a.id === params.fromAccountId)
+                    ? params.fromAccountId
+                    : pickable[0].id);
+                if (pickable.length > 1) {
+                    setToAccountId(params.toAccountId && pickable.some(a => a.id === params.toAccountId)
+                        ? params.toAccountId
+                        : pickable[1].id);
                 } else {
-                    setToAccountId(params.toAccountId || null);
+                    setToAccountId(params.toAccountId && pickable.some(a => a.id === params.toAccountId)
+                        ? params.toAccountId
+                        : null);
                 }
             }
 
@@ -248,6 +261,17 @@ export default function AddTransactionScreen() {
 
     const filteredCategories = categories.filter(c =>
         type === 'income' ? c.type === 'income' : c.type === 'expense'
+    );
+
+    // Managed (Mercury) accounts are hidden from the account pickers for new
+    // manual transactions. While editing, the accounts the transaction is
+    // already on stay visible so the selection reads correctly.
+    const pickableAccounts = accounts.filter(
+        (acc) => acc.source !== 'mercury' || (isEditing && (
+            acc.id === selectedAccountId
+            || acc.id === fromAccountId
+            || acc.id === toAccountId
+        ))
     );
 
     // Currency the user is entering the amount in. null means "the account's
@@ -703,8 +727,15 @@ export default function AddTransactionScreen() {
             return t('transactions.invalidAmount');
         }
         if (type !== 'transfer') {
+            if (!selectedAccountId) {
+                return t('transactions.accountRequired');
+            }
             if (!selectedCategoryId) {
                 return t('transactions.categoryRequired');
+            }
+        } else {
+            if (!fromAccountId || !toAccountId) {
+                return t('transactions.accountRequired');
             }
         }
         return null;
@@ -1266,7 +1297,14 @@ export default function AddTransactionScreen() {
             </View>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 8 }}>
               <View className="flex-row flex-wrap">
-                {selectionMode === 'account' && accounts.map((acc) => (
+                {['account', 'fromAccount', 'toAccount'].includes(selectionMode) && pickableAccounts.length === 0 && (
+                  <View className="w-full items-center py-6">
+                    <Text className={`text-center text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                      {t("transactions.noPickableAccounts")}
+                    </Text>
+                  </View>
+                )}
+                {selectionMode === 'account' && pickableAccounts.map((acc) => (
                   <Pressable
                     key={acc.id}
                     className={`w-1/3 p-2`}
@@ -1333,7 +1371,7 @@ export default function AddTransactionScreen() {
                   </Pressable>
                 ))}
 
-                {selectionMode === 'fromAccount' && accounts.map((acc) => (
+                {selectionMode === 'fromAccount' && pickableAccounts.map((acc) => (
                   <Pressable
                     key={acc.id}
                     className={`w-1/3 p-2`}
@@ -1352,7 +1390,7 @@ export default function AddTransactionScreen() {
                   </Pressable>
                 ))}
 
-                {selectionMode === 'toAccount' && accounts.map((acc) => {
+                {selectionMode === 'toAccount' && pickableAccounts.map((acc) => {
                   const isDisabled = acc.id === fromAccountId;
                   return (
                     <Pressable

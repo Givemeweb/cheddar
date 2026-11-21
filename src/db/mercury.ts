@@ -154,6 +154,13 @@ export async function putMercuryTransactionLink(link: MercuryTransactionLink): P
   await saveStore();
 }
 
+/** Removes one link row; used to roll back a partially written import. */
+export async function deleteMercuryTransactionLink(mercuryTransactionId: string): Promise<void> {
+  if (!isDatabaseReady()) return;
+  getStore().delRow(MERCURY_TRANSACTION_LINKS_TABLE, mercuryTransactionId);
+  await saveStore();
+}
+
 export function getMercuryTransactionLinks(): MercuryTransactionLink[] {
   if (!isDatabaseReady()) return [];
   const table = getStore().getTable(MERCURY_TRANSACTION_LINKS_TABLE);
@@ -164,6 +171,39 @@ export function getMercuryTransactionLinks(): MercuryTransactionLink[] {
     mercuryAccountId: (row.mercuryAccountId as string) ?? '',
     anomaly: cellBool(row.anomaly),
   }));
+}
+
+/**
+ * Whether a local transaction was imported from Mercury, i.e. whether a
+ * transaction-link row maps it (keyed by the local transaction id: link
+ * rows carry the Mercury transaction id as their id, so this scans the
+ * table). Used by the balance-isolation guards in src/db/storage.ts.
+ */
+export function hasMercuryImportedTransaction(localTransactionId: string): boolean {
+  if (!isDatabaseReady() || !localTransactionId) return false;
+  const links = getStore().getTable(MERCURY_TRANSACTION_LINKS_TABLE);
+  if (!links) return false;
+  return Object.values(links).some(
+    (link) => (link.localTransactionId as string | undefined) === localTransactionId,
+  );
+}
+
+/**
+ * Local transaction ids whose Mercury link row carries the anomaly flag
+ * (record rule 4: FX/anomaly rows stay out of balance totals and
+ * reconciliation math until OQ-1 resolves). Read-model consumers call this
+ * once and filter rows, rather than scanning the link table per row.
+ */
+export function getMercuryAnomalyTransactionIds(): Set<string> {
+  if (!isDatabaseReady()) return new Set();
+  const links = getStore().getTable(MERCURY_TRANSACTION_LINKS_TABLE);
+  if (!links) return new Set();
+  return new Set(
+    Object.values(links)
+      .filter((link) => link.anomaly === 'true')
+      .map((link) => link.localTransactionId as string)
+      .filter((id): id is string => !!id),
+  );
 }
 
 export async function setMercuryCursor(mercuryAccountId: string, cursor: string | null): Promise<void> {

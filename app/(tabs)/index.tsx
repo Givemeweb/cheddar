@@ -146,6 +146,7 @@ export default function TransactionsScreen() {
               ? { name: tx.toAccountName, description: null }
               : null,
             imagePath: tx.imagePath,
+            anomaly: tx.anomaly,
           };
         },
       );
@@ -167,12 +168,14 @@ export default function TransactionsScreen() {
         const sortedTxs = txs.sort(
           (a, b) => b.date.getTime() - a.date.getTime(),
         );
+        // FX/anomaly rows stay visible in the list but out of every total
+        // until OQ-1 resolves (record rule 4).
         const totalIncome = sortedTxs
-          .filter((t) => t.type === "income")
+          .filter((t) => t.type === "income" && !t.anomaly)
           .reduce((sum, t) => sum + t.amount, 0);
         const totalExpense = Math.abs(
           sortedTxs
-            .filter((t) => t.type === "expense")
+            .filter((t) => t.type === "expense" && !t.anomaly)
             .reduce((sum, t) => sum + t.amount, 0),
         );
 

@@ -26,7 +26,9 @@ export default function DeleteAccountScreen() {
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
-    const accs = await getAccounts();
+    // Linked (Mercury) accounts cannot be deleted while linked: storage
+    // refuses them, so the screen does not offer the action at all.
+    const accs = (await getAccounts()).filter(a => a.source !== 'mercury');
     setAccounts(accs);
     setLoading(false);
   }, []);

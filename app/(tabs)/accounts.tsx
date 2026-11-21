@@ -239,11 +239,26 @@ export default function AccountsScreen() {
                 </View>
               )}
               <View className="flex-1">
-                <Text
-                  className={`text-lg font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                >
-                  {item.name}
-                </Text>
+                <View className="flex-row items-center">
+                  <Text
+                    numberOfLines={1}
+                    className={`flex-1 text-lg font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                  >
+                    {item.name}
+                  </Text>
+                  {item.source === "mercury" && (
+                    <View
+                      testID="account-mercury-badge"
+                      className={`ml-2 shrink-0 rounded-md px-2 py-0.5 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {t("accounts.mercuryBadge")}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 {item.description && (
                   <Text
                     className={`text-sm ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}

@@ -52,6 +52,10 @@ class FakeStore {
     this.tables[table][id] = { ...this.tables[table][id], [cell]: value };
   }
 
+  getCell(table: string, id: string, cell: string) {
+    return this.tables[table]?.[id]?.[cell];
+  }
+
   delRow(table: string, id: string) {
     delete this.tables[table]?.[id];
   }

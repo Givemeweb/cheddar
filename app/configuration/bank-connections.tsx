@@ -220,6 +220,15 @@ export default function BankConnectionsScreen() {
       >
         {t("bankConnections.connectedDesc")}
       </Text>
+      <View className="mt-4">
+        {button(
+          t("bankConnections.openMapping"),
+          () => {
+            trackEvent("bankConnections.mapping_open");
+            router.push("/configuration/mercury-mapping");
+          },
+        )}
+      </View>
     </View>
   );
 

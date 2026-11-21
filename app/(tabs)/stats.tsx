@@ -156,6 +156,10 @@ export default function StatsScreen() {
             return txDate >= startOfMonth && txDate <= endOfMonth;
           });
 
+          // FX/anomaly rows stay out of every total until OQ-1 resolves
+          // (record rule 4); this screen only computes totals.
+          monthTransactions = monthTransactions.filter((tx) => !tx.anomaly);
+
           // Filter by selected account if not "all"
           if (selectedAccountId) {
             monthTransactions = monthTransactions.filter((tx) => {

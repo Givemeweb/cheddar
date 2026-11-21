@@ -100,6 +100,11 @@ export default function TotalStatsScreen() {
               ? amount
               : convertWithRates(amount, currencyCode, totalAssetsCurrencyCode, rates.rates, rates.base);
 
+          // FX/anomaly rows stay out of every computed total until OQ-1
+          // resolves (record rule 4). The account balances themselves are
+          // the mirrors Mercury reports and are not recomputed here.
+          const countableTransactions = transactions.filter((tx) => !tx.anomaly);
+
           // Calculate monthly asset growth for last 6 months ending at selected month
           const months: MonthlyData[] = [];
 
@@ -112,7 +117,7 @@ export default function TotalStatsScreen() {
             // Start from current total and subtract transactions that happened after this month
             let monthBalance = totalInMain;
 
-            for (const tx of transactions) {
+            for (const tx of countableTransactions) {
               const txDate = new Date(tx.date);
               if (txDate > monthEnd) {
                 // This transaction happened after this month, reverse its effect
@@ -151,7 +156,7 @@ export default function TotalStatsScreen() {
             let monthIncome = 0;
             let monthExpense = 0;
 
-            for (const tx of transactions) {
+            for (const tx of countableTransactions) {
               const txDate = new Date(tx.date);
               if (txDate >= monthStart && txDate <= monthEnd) {
                 if (tx.type === 'income') {

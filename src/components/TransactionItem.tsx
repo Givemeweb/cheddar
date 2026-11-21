@@ -28,6 +28,8 @@ export type TransactionWithDetails = {
   account: { name: string; description: string | null };
   toAccount?: { name: string; description: string | null } | null;
   imagePath?: string | null;
+  /** FX/anomaly rows stay visible but out of totals (record rule 4). */
+  anomaly?: boolean;
 };
 
 export type GroupedTransactions = {

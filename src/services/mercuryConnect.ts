@@ -43,6 +43,20 @@ export async function connectMercury(token: string): Promise<number> {
 }
 
 /**
+ * Reads the stored token for authenticated Mercury reads (mapping, imports).
+ * Returns null when nothing is stored or secure storage is unavailable
+ * (web), where there is nothing to read.
+ */
+export async function getStoredMercuryToken(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(TOKEN_KEY);
+  } catch (error) {
+    console.warn('[mercury] Could not read the stored token', error);
+    return null;
+  }
+}
+
+/**
  * Best-effort removal of the stored token (used by the reset flow; the full
  * disconnect action is ticket 04). Never throws: SecureStore is unavailable
  * on web, where there is nothing to delete anyway.

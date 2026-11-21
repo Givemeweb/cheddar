@@ -36,6 +36,9 @@ export default function EditAccountScreen() {
   const [currencyPickerExpanded, setCurrencyPickerExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Linked (Mercury) accounts keep their name and currency; the fields stay
+  // disabled here and storage ignores changes as a backstop.
+  const [managed, setManaged] = useState(false);
 
   useEffect(() => {
     async function loadAccount() {
@@ -47,6 +50,7 @@ export default function EditAccountScreen() {
         setSelectedIcon(account.icon ?? 'wallet');
         setCurrency(account.currency ?? 'EUR');
         setOriginalCurrency(account.currency ?? 'EUR');
+        setManaged(account.source === 'mercury');
       }
       setLoading(false);
     }
@@ -136,9 +140,15 @@ export default function EditAccountScreen() {
             value={name}
             onChangeText={setName}
             placeholder={t('accounts.accountName')}
+            editable={!managed}
             className={`text-lg py-2 border-b ${isDark ? 'text-cheddar-light border-gray-700' : 'text-cheddar-dark border-gray-200'}`}
             placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
           />
+          {managed && (
+            <Text className={`mt-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {t('accounts.mercuryManagedNote')}
+            </Text>
+          )}
         </View>
 
         {showIcons && (
@@ -152,19 +162,23 @@ export default function EditAccountScreen() {
           </View>
         )}
 
-        <CurrencyPicker
-          selected={currency}
-          onSelect={setCurrency}
-          expanded={currencyPickerExpanded}
-          onToggle={() => setCurrencyPickerExpanded(prev => !prev)}
-        />
-        {currency !== originalCurrency && (
-          <Text className={`text-sm mb-4 px-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            {t('accounts.currencyChangeNote', {
-              oldCurrency: originalCurrency,
-              newCurrency: currency,
-            })}
-          </Text>
+        {!managed && (
+          <>
+            <CurrencyPicker
+              selected={currency}
+              onSelect={setCurrency}
+              expanded={currencyPickerExpanded}
+              onToggle={() => setCurrencyPickerExpanded(prev => !prev)}
+            />
+            {currency !== originalCurrency && (
+              <Text className={`text-sm mb-4 px-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {t('accounts.currencyChangeNote', {
+                  oldCurrency: originalCurrency,
+                  newCurrency: currency,
+                })}
+              </Text>
+            )}
+          </>
         )}
 
         <View className={`rounded-xl p-4 ${isDark ? 'bg-[#26282D]' : 'bg-white'}`}>
