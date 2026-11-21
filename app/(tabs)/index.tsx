@@ -34,6 +34,7 @@ import {
   getLatestRates,
 } from "../../src/services/exchangeRates";
 import { trackEvent } from "../../src/lib/analytics";
+import { syncMercuryAccounts } from "../../src/services/mercurySync";
 
 export default function TransactionsScreen() {
   const [groupedTransactions, setGroupedTransactions] = useState<
@@ -231,7 +232,12 @@ export default function TransactionsScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchTransactions();
+    // Forced sync first (a user intent: it bypasses the debounce and the
+    // backoff), then the existing re-read. The list still refreshes when the
+    // sync attempt fails or is skipped.
+    syncMercuryAccounts({ force: true })
+      .catch((error) => console.warn("[mercury] Sync on refresh failed", error))
+      .finally(() => fetchTransactions());
   };
 
   const handleReminderAccept = async () => {

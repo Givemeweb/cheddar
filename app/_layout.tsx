@@ -2,7 +2,7 @@ import "../global.css";
 import { useEffect } from "react";
 import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Platform, View, useWindowDimensions, StyleSheet } from "react-native";
+import { AppState, Platform, View, useWindowDimensions, StyleSheet } from "react-native";
 import { DatabaseProvider } from "../src/components/DatabaseProvider";
 import { ThemeProvider, useTheme } from "../src/components/ThemeProvider";
 import { PremiumProvider } from "../src/components/PremiumProvider";
@@ -10,6 +10,7 @@ import { PasscodeProvider, usePasscode } from "../src/components/PasscodeProvide
 import { LockScreen } from "../src/components/LockScreen";
 import { SideNav } from "../src/components/SideNav";
 import { trackScreenView } from "../src/lib/analytics";
+import { syncMercuryAccounts } from "../src/services/mercurySync";
 import "../src/i18n";
 
 function ThemedApp() {
@@ -24,6 +25,24 @@ function ThemedApp() {
   useEffect(() => {
     trackScreenView(pathname === '/' ? '/transactions' : pathname);
   }, [pathname]);
+
+  // Ticket 06: debounced automatic sync on app open. Fire-and-forget so the
+  // first render never waits on the network; the service itself no-ops
+  // silently without premium, a connection, or enabled accounts.
+  useEffect(() => {
+    syncMercuryAccounts().catch((error) => {
+      console.warn("[mercury] Startup sync failed", error);
+    });
+    // Resume from background re-attempts the same debounced sync; the
+    // persisted debounce and backoff make a quick active/active flicker safe.
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      syncMercuryAccounts().catch((error) => {
+        console.warn("[mercury] Resume sync failed", error);
+      });
+    });
+    return () => subscription.remove();
+  }, []);
 
   if (needsAuthentication) {
     return (

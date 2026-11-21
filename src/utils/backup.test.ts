@@ -5,6 +5,7 @@ import {
   putMercuryTransactionLink,
   setMercuryCursor,
   setSyncDebounceTimestamp,
+  setMercuryBackoff,
   upsertMercuryConnection,
 } from '../db/mercury';
 import { getStore } from '../db/tinybase';
@@ -177,9 +178,19 @@ async function seedMercuryState(store: FakeStore): Promise<void> {
     localTransactionId: 'tx-1',
     mercuryAccountId: 'acct-abc',
     anomaly: true,
+    mercuryCreatedAtMs: 8000,
+  });
+  // A link written before the mercuryCreatedAtMs cell existed (e.g. restored
+  // from an older backup): the export writes NULL and the restore leaves it
+  // absent, which the sync's deletion pass spares.
+  store.setRow('mercuryTransactionLinks', 'mtx-legacy', {
+    localTransactionId: 'tx-2',
+    mercuryAccountId: 'acct-abc',
+    anomaly: 'false',
   });
   await setMercuryCursor('acct-abc', 'start_after:mtx-1');
   await setSyncDebounceTimestamp(5000);
+  await setMercuryBackoff(6000, 2);
 }
 
 describe('Mercury backup round trip', () => {
@@ -225,9 +236,26 @@ describe('Mercury backup round trip', () => {
       localTransactionId: 'tx-1',
       mercuryAccountId: 'acct-abc',
       anomaly: 'true',
+      mercuryCreatedAtMs: 8000,
+    });
+    // The legacy link (no cell in the store) round-trips as absent.
+    expect(tables.mercuryTransactionLinks['mtx-legacy']).toEqual({
+      localTransactionId: 'tx-2',
+      mercuryAccountId: 'acct-abc',
+      anomaly: 'false',
+      mercuryCreatedAtMs: null,
     });
     expect(tables.mercuryCursors['acct-abc']).toEqual({ cursor: 'start_after:mtx-1' });
-    expect(tables.mercurySyncState.debounce).toEqual({ lastAttemptAt: 5000 });
+    expect(tables.mercurySyncState.debounce).toEqual({
+      lastAttemptAt: 5000,
+      nextEligibleAt: null,
+      consecutiveFailures: null,
+    });
+    expect(tables.mercurySyncState.backoff).toEqual({
+      lastAttemptAt: null,
+      nextEligibleAt: 6000,
+      consecutiveFailures: 2,
+    });
     expect(tables.accounts['acc-1'].source).toBe('mercury');
     // An existing account without the marker restores as manual.
     expect(tables.accounts['acc-2'].source).toBe('manual');

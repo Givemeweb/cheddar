@@ -236,6 +236,10 @@
     "linkedSummary_other": "{{name}}: {{count}} transactions imported.",
     "noAccountsTitle": "No Mercury accounts found",
     "retry": "Retry",
+    "staleSyncTitle_one": "{{count}} account could not be synced.",
+    "staleSyncTitle_other": "{{count}} accounts could not be synced.",
+    "retrySync": "Retry sync",
+    "syncing": "Syncing…",
     "errors": {
       "reconnect": "Mercury rejected the stored token. Reconnect with a new token to continue.",
       "network": "Could not reach Mercury. Check your internet connection and try again.",

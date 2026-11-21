@@ -14,7 +14,7 @@ import {
   MERCURY_INCOME_CATEGORY_NAME,
 } from './mercuryImport';
 import type { MercuryApiTransaction } from './mercuryApi';
-import { fetchMercuryTransactions } from './mercuryApi';
+import { fetchMercuryTransactions, MercuryIncompleteWindowError } from './mercuryApi';
 import {
   addTransaction,
   deleteAccount,
@@ -29,6 +29,7 @@ import {
   getMercuryLinkedAccounts,
   getMercuryTransactionLinks,
   hasMercuryImportedTransaction,
+  putMercuryLinkedAccount,
   putMercuryTransactionLink,
 } from '../db/mercury';
 import { generateId, generateTransactionId, getStore } from '../db/tinybase';
@@ -190,6 +191,8 @@ function seedLinkedAccount() {
     localTransactionId: 'tx-imported',
     mercuryAccountId: 'acct-1',
     anomaly: false,
+    // Pre-cell-style link: the sync's deletion pass spares these.
+    mercuryCreatedAtMs: null,
   });
 }
 
@@ -926,6 +929,7 @@ describe('read model anomaly flag', () => {
       localTransactionId: 'tx-imported',
       mercuryAccountId: 'acct-1',
       anomaly: true,
+      mercuryCreatedAtMs: null,
     });
     // Make the imported row an income row so a naive income total would
     // include it.
@@ -1046,6 +1050,45 @@ describe('category creation free-cap fallback', () => {
   });
 });
 
+describe('incomplete window on the backfill path', () => {
+  beforeEach(() => {
+    store.setValue('isPremium', 'true');
+  });
+
+  it('marks the account stale and keeps its rows when a page repeats', async () => {
+    seedLinkedAccount();
+    await putMercuryLinkedAccount({
+      id: 'acct-1',
+      localAccountId: 'acc-managed',
+      enabled: true,
+      currency: 'USD',
+      mixedCurrency: false,
+      cursorWindowDays: MERCURY_BACKFILL_DAYS,
+      lastSyncedAt: 12345,
+      stale: false,
+      lastError: null,
+    });
+    fetchMock.mockRejectedValue(new MercuryIncompleteWindowError());
+
+    await expect(
+      linkMercuryAccount('secret-token:abc', {
+        id: 'acct-1',
+        name: 'Checking',
+        currentBalance: 999990,
+      }),
+    ).rejects.toBeInstanceOf(MercuryIncompleteWindowError);
+
+    // The imported row and its link survive; the cursor never advanced.
+    expect(Object.keys(store.getTable('transactions'))).toHaveLength(1);
+    expect(getMercuryTransactionLinks()).toHaveLength(1);
+    expect(getMercuryLinkedAccounts()[0].lastSyncedAt).toBe(12345);
+    expect(getMercuryLinkedAccounts()[0]).toMatchObject({
+      stale: true,
+      lastError: expect.stringContaining('repeated'),
+    });
+  });
+});
+
 describe('transactions pagination', () => {
   const realMercuryApi = jest.requireActual('./mercuryApi') as typeof import('./mercuryApi');
   const originalFetch = global.fetch;
@@ -1097,17 +1140,19 @@ describe('transactions pagination', () => {
     expect(String(fetchMockForPages.mock.calls[1][0])).toContain('offset=500');
   });
 
-  it('returns a page once when a server ignores the offset instead of looping', async () => {
+  it('throws instead of returning a truncated prefix when a server ignores the offset', async () => {
+    // The rows collected before the repeated page are a prefix of the window:
+    // handing them back would let a deletion pass drop every linked row beyond
+    // the truncation point, so the walk fails loudly instead.
     const identical = pageRows(0, 500);
     const fetchMockForPages = jest.fn(async () => jsonResponse({ transactions: identical }));
     global.fetch = fetchMockForPages as unknown as typeof fetch;
 
-    const rows = await realMercuryApi.fetchMercuryTransactions('secret-token:abc', 'acct-1', {
-      start: '2026-08-23',
-    });
-
-    expect(rows).toHaveLength(500);
-    expect(new Set(rows.map((tx) => tx.id)).size).toBe(500);
+    await expect(
+      realMercuryApi.fetchMercuryTransactions('secret-token:abc', 'acct-1', {
+        start: '2026-08-23',
+      }),
+    ).rejects.toBeInstanceOf(realMercuryApi.MercuryIncompleteWindowError);
     expect(fetchMockForPages).toHaveBeenCalledTimes(2);
   });
 

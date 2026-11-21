@@ -76,9 +76,9 @@ export interface TablesSchema {
   // 'true'/'false' strings; absent table means no Mercury data.
   mercuryConnection?: { [id: string]: { tokenStatus: string; createdAt: number | null; lastSyncedAt: number | null } };
   mercuryAccounts?: { [id: string]: { localAccountId: string; enabled: string; currency: string; mixedCurrency: string; cursorWindowDays: number | null; lastSyncedAt: number | null; stale: string; lastError: string | null } };
-  mercuryTransactionLinks?: { [id: string]: { localTransactionId: string; mercuryAccountId: string; anomaly: string } };
+  mercuryTransactionLinks?: { [id: string]: { localTransactionId: string; mercuryAccountId: string; anomaly: string; mercuryCreatedAtMs: number | null } };
   mercuryCursors?: { [id: string]: { cursor: string | null } };
-  mercurySyncState?: { [id: string]: { lastAttemptAt: number | null } };
+  mercurySyncState?: { [id: string]: { lastAttemptAt: number | null; nextEligibleAt: number | null; consecutiveFailures: number | null } };
 }
 
 export interface ValuesSchema {

@@ -33,6 +33,7 @@ import {
   MERCURY_BACKFILL_DAYS,
   MERCURY_BACKFILL_WINDOW_CHOICES,
 } from "@/src/services/mercuryImport";
+import { syncMercuryAccounts } from "@/src/services/mercurySync";
 import { ToggleSwitch } from "@/src/components/ToggleSwitch";
 import { bankConnectionsGate } from "@/src/utils/premiumAccess";
 import { formatNumber } from "@/src/utils/formatNumber";
@@ -55,6 +56,9 @@ export default function MercuryMappingScreen() {
   const [windowDays, setWindowDays] = useState<number | null>(MERCURY_BACKFILL_DAYS);
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // The retry affordance for accounts whose last sync failed (ticket 06);
+  // it reuses the forced-sync path, which bypasses debounce and backoff.
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Neutral (non-error) status line, e.g. the single-flight busy notice.
   const [notice, setNotice] = useState<string | null>(null);
@@ -93,10 +97,15 @@ export default function MercuryMappingScreen() {
     setConnection(getMercuryConnection());
   };
 
-  const loadAccounts = async () => {
+  const loadAccounts = async ({
+    preserveState = false,
+  }: { preserveState?: boolean } = {}) => {
     const sequence = ++loadSequence.current;
     setLoading(true);
-    setError(null);
+    // preserveState keeps the messages and the selection the caller just
+    // established (the retry-sync path): clearing them here, synchronously
+    // before the first await, would erase the failure list before it renders.
+    if (!preserveState) setError(null);
     try {
       const token = await getStoredMercuryToken();
       if (!token) throw new MercuryApiError("invalidCredentials", null, "No stored token.");
@@ -106,9 +115,11 @@ export default function MercuryMappingScreen() {
       setAccounts(list);
       setLinkedIds(linked);
       // Fresh mapping session: every not-yet-linked account starts enabled.
-      setSelectedIds(
-        list.filter((account) => !linked.includes(account.id)).map((account) => account.id),
-      );
+      if (!preserveState) {
+        setSelectedIds(
+          list.filter((account) => !linked.includes(account.id)).map((account) => account.id),
+        );
+      }
     } catch (loadError) {
       if (sequence !== loadSequence.current) return;
       setAccounts(null);
@@ -243,6 +254,47 @@ export default function MercuryMappingScreen() {
     }
   };
 
+  /**
+   * Retry the accounts whose last sync failed: the same forced-sync path the
+   * home pull-to-refresh uses. The service collects per-account outcomes, so
+   * nothing throws except its own persistence writes; those are caught here
+   * and surfaced like any other failure.
+   */
+  const handleRetrySync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const outcome = await syncMercuryAccounts({ force: true });
+      // A rejected token was already recorded by the service; pick the new
+      // state up so the reconnect card takes over.
+      setConnection(getMercuryConnection());
+      // Refresh the linked markers without wiping the messages: the reload
+      // clears error state synchronously at the top in its default mode, so
+      // the failure list is applied only after this awaited reload.
+      await loadAccounts({ preserveState: true });
+      if (outcome.busy) {
+        setNotice(t("mercuryMapping.busy"));
+      } else if (outcome.failed.length > 0) {
+        setError(
+          outcome.failed
+            .map((failure) => {
+              const name =
+                accounts?.find((account) => account.id === failure.mercuryAccountId)?.name ??
+                failure.mercuryAccountId;
+              return `${name}: ${errorText(failure.error)}`;
+            })
+            .join("\n"),
+        );
+      }
+    } catch (retryError) {
+      setError(errorText(retryError));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const gate = bankConnectionsGate(isEntitlementLoaded, isPremium);
   if (gate === "wait") {
     return (
@@ -267,6 +319,14 @@ export default function MercuryMappingScreen() {
   const selectedCount = unlinkedAccounts.filter((account) =>
     selectedIds.includes(account.id),
   ).length;
+
+  // Linked accounts whose last sync failed (stale/lastError): the retry
+  // affordance deferred from ticket 04's review, driven by the forced sync.
+  // Enabled only: the sync never runs disabled accounts, so a disabled stale
+  // row (e.g. from a restored backup) could never clear its card.
+  const staleLinked = getMercuryLinkedAccounts().filter(
+    (account) => account.enabled && (account.stale || account.lastError),
+  );
 
   // Linked accounts carry a fixed marker and no control: they cannot be
   // linked twice. Everything else shows the enable toggle.
@@ -419,6 +479,39 @@ export default function MercuryMappingScreen() {
                 <Text testID="mercury-mapping-error" className="mt-3 text-sm text-cheddar-expense">
                   {error}
                 </Text>
+              ) : null}
+              {staleLinked.length > 0 ? (
+                <View testID="mercury-mapping-stale" className={`mt-3 ${cardClass}`}>
+                  <View className="flex-row items-center">
+                    <AlertTriangle size={20} color="#FFB800" />
+                    <Text className={`ml-2 flex-1 text-sm ${subTextColor}`}>
+                      {t("mercuryMapping.staleSyncTitle", { count: staleLinked.length })}
+                    </Text>
+                  </View>
+                  <View className="mt-3">
+                    <TouchableOpacity
+                      className={`flex-row items-center justify-center rounded-xl px-4 py-3 ${
+                        syncing ? "bg-gray-400" : "bg-cheddar-yellow"
+                      }`}
+                      activeOpacity={0.8}
+                      disabled={syncing}
+                      onPress={handleRetrySync}
+                    >
+                      {syncing ? (
+                        <View className="flex-row items-center">
+                          <ActivityIndicator size="small" color="#212226" />
+                          <Text className="ml-2 text-base font-bold text-cheddar-dark">
+                            {t("mercuryMapping.syncing")}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text className="text-base font-bold text-cheddar-dark">
+                          {t("mercuryMapping.retrySync")}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ) : null}
               <View
                 className={`mt-3 overflow-hidden rounded-xl ${isDark ? "bg-[#26282D]" : "bg-white"}`}

@@ -58,6 +58,14 @@ export interface MercuryTransactionLink {
   mercuryAccountId: string;
   /** Per-row FX/anomaly flag (reconnaissance rule 4). */
   anomaly: boolean;
+  /**
+   * Mercury's createdAt in epoch ms, the field the transactions endpoint's
+   * `start` filter compares (the local row date is postedAt ?? createdAt and
+   * can differ). Null when the payload had no usable createdAt (absent,
+   * unparseable, or the Go zero-time sentinel); null links are spared by the
+   * sync's deletion pass.
+   */
+  mercuryCreatedAtMs: number | null;
 }
 
 export interface MercuryCursor {
@@ -150,6 +158,7 @@ export async function putMercuryTransactionLink(link: MercuryTransactionLink): P
     localTransactionId: link.localTransactionId,
     mercuryAccountId: link.mercuryAccountId,
     anomaly: boolCell(link.anomaly),
+    mercuryCreatedAtMs: link.mercuryCreatedAtMs,
   });
   await saveStore();
 }
@@ -170,6 +179,9 @@ export function getMercuryTransactionLinks(): MercuryTransactionLink[] {
     localTransactionId: (row.localTransactionId as string) ?? '',
     mercuryAccountId: (row.mercuryAccountId as string) ?? '',
     anomaly: cellBool(row.anomaly),
+    // A missing cell (pre-existing links from tickets 04/05, restored
+    // backups) reads as null: the sync's deletion pass spares those links.
+    mercuryCreatedAtMs: cellNumber(row.mercuryCreatedAtMs),
   }));
 }
 
@@ -229,4 +241,37 @@ export function getSyncDebounceTimestamp(): number | null {
   return cellNumber(
     getStore().getCell(MERCURY_SYNC_STATE_TABLE, MERCURY_DEBOUNCE_ROW_ID, 'lastAttemptAt'),
   );
+}
+
+/** Rate-limit backoff state for automatic syncs; persisted so restarts respect it. */
+export const MERCURY_BACKOFF_ROW_ID = 'backoff';
+
+export interface MercuryBackoff {
+  nextEligibleAt: number | null;
+  consecutiveFailures: number;
+}
+
+export async function setMercuryBackoff(
+  nextEligibleAt: number | null,
+  consecutiveFailures: number,
+): Promise<void> {
+  if (!isDatabaseReady()) return;
+  getStore().setRow(MERCURY_SYNC_STATE_TABLE, MERCURY_BACKOFF_ROW_ID, {
+    nextEligibleAt,
+    consecutiveFailures,
+  });
+  await saveStore();
+}
+
+export function getMercuryBackoff(): MercuryBackoff {
+  if (!isDatabaseReady()) return { nextEligibleAt: null, consecutiveFailures: 0 };
+  const row = getStore().getRow(MERCURY_SYNC_STATE_TABLE, MERCURY_BACKOFF_ROW_ID);
+  return {
+    nextEligibleAt: cellNumber(row.nextEligibleAt),
+    consecutiveFailures: cellNumber(row.consecutiveFailures) ?? 0,
+  };
+}
+
+export async function clearMercuryBackoff(): Promise<void> {
+  await setMercuryBackoff(null, 0);
 }

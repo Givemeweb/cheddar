@@ -33,12 +33,23 @@ export type MercuryApiErrorKind =
 export class MercuryApiError extends Error {
   readonly kind: MercuryApiErrorKind;
   readonly status: number | null;
+  /** Retry-After in seconds when the response carried one (OQ-2: never observed live). */
+  readonly retryAfter: number | null;
+  /** Correlation handle for support (record F5: log it with every failure). */
+  readonly requestId: string | null;
 
-  constructor(kind: MercuryApiErrorKind, status: number | null, message: string) {
+  constructor(
+    kind: MercuryApiErrorKind,
+    status: number | null,
+    message: string,
+    headers: { retryAfter?: number | null; requestId?: string | null } = {},
+  ) {
     super(message);
     this.name = 'MercuryApiError';
     this.kind = kind;
     this.status = status;
+    this.retryAfter = headers.retryAfter ?? null;
+    this.requestId = headers.requestId ?? null;
   }
 }
 
@@ -96,6 +107,21 @@ export function resolveMercuryApiBaseUrl({
 }
 
 /**
+ * The failure headers the record's backoff design needs (record F5/OQ-2):
+ * Retry-After in its seconds form (an HTTP-date form is not honored; no live
+ * response ever carried the header) and the request id for support. Read
+ * defensively: test doubles may not provide a Headers object at all.
+ */
+function responseHeaders(response: Response): { retryAfter: number | null; requestId: string | null } {
+  const retryAfterRaw = response.headers?.get?.('retry-after') ?? null;
+  const retryAfter = retryAfterRaw === null ? Number.NaN : Number(retryAfterRaw);
+  return {
+    retryAfter: Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : null,
+    requestId: response.headers?.get?.('x-mercury-request-id') ?? null,
+  };
+}
+
+/**
  * One authenticated GET: bounded wait, status classification, and JSON body.
  * The token only ever lands in the Authorization header; errors never repeat it.
  */
@@ -130,6 +156,7 @@ async function mercuryFetchJson(token: string, path: string): Promise<unknown> {
         'invalidCredentials',
         response.status,
         'Mercury rejected the API token.',
+        responseHeaders(response),
       );
     }
     if (!response.ok) {
@@ -137,6 +164,7 @@ async function mercuryFetchJson(token: string, path: string): Promise<unknown> {
         'unexpected',
         response.status,
         `Mercury responded with an unexpected HTTP ${response.status}.`,
+        responseHeaders(response),
       );
     }
 
@@ -251,16 +279,32 @@ async function fetchMercuryTransactionPage(
 }
 
 /**
+ * Raised when the server ignores the pagination offset and repeats a page.
+ * The rows collected so far are a prefix of the window, not the whole of it,
+ * so callers must not run a deletion pass against them or advance a cursor:
+ * every linked row beyond the truncation point would look absent and be
+ * irreversibly dropped. The backfill treats it like any other failed fetch
+ * (rows kept, account stale, cursor unchanged).
+ */
+export class MercuryIncompleteWindowError extends Error {
+  constructor() {
+    super('Mercury repeated a transaction page; the window could not be fetched completely.');
+    this.name = 'MercuryIncompleteWindowError';
+  }
+}
+
+/**
  * Every transaction for one account from `start` (YYYY-MM-DD or ISO 8601)
  * onward, fetched in pages of 500.
  *
  * The `start` parameter must always be passed by callers: the endpoint's
  * default window is 30 days and silently drops boundary rows (record F6).
  * The endpoint paginates with a numeric offset. Two guards keep the walk
- * honest: the page walks stops on the raw page length (rows without a
- * usable id are dropped by the parser and must not end it early), and a
- * repeated first id means the server ignored the offset, so the page is
- * returned without being appended twice.
+ * honest: the page walk stops on the raw page length (rows without a usable
+ * id are dropped by the parser and must not end it early), and a repeated
+ * first id means the server ignored the offset — the walk throws instead of
+ * returning the prefix it collected, because a truncated window must never
+ * be mistaken for a complete one.
  */
 export async function fetchMercuryTransactions(
   token: string,
@@ -275,7 +319,9 @@ export async function fetchMercuryTransactions(
     const page = await fetchMercuryTransactionPage(token, accountId, { start, offset });
 
     const firstId = page.transactions[0]?.id ?? null;
-    if (previousPageFirstId !== null && firstId === previousPageFirstId) return all;
+    if (previousPageFirstId !== null && firstId === previousPageFirstId) {
+      throw new MercuryIncompleteWindowError();
+    }
     all.push(...page.transactions);
 
     if (page.rawCount < MERCURY_TRANSACTIONS_PAGE_LIMIT) return all;

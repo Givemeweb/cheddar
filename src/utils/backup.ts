@@ -545,6 +545,7 @@ const MERCURY_TABLE_SPECS: { table: string; columns: { name: string; type: 'TEXT
       { name: 'localTransactionId', type: 'TEXT' },
       { name: 'mercuryAccountId', type: 'TEXT' },
       { name: 'anomaly', type: 'TEXT' },
+      { name: 'mercuryCreatedAtMs', type: 'INTEGER' },
     ],
   },
   {
@@ -553,7 +554,11 @@ const MERCURY_TABLE_SPECS: { table: string; columns: { name: string; type: 'TEXT
   },
   {
     table: 'mercurySyncState',
-    columns: [{ name: 'lastAttemptAt', type: 'INTEGER' }],
+    columns: [
+      { name: 'lastAttemptAt', type: 'INTEGER' },
+      { name: 'nextEligibleAt', type: 'INTEGER' },
+      { name: 'consecutiveFailures', type: 'INTEGER' },
+    ],
   },
 ];
 
@@ -792,6 +797,12 @@ function parseSqlStatements(sqlContent: string): Tables {
             localTransactionId: parsed.localTransactionId || '',
             mercuryAccountId: parsed.mercuryAccountId || '',
             anomaly: parsed.anomaly === 'true' ? 'true' : 'false',
+            // Older backups have no such column: the link restores without a
+            // createdAt, and the sync's deletion pass spares it.
+            mercuryCreatedAtMs:
+              parsed.mercuryCreatedAtMs === undefined || parsed.mercuryCreatedAtMs === null
+                ? null
+                : Number(parsed.mercuryCreatedAtMs),
           };
         }
       } else if (rawTableName === 'mercuryCursors') {
@@ -806,6 +817,8 @@ function parseSqlStatements(sqlContent: string): Tables {
           data.mercurySyncState = data.mercurySyncState || {};
           data.mercurySyncState[parsed.id] = {
             lastAttemptAt: parsed.lastAttemptAt !== undefined ? Number(parsed.lastAttemptAt) : null,
+            nextEligibleAt: parsed.nextEligibleAt !== undefined ? Number(parsed.nextEligibleAt) : null,
+            consecutiveFailures: parsed.consecutiveFailures !== undefined ? Number(parsed.consecutiveFailures) : null,
           };
         }
       } else if (tableName === 'transactions') {

@@ -172,6 +172,7 @@ describe('mercury linked accounts and links', () => {
       localTransactionId: 'tx-1',
       mercuryAccountId: 'acct-abc',
       anomaly: false,
+      mercuryCreatedAtMs: null,
     });
 
     expect(getMercuryTransactionLinks()).toEqual([{
@@ -179,6 +180,7 @@ describe('mercury linked accounts and links', () => {
       localTransactionId: 'tx-1',
       mercuryAccountId: 'acct-abc',
       anomaly: false,
+      mercuryCreatedAtMs: null,
     }]);
   });
 
@@ -222,6 +224,7 @@ describe('reset', () => {
       localTransactionId: 'tx-1',
       mercuryAccountId: 'acct-abc',
       anomaly: false,
+      mercuryCreatedAtMs: null,
     });
     await setMercuryCursor('acct-abc', 'start_after:mtx-1');
     await setSyncDebounceTimestamp(3);

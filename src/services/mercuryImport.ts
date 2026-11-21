@@ -253,7 +253,7 @@ export function formatMercuryBackfillStart(now: Date, windowDays: number | null)
  * Merge-and-write one linked-account row. putMercuryLinkedAccount replaces
  * the whole row, so every write starts from the row currently on disk.
  */
-async function writeMercuryLinkedAccount(
+export async function writeMercuryLinkedAccount(
   mercuryAccountId: string,
   changes: Partial<Omit<MercuryLinkedAccount, 'id'>>,
 ): Promise<void> {
@@ -283,22 +283,36 @@ async function importMercuryAccountTransactions(
     throw new Error('The linked local account no longer exists.');
   }
 
-  // Transaction links are the dedupe map: a Mercury id already linked is
-  // never imported twice, even across runs.
-  const alreadyLinked = new Set(
-    getMercuryTransactionLinks().map((link) => link.id),
-  );
-  const resolveCategory = createMercuryCategoryResolver();
-  const summary: MercuryImportSummary = { imported: 0, skipped: 0, anomalyRows: 0 };
-
   // The explicit start is what keeps the window from silently shrinking to
   // the endpoint's 30-day default (record F6).
   const rows = await fetchMercuryTransactions(token, mercuryAccount.id, {
     start: formatMercuryBackfillStart(new Date(), cursorWindowDays),
   });
 
+  return importFetchedMercuryTransactions(mercuryAccount.id, localAccount, rows);
+}
+
+/**
+ * Import already-fetched rows into one local account: eligibility filter,
+ * dedupe against the transaction links (a Mercury id already linked is never
+ * imported twice, even across runs), verbatim mapping, and the rollback that
+ * keeps a local row from surviving without its link. Shared by the backfill
+ * (ticket 04) and the incremental sync (ticket 06).
+ */
+export async function importFetchedMercuryTransactions(
+  mercuryAccountId: string,
+  localAccount: { id: string; name: string },
+  rows: MercuryApiTransaction[],
+): Promise<MercuryImportSummary> {
+  const localAccountId = localAccount.id;
+  const alreadyLinked = new Set(
+    getMercuryTransactionLinks().map((link) => link.id),
+  );
+  const resolveCategory = createMercuryCategoryResolver();
+  const summary: MercuryImportSummary = { imported: 0, skipped: 0, anomalyRows: 0 };
+
   for (const tx of rows) {
-    if (!isEligibleMercuryTransaction(tx, mercuryAccount.id)) continue;
+    if (!isEligibleMercuryTransaction(tx, mercuryAccountId)) continue;
     if (alreadyLinked.has(tx.id)) {
       summary.skipped += 1;
       continue;
@@ -329,8 +343,14 @@ async function importMercuryAccountTransactions(
       await putMercuryTransactionLink({
         id: tx.id,
         localTransactionId: local.id,
-        mercuryAccountId: mercuryAccount.id,
+        mercuryAccountId,
         anomaly,
+        // Mercury's own createdAt goes on the link in epoch ms (null when
+        // absent, unparseable, or the Go zero-time sentinel): the endpoint's
+        // `start` filter compares createdAt, so the sync's deletion pass must
+        // judge by the same field. The local row date is postedAt ?? createdAt
+        // and can sit after the cursor while createdAt sits before it.
+        mercuryCreatedAtMs: parseMercuryTimestamp(tx.createdAt),
       });
     } catch (error) {
       // The local row must not survive without its link: dedupe is keyed by
@@ -460,8 +480,20 @@ export class MercuryBatchBusyError extends Error {
 // is the whole single-flight seam. Held across the entire batch: two
 // overlapping batches reaching the same Mercury account would both read "not
 // linked yet", both create a local account, and both insert the same
-// transaction before either link row lands.
+// transaction before either link row lands. The incremental sync (ticket 06)
+// claims the same slot, so a link batch and a sync can never overlap either.
 let batchInFlight = false;
+
+/** Claims the single-flight slot; false when a batch or sync already holds it. */
+export function tryClaimMercuryBatch(): boolean {
+  if (batchInFlight) return false;
+  batchInFlight = true;
+  return true;
+}
+
+export function releaseMercuryBatch(): void {
+  batchInFlight = false;
+}
 
 /**
  * Link every selected account, one at a time. Sequential on purpose
@@ -483,7 +515,7 @@ export async function linkMercuryAccounts(
   mercuryAccounts: MercuryApiAccount[],
   cursorWindowDays: number | null = MERCURY_BACKFILL_DAYS,
 ): Promise<MercuryLinkOutcome[]> {
-  if (batchInFlight) {
+  if (!tryClaimMercuryBatch()) {
     const busy = new MercuryBatchBusyError();
     return mercuryAccounts.map((mercuryAccount) => ({
       mercuryAccountId: mercuryAccount.id,
@@ -492,7 +524,6 @@ export async function linkMercuryAccounts(
       error: busy,
     }));
   }
-  batchInFlight = true;
   try {
     const outcomes: MercuryLinkOutcome[] = [];
     for (const mercuryAccount of mercuryAccounts) {
@@ -505,6 +536,6 @@ export async function linkMercuryAccounts(
     }
     return outcomes;
   } finally {
-    batchInFlight = false;
+    releaseMercuryBatch();
   }
 }
