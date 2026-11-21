@@ -27,6 +27,8 @@ type Row = Record<string, unknown>;
 
 // Minimal in-memory stand-in for the TinyBase store API used by these modules.
 // (TinyBase ships ESM only, which the test transform does not handle.)
+// Faithfulness matters: real TinyBase getRow() returns a truthy {} for a
+// missing row, and the tests below rely on that trap being reproduced here.
 class FakeStore {
   private tables: Record<string, Record<string, Row>> = {};
 
@@ -39,11 +41,11 @@ class FakeStore {
   }
 
   getTable(table: string) {
-    return this.tables[table];
+    return this.tables[table] ?? {};
   }
 
   getRow(table: string, id: string) {
-    return this.tables[table]?.[id];
+    return this.tables[table]?.[id] ?? {};
   }
 
   setRow(table: string, id: string, row: Row) {
@@ -71,6 +73,28 @@ beforeEach(() => {
 });
 
 describe('mercury connection persistence', () => {
+  it('reads a missing connection row as null, not a fabricated active row', () => {
+    // Regression: TinyBase getRow() returns a truthy {} for a missing row,
+    // which used to surface a fake tokenStatus 'active' connection with no
+    // Connect action anywhere.
+    expect(getMercuryConnection()).toBeNull();
+  });
+
+  it('still reads back the connection after an upsert', async () => {
+    await upsertMercuryConnection({
+      tokenStatus: 'active',
+      createdAt: 11,
+      lastSyncedAt: 22,
+    });
+
+    expect(getMercuryConnection()).toEqual({
+      id: 'default',
+      tokenStatus: 'active',
+      createdAt: 11,
+      lastSyncedAt: 22,
+    });
+  });
+
   it('never persists unknown cells, so a token cannot reach the database', async () => {
     const rogue = {
       tokenStatus: 'active',
@@ -95,6 +119,17 @@ describe('mercury connection persistence', () => {
       createdAt: 1000,
       lastSyncedAt: null,
     });
+  });
+});
+
+describe('missing rows read as absent everywhere', () => {
+  it('reports no linked accounts, links, cursors, or debounce before any write', () => {
+    // Same truthy-{} trap checked for the connection getter: these getters
+    // go through getTable()/getCell(), whose missing results are empty.
+    expect(getMercuryLinkedAccounts()).toEqual([]);
+    expect(getMercuryTransactionLinks()).toEqual([]);
+    expect(getMercuryCursor('never-written')).toBeNull();
+    expect(getSyncDebounceTimestamp()).toBeNull();
   });
 });
 

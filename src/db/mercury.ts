@@ -96,7 +96,10 @@ export async function upsertMercuryConnection(cells: {
 export function getMercuryConnection(): MercuryConnection | null {
   if (!isDatabaseReady()) return null;
   const row = getStore().getRow(MERCURY_CONNECTION_TABLE, MERCURY_CONNECTION_ROW_ID);
-  if (!row) return null;
+  // TinyBase getRow() returns a truthy {} for a missing row, so a row only
+  // counts as present when it carries a tokenStatus cell: the one cell every
+  // real write sets and every restore path overwrites.
+  if (!row || row.tokenStatus === undefined) return null;
   return {
     id: MERCURY_CONNECTION_ROW_ID,
     tokenStatus: (row.tokenStatus as MercuryTokenStatus) ?? 'active',

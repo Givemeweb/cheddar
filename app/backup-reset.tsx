@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 import { Trash2, AlertTriangle } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
 import { clearAllData } from "../src/db";
+import { getMercuryConnection } from "../src/db/mercury";
 import { initDatabase } from "../src/db/tinybase";
+import { deleteStoredMercuryToken } from "../src/services/mercuryConnect";
 import { trackEvent } from "../src/lib/analytics";
 
 export default function BackupResetScreen() {
@@ -52,6 +54,10 @@ export default function BackupResetScreen() {
 
   const confirmReset = async () => {
     try {
+      // The Mercury token lives in SecureStore, outside the TinyBase backup,
+      // so clear it too. Only when a connection ever stored one, and
+      // best-effort: SecureStore is unavailable on web.
+      if (getMercuryConnection()) await deleteStoredMercuryToken();
       await clearAllData();
       // Re-initialize database with default data (force reinit to seed defaults)
       await initDatabase(true);

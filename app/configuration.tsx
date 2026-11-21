@@ -7,6 +7,7 @@ import {
   TrendingUp,
   TrendingDown,
   DollarSign,
+  Landmark,
   Lock,
   Bell,
   Palette,
@@ -14,6 +15,8 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
 import { ToggleSwitch } from "../src/components/ToggleSwitch";
+import { usePremium } from "../src/components/PremiumProvider";
+import { bankConnectionsPress } from "../src/utils/premiumAccess";
 import { isAnalyticsEnabled, setAnalyticsEnabled } from "../src/db/analytics";
 import { trackEvent } from "../src/lib/analytics";
 
@@ -27,7 +30,11 @@ type MenuItem = {
     | "currency"
     | "passcode"
     | "alarms"
-    | "style";
+    | "style"
+    | "bank-connections";
+  /** Disabled rows stay visible but cannot be opened (web: native only). */
+  disabled?: boolean;
+  note?: string;
 };
 
 type MenuGroup = {
@@ -39,6 +46,7 @@ export default function ConfigurationScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const { t } = useTranslation();
+  const { isPremium, isEntitlementLoaded } = usePremium();
   const [analyticsEnabled, setAnalyticsEnabledState] = useState(() =>
     isAnalyticsEnabled(),
   );
@@ -129,6 +137,18 @@ export default function ConfigurationScreen() {
           target: "alarms" as const,
         }] : []),
         {
+          label: t('config.bankConnections'),
+          icon: <Landmark size={22} color={iconColor} />,
+          route: "/configuration/bank-connections",
+          target: "bank-connections" as const,
+          // Web cannot reach the native secure store, so the feature is
+          // native-only; the row stays visible but disabled.
+          ...(Platform.OS === 'web' ? {
+            disabled: true,
+            note: t('bankConnections.webUnavailable'),
+          } : {}),
+        },
+        {
           label: t('config.style'),
           icon: <Palette size={22} color={iconColor} />,
           route: "/configuration/style",
@@ -178,22 +198,48 @@ export default function ConfigurationScreen() {
                     index > 0
                       ? `${isDark ? "border-gray-700" : "border-gray-100"}`
                       : ""
-                  }`}
+                  } ${item.disabled ? "opacity-50" : ""}`}
                   activeOpacity={0.7}
+                  disabled={item.disabled}
                   onPress={() => {
                     trackEvent('configuration.row_open', { target: item.target });
+                    if (item.target === 'bank-connections') {
+                      // The cached entitlement resolves in a frame; ignore
+                      // taps until then so a premium user on a cold start is
+                      // never sent to the paywall by mistake.
+                      const destination = bankConnectionsPress(
+                        isEntitlementLoaded,
+                        isPremium,
+                      );
+                      if (!destination) return;
+                      router.push(destination as never);
+                      return;
+                    }
                     router.push(item.route as never);
                   }}
                 >
-                  <View className="flex-row items-center">
+                  <View className="flex-row items-center flex-1">
                     <View className="mr-3">{item.icon}</View>
-                    <Text
-                      className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                    >
-                      {item.label}
-                    </Text>
+                    <View className="flex-1">
+                      <Text
+                        className={`text-lg ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {item.label}
+                      </Text>
+                      {item.note ? (
+                        <Text
+                          className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                        >
+                          {item.note}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
-                  <ChevronRight size={20} color="#9CA3AF" />
+                  {item.disabled ? (
+                    <Lock size={20} color="#9CA3AF" />
+                  ) : (
+                    <ChevronRight size={20} color="#9CA3AF" />
+                  )}
                 </TouchableOpacity>
               ))}
             </View>

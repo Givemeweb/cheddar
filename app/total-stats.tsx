@@ -9,7 +9,7 @@ import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
 import { usePremium } from "../src/components/PremiumProvider";
 import { formatNumber } from "../src/utils/formatNumber";
-import { statsPaywallHref } from "../src/utils/premiumAccess";
+import { paywallHref } from "../src/utils/premiumAccess";
 import {
   convertWithRates,
   getLatestRates,
@@ -191,7 +191,7 @@ export default function TotalStatsScreen() {
   // Covers deep links and web history; entry points already gate before
   // navigating here.
   if (!isPremium) {
-    return <Redirect href={statsPaywallHref('totalStats')} />;
+    return <Redirect href={paywallHref('totalStats')} />;
   }
 
   if (loading) {

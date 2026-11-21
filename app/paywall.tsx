@@ -31,6 +31,7 @@ const PAYWALL_REASONS = [
   'categories',
   'statsHistory',
   'totalStats',
+  'bankConnections',
 ] as const;
 type PaywallReason = (typeof PAYWALL_REASONS)[number];
 
@@ -93,6 +94,7 @@ export default function PaywallScreen() {
       break;
     case 'statsHistory':
     case 'totalStats':
+    case 'bankConnections':
       limitMessage = t(`premium.limit.${paywallReason}`);
       break;
   }

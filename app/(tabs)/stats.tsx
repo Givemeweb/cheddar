@@ -25,7 +25,7 @@ import { usePremium } from "../../src/components/PremiumProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
 import {
   canBrowseStatsMonth,
-  statsPaywallHref,
+  paywallHref,
 } from "../../src/utils/premiumAccess";
 import {
   convertWithRates,
@@ -101,7 +101,7 @@ export default function StatsScreen() {
     // The current month is the newest one with data.
     if (target.getTime() > now.getTime()) return;
     if (!canBrowseStatsMonth(target, now, isPremium)) {
-      router.push(statsPaywallHref("statsHistory"));
+      router.push(paywallHref("statsHistory"));
       return;
     }
     trackEvent('stats.month_change', {
