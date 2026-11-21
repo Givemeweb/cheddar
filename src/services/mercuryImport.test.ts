@@ -6,7 +6,10 @@ import {
   isMercuryAnomalyRow,
   isEligibleMercuryTransaction,
   linkMercuryAccount,
+  linkMercuryAccounts,
+  MercuryBatchBusyError,
   MERCURY_BACKFILL_DAYS,
+  MERCURY_BACKFILL_WINDOW_CHOICES,
   MERCURY_EXPENSE_CATEGORY_NAME,
   MERCURY_INCOME_CATEGORY_NAME,
 } from './mercuryImport';
@@ -549,6 +552,256 @@ describe('linking one account and its backfill', () => {
     });
     expect(getMercuryLinkedAccounts()[0].cursorWindowDays).toBe(MERCURY_BACKFILL_DAYS);
     expect(getMercuryLinkedAccounts()[0].lastSyncedAt).toEqual(expect.any(Number));
+  });
+});
+
+describe('backfill window selection', () => {
+  // Frozen clock: the expected YYYY-MM-DD starts are derived from the same
+  // clock read the importer sees, so they cannot flake across a UTC midnight
+  // between the call and the assertion.
+  const NOW = Date.parse('2026-11-21T12:00:00Z');
+
+  beforeEach(() => {
+    jest.useFakeTimers({ now: NOW });
+    store.setValue('isPremium', 'true');
+    fetchMock.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const expectedStart = (days: number) =>
+    new Date(NOW - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  it('stores the chosen window and passes its explicit start to the API', async () => {
+    await linkMercuryAccount(
+      'secret-token:abc',
+      { id: 'acct-1', name: 'Checking', currentBalance: 0 },
+      { cursorWindowDays: 30 },
+    );
+    await linkMercuryAccount(
+      'secret-token:abc',
+      { id: 'acct-2', name: 'Savings', currentBalance: 0 },
+      { cursorWindowDays: 365 },
+    );
+
+    const linked = getMercuryLinkedAccounts();
+    expect(linked.find((account) => account.id === 'acct-1')!.cursorWindowDays).toBe(30);
+    expect(linked.find((account) => account.id === 'acct-2')!.cursorWindowDays).toBe(365);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'secret-token:abc',
+      'acct-1',
+      { start: expectedStart(30) },
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'secret-token:abc',
+      'acct-2',
+      { start: expectedStart(365) },
+    );
+  });
+
+  it('treats a null window as all history: a fixed unbounded start, recorded as null', async () => {
+    await linkMercuryAccount(
+      'secret-token:abc',
+      { id: 'acct-1', name: 'Checking', currentBalance: 0 },
+      { cursorWindowDays: null },
+    );
+
+    expect(getMercuryLinkedAccounts()[0].cursorWindowDays).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith('secret-token:abc', 'acct-1', { start: '1990-01-01' });
+  });
+
+  it('offers exactly the ticketed window choices', () => {
+    expect(MERCURY_BACKFILL_WINDOW_CHOICES).toEqual([30, 90, 365, null]);
+  });
+});
+
+describe('linking several accounts sequentially', () => {
+  beforeEach(() => {
+    store.setValue('isPremium', 'true');
+  });
+
+  const batch = [
+    { id: 'acct-1', name: 'Checking', currentBalance: 100 },
+    { id: 'acct-2', name: 'Savings', currentBalance: 200 },
+    { id: 'acct-3', name: 'Venture', currentBalance: 300 },
+  ];
+
+  it('links every selected account one at a time, in order', async () => {
+    // An overlapping implementation would run two fetches at once and the
+    // concurrency counter would climb past 1; sequential awaits cannot.
+    let active = 0;
+    let maxActive = 0;
+    const callOrder: string[] = [];
+    fetchMock.mockImplementation(async (_token: string, accountId: string) => {
+      callOrder.push(accountId);
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await Promise.resolve();
+      active -= 1;
+      return [];
+    });
+
+    const outcomes = await linkMercuryAccounts('secret-token:abc', batch);
+
+    expect(callOrder).toEqual(['acct-1', 'acct-2', 'acct-3']);
+    expect(maxActive).toBe(1);
+    expect(outcomes.map((outcome) => outcome.mercuryAccountId)).toEqual([
+      'acct-1',
+      'acct-2',
+      'acct-3',
+    ]);
+    expect(outcomes.every((outcome) => outcome.ok && outcome.summary)).toBe(true);
+
+    // One managed local account per Mercury account, one-to-one.
+    const accounts = await getAccounts();
+    expect(accounts.map((account) => account.name)).toEqual(['Checking', 'Savings', 'Venture']);
+    expect(accounts.every((account) => account.source === 'mercury')).toBe(true);
+
+    // Each account carries its own recorded sync state after the run.
+    const linked = getMercuryLinkedAccounts();
+    expect(linked.map((account) => account.id)).toEqual(['acct-1', 'acct-2', 'acct-3']);
+    expect(linked.every((account) => account.lastSyncedAt !== null && !account.stale)).toBe(true);
+  });
+
+  it('keeps going when one account fails; the others still complete', async () => {
+    fetchMock.mockImplementation(async (_token: string, accountId: string) => {
+      if (accountId === 'acct-2') throw new Error('offline');
+      return [mercuryRow({ id: `mtx-${accountId}`, amount: -5, accountId })];
+    });
+
+    const outcomes = await linkMercuryAccounts('secret-token:abc', batch, 30);
+
+    expect(outcomes.map((outcome) => [outcome.mercuryAccountId, outcome.ok])).toEqual([
+      ['acct-1', true],
+      ['acct-2', false],
+      ['acct-3', true],
+    ]);
+    expect(outcomes[1]!.error).toBeInstanceOf(Error);
+
+    const linked = getMercuryLinkedAccounts();
+    // The failed account recorded the error, and its sync state never
+    // advanced: lastSyncedAt stays unset and the window is untouched.
+    expect(linked.find((account) => account.id === 'acct-2')).toMatchObject({
+      enabled: true,
+      cursorWindowDays: 30,
+      lastSyncedAt: null,
+      stale: true,
+      lastError: 'offline',
+    });
+    expect(linked.find((account) => account.id === 'acct-1')).toMatchObject({
+      stale: false,
+      lastError: null,
+      lastSyncedAt: expect.any(Number),
+    });
+    expect(linked.find((account) => account.id === 'acct-3')).toMatchObject({
+      stale: false,
+      lastError: null,
+      lastSyncedAt: expect.any(Number),
+    });
+
+    // Rows landed for the healthy accounts only; nothing corrupt or partial
+    // for the failed one beyond its reusable (empty) local account.
+    const accounts = await getAccounts();
+    expect(accounts).toHaveLength(3);
+    const localIds = new Map(linked.map((account) => [account.id, account.localAccountId]));
+    const transactions = await getTransactions();
+    expect(transactions.map((tx) => tx.accountId).sort()).toEqual(
+      [localIds.get('acct-1'), localIds.get('acct-3')].sort(),
+    );
+    expect(getMercuryTransactionLinks().map((link) => link.mercuryAccountId).sort()).toEqual([
+      'acct-1',
+      'acct-3',
+    ]);
+  });
+
+  it('keeps a previously synced account intact when its re-confirm fails', async () => {
+    fetchMock.mockResolvedValue([mercuryRow({ id: 'mtx-1', amount: -5 })]);
+    await linkMercuryAccount('secret-token:abc', batch[0]!);
+    const before = getMercuryLinkedAccounts()[0];
+    const txCount = Object.keys(store.getTable('transactions')).length;
+
+    fetchMock.mockRejectedValue(new Error('offline'));
+    const [outcome] = await linkMercuryAccounts('secret-token:abc', [batch[0]!]);
+
+    expect(outcome!.ok).toBe(false);
+    // The imported rows and their links survive the failure.
+    expect(Object.keys(store.getTable('transactions'))).toHaveLength(txCount);
+    expect(getMercuryTransactionLinks()).toHaveLength(1);
+    // The cursor did not advance: same lastSyncedAt, window, and rows; only
+    // the error bookkeeping changed.
+    const after = getMercuryLinkedAccounts()[0];
+    expect(after.lastSyncedAt).toBe(before!.lastSyncedAt);
+    expect(after.cursorWindowDays).toBe(before!.cursorWindowDays);
+    expect(after).toMatchObject({ stale: true, lastError: 'offline' });
+  });
+
+  it('single-flights concurrent batches: the second resolves busy, nothing duplicates', async () => {
+    let entered!: () => void;
+    const firstFetchEntered = new Promise<void>((resolve) => { entered = resolve; });
+    let release!: () => void;
+    const firstFetchGate = new Promise<void>((resolve) => { release = resolve; });
+
+    fetchMock.mockImplementation(async (_token: string, accountId: string) => {
+      if (accountId === 'acct-1') {
+        // Park the first batch mid-flight until the second call has tried.
+        entered();
+        await firstFetchGate;
+      }
+      return [mercuryRow({ id: `mtx-${accountId}`, amount: -5, accountId })];
+    });
+
+    const first = linkMercuryAccounts('secret-token:abc', batch.slice(0, 2), 30);
+    await firstFetchEntered;
+    const second = await linkMercuryAccounts('secret-token:abc', batch.slice(0, 2), 30);
+
+    // The second pass ran nothing: every outcome carries the busy sentinel.
+    expect(second.map((outcome) => [outcome.mercuryAccountId, outcome.ok])).toEqual([
+      ['acct-1', false],
+      ['acct-2', false],
+    ]);
+    expect(second.every((outcome) => outcome.error instanceof MercuryBatchBusyError)).toBe(true);
+    expect(second.every((outcome) => outcome.summary === null)).toBe(true);
+
+    release();
+    const firstOutcomes = await first;
+    expect(firstOutcomes.map((outcome) => [outcome.mercuryAccountId, outcome.ok])).toEqual([
+      ['acct-1', true],
+      ['acct-2', true],
+    ]);
+
+    // The overlapping call left no second set of accounts, rows, or links.
+    expect(await getAccounts()).toHaveLength(2);
+    expect(Object.keys(store.getTable('transactions'))).toHaveLength(2);
+    expect(getMercuryTransactionLinks()).toHaveLength(2);
+  });
+
+  it('re-confirming the same batch creates no duplicate accounts or transactions', async () => {
+    fetchMock.mockImplementation(async (_token: string, accountId: string) => [
+      mercuryRow({ id: `mtx-${accountId}-a`, amount: -5, accountId }),
+      mercuryRow({ id: `mtx-${accountId}-b`, amount: 7, accountId }),
+    ]);
+
+    const first = await linkMercuryAccounts('secret-token:abc', batch.slice(0, 2), 30);
+    const second = await linkMercuryAccounts('secret-token:abc', batch.slice(0, 2), 30);
+
+    expect(first.every((o) => o.ok && o.summary!.imported === 2)).toBe(true);
+    expect(
+      second.every((o) => o.ok && o.summary!.imported === 0 && o.summary!.skipped === 2),
+    ).toBe(true);
+    expect(await getAccounts()).toHaveLength(2);
+    expect(Object.keys(store.getTable('transactions'))).toHaveLength(4);
+    expect(getMercuryTransactionLinks()).toHaveLength(4);
+
+    // Every row still belongs to its own Mercury account's local account.
+    const linked = getMercuryLinkedAccounts();
+    for (const account of linked) {
+      const rows = await getTransactions();
+      expect(rows.filter((tx) => tx.accountId === account.localAccountId)).toHaveLength(2);
+    }
   });
 });
 

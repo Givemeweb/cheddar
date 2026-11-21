@@ -17,12 +17,15 @@ type ToggleSwitchProps = {
   value: boolean;
   onValueChange: (value: boolean) => void;
   accessibilityLabel?: string;
+  /** Blocks interaction and dims the switch; reported in accessibilityState. */
+  disabled?: boolean;
 };
 
 export function ToggleSwitch({
   value,
   onValueChange,
   accessibilityLabel,
+  disabled = false,
 }: ToggleSwitchProps) {
   const { isDark } = useTheme();
 
@@ -69,12 +72,13 @@ export function ToggleSwitch({
   };
 
   const touchableProps = {
-    style: styles.container,
+    style: [styles.container, disabled ? styles.disabled : null],
     onPress: () => onValueChange(!value),
     activeOpacity: 0.8,
     accessibilityRole: "switch" as const,
-    accessibilityState: { checked: value },
+    accessibilityState: { checked: value, disabled },
     accessibilityLabel,
+    disabled,
   };
 
   if (Platform.OS === "web") {
@@ -108,6 +112,9 @@ const styles = StyleSheet.create({
     height: TOGGLE_HEIGHT,
     borderRadius: TOGGLE_HEIGHT / 2,
     padding: PADDING,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   trackWeb: {
     transitionProperty: "background-color",

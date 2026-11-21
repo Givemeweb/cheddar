@@ -36,8 +36,20 @@ import {
   type MercuryLinkedAccount,
 } from '../db/mercury';
 
-/** Backfill window for a newly linked account, in days. */
+/** Default backfill window for a newly linked account, in days. */
 export const MERCURY_BACKFILL_DAYS = 90;
+
+/** Backfill windows the mapping screen offers; null means all history. */
+export const MERCURY_BACKFILL_WINDOW_CHOICES: (number | null)[] = [30, 90, 365, null];
+
+/**
+ * Start date used for the "all history" window. The per-account endpoint
+ * defaults to a 30-day window and silently drops boundary rows (record F6),
+ * so every window choice passes an explicit start; 1990-01-01 is far enough
+ * back to be unbounded in practice for a bank that opened years earlier, and
+ * the endpoint accepts it (docs/mercury-sandbox-reconnaissance.md).
+ */
+const MERCURY_ALL_HISTORY_START = '1990-01-01';
 
 /** Transfer kinds whose rows never become local transactions. */
 export const MERCURY_EXCLUDED_KINDS = ['internalTransfer', 'treasuryTransfer'];
@@ -231,8 +243,9 @@ async function createMercuryFallbackCategory(
   }
 }
 
-function formatMercuryBackfillStart(now: Date): string {
-  const start = new Date(now.getTime() - MERCURY_BACKFILL_DAYS * 24 * 60 * 60 * 1000);
+export function formatMercuryBackfillStart(now: Date, windowDays: number | null): string {
+  if (windowDays === null) return MERCURY_ALL_HISTORY_START;
+  const start = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
   return start.toISOString().slice(0, 10);
 }
 
@@ -263,6 +276,7 @@ async function importMercuryAccountTransactions(
   token: string,
   mercuryAccount: { id: string },
   localAccountId: string,
+  cursorWindowDays: number | null,
 ): Promise<MercuryImportSummary> {
   const localAccount = await getAccountById(localAccountId);
   if (!localAccount) {
@@ -280,7 +294,7 @@ async function importMercuryAccountTransactions(
   // The explicit start is what keeps the window from silently shrinking to
   // the endpoint's 30-day default (record F6).
   const rows = await fetchMercuryTransactions(token, mercuryAccount.id, {
-    start: formatMercuryBackfillStart(new Date()),
+    start: formatMercuryBackfillStart(new Date(), cursorWindowDays),
   });
 
   for (const tx of rows) {
@@ -336,6 +350,12 @@ async function importMercuryAccountTransactions(
   return summary;
 }
 
+/** Options for linking one account; only the backfill window is choosable. */
+export interface MercuryLinkOptions {
+  /** Backfill window in days; null means all history. Defaults to 90 days. */
+  cursorWindowDays?: number | null;
+}
+
 /**
  * Link one Mercury account one-to-one and run its backfill. Safe to call
  * again for the same Mercury account: the local account is reused, the
@@ -345,6 +365,7 @@ async function importMercuryAccountTransactions(
 export async function linkMercuryAccount(
   token: string,
   mercuryAccount: MercuryApiAccount,
+  { cursorWindowDays = MERCURY_BACKFILL_DAYS }: MercuryLinkOptions = {},
 ): Promise<MercuryImportSummary> {
   const existing = getMercuryLinkedAccounts().find((account) => account.id === mercuryAccount.id);
   let localAccountId = existing?.localAccountId ?? '';
@@ -372,12 +393,17 @@ export async function linkMercuryAccount(
     localAccountId,
     enabled: true,
     currency: MERCURY_ACCOUNT_CURRENCY,
-    cursorWindowDays: MERCURY_BACKFILL_DAYS,
+    cursorWindowDays,
     lastError: null,
   });
 
   try {
-    const summary = await importMercuryAccountTransactions(token, mercuryAccount, localAccountId);
+    const summary = await importMercuryAccountTransactions(
+      token,
+      mercuryAccount,
+      localAccountId,
+      cursorWindowDays,
+    );
 
     // The account-level mixed-currency cell is the repurposed FX/anomaly
     // flag, derived from the link table's lifetime rows for this account:
@@ -405,5 +431,80 @@ export async function linkMercuryAccount(
       console.warn('[mercury] Could not record the failed import', persistError);
     });
     throw error;
+  }
+}
+
+/** What happened to one account of a batch confirm. */
+export interface MercuryLinkOutcome {
+  mercuryAccountId: string;
+  ok: boolean;
+  summary: MercuryImportSummary | null;
+  /** The raw failure; the screen maps it to a message. Null when ok. */
+  error: unknown;
+}
+
+/**
+ * Sentinel carried by a batch declined by the single-flight guard below:
+ * the connection already has a link/sync batch running, so this call did
+ * nothing. The screen shows it as an ordinary "already running" state, not
+ * an error. Prefigures ticket 06's planned single-flight-per-account guard.
+ */
+export class MercuryBatchBusyError extends Error {
+  constructor() {
+    super('A Mercury link or sync batch is already running.');
+    this.name = 'MercuryBatchBusyError';
+  }
+}
+
+// One connection per install (MERCURY_CONNECTION_ROW_ID), so one module flag
+// is the whole single-flight seam. Held across the entire batch: two
+// overlapping batches reaching the same Mercury account would both read "not
+// linked yet", both create a local account, and both insert the same
+// transaction before either link row lands.
+let batchInFlight = false;
+
+/**
+ * Link every selected account, one at a time. Sequential on purpose
+ * (ticket 05): the store writes stay ordered and the request stream stays
+ * predictable for rate limits, so no Promise.all here. One account failing
+ * (network, 401, anything) must not stop the others, so failures are
+ * collected per account instead of thrown; the failed account keeps its
+ * imported rows and its lastSyncedAt (linkMercuryAccount advances that only
+ * after a successful fetch+persist). Its pre-fetch write does record the
+ * chosen window and clear lastError, but the window is configuration, not a
+ * sync position, so rewriting it is not advancing a cursor.
+ *
+ * Single-flight: a call arriving while another batch is still running
+ * resolves immediately with per-account busy outcomes instead of starting a
+ * second pass over the same store.
+ */
+export async function linkMercuryAccounts(
+  token: string,
+  mercuryAccounts: MercuryApiAccount[],
+  cursorWindowDays: number | null = MERCURY_BACKFILL_DAYS,
+): Promise<MercuryLinkOutcome[]> {
+  if (batchInFlight) {
+    const busy = new MercuryBatchBusyError();
+    return mercuryAccounts.map((mercuryAccount) => ({
+      mercuryAccountId: mercuryAccount.id,
+      ok: false,
+      summary: null,
+      error: busy,
+    }));
+  }
+  batchInFlight = true;
+  try {
+    const outcomes: MercuryLinkOutcome[] = [];
+    for (const mercuryAccount of mercuryAccounts) {
+      try {
+        const summary = await linkMercuryAccount(token, mercuryAccount, { cursorWindowDays });
+        outcomes.push({ mercuryAccountId: mercuryAccount.id, ok: true, summary, error: null });
+      } catch (error) {
+        outcomes.push({ mercuryAccountId: mercuryAccount.id, ok: false, summary: null, error });
+      }
+    }
+    return outcomes;
+  } finally {
+    batchInFlight = false;
   }
 }

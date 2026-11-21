@@ -27,7 +27,13 @@ import {
   MercuryApiError,
   type MercuryApiAccount,
 } from "@/src/services/mercuryApi";
-import { linkMercuryAccount } from "@/src/services/mercuryImport";
+import {
+  linkMercuryAccounts,
+  MercuryBatchBusyError,
+  MERCURY_BACKFILL_DAYS,
+  MERCURY_BACKFILL_WINDOW_CHOICES,
+} from "@/src/services/mercuryImport";
+import { ToggleSwitch } from "@/src/components/ToggleSwitch";
 import { bankConnectionsGate } from "@/src/utils/premiumAccess";
 import { formatNumber } from "@/src/utils/formatNumber";
 import { trackEvent } from "@/src/lib/analytics";
@@ -43,13 +49,18 @@ export default function MercuryMappingScreen() {
   // null until the first fetch resolves; an empty list renders its own state.
   const [accounts, setAccounts] = useState<MercuryApiAccount[] | null>(null);
   const [linkedIds, setLinkedIds] = useState<string[]>([]);
+  // Selection for the next confirm; linked accounts are never in here.
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Backfill window for the next confirm, in days; null means all history.
+  const [windowDays, setWindowDays] = useState<number | null>(MERCURY_BACKFILL_DAYS);
   const [loading, setLoading] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [linkedSummary, setLinkedSummary] = useState<{
-    name: string;
-    imported: number;
-  } | null>(null);
+  // Neutral (non-error) status line, e.g. the single-flight busy notice.
+  const [notice, setNotice] = useState<string | null>(null);
+  const [linkedSummaries, setLinkedSummaries] = useState<
+    { id: string; name: string; imported: number }[]
+  >([]);
   // Cancellation guard for the focus load: a blur/refocus while a fetch is
   // in flight must not apply a stale result last.
   const loadSequence = useRef(0);
@@ -91,9 +102,12 @@ export default function MercuryMappingScreen() {
       if (!token) throw new MercuryApiError("invalidCredentials", null, "No stored token.");
       const list = await fetchMercuryAccounts(token);
       if (sequence !== loadSequence.current) return;
+      const linked = getMercuryLinkedAccounts().map((account) => account.id);
       setAccounts(list);
-      setLinkedIds(
-        getMercuryLinkedAccounts().map((account) => account.id),
+      setLinkedIds(linked);
+      // Fresh mapping session: every not-yet-linked account starts enabled.
+      setSelectedIds(
+        list.filter((account) => !linked.includes(account.id)).map((account) => account.id),
       );
     } catch (loadError) {
       if (sequence !== loadSequence.current) return;
@@ -111,7 +125,9 @@ export default function MercuryMappingScreen() {
     useCallback(() => {
       const current = getMercuryConnection();
       setConnection(current);
-      setLinkedSummary(null);
+      setLinkedSummaries([]);
+      setError(null);
+      setNotice(null);
       if (current?.tokenStatus === "active") {
         loadAccounts();
       } else {
@@ -123,33 +139,107 @@ export default function MercuryMappingScreen() {
     }, []),
   );
 
-  const handleLink = async (account: MercuryApiAccount) => {
-    if (busyId) return;
-    setBusyId(account.id);
+  const toggleAccount = (accountId: string) => {
+    if (confirming) return;
+    setSelectedIds((current) =>
+      current.includes(accountId)
+        ? current.filter((id) => id !== accountId)
+        : [...current, accountId],
+    );
+  };
+
+  const chooseWindow = (days: number | null) => {
+    if (confirming) return;
+    setWindowDays(days);
+  };
+
+  /**
+   * The confirm path: link every selected account and run its initial sync,
+   * sequentially (the service awaits each account in turn). A failed account
+   * keeps its rows and its lastSyncedAt; the rest still complete.
+   */
+  const handleConfirm = async () => {
+    if (confirming || !accounts) return;
+    const selected = accounts.filter(
+      (account) => selectedIds.includes(account.id) && !linkedIds.includes(account.id),
+    );
+    if (selected.length === 0) return;
+    setConfirming(true);
     setError(null);
+    setNotice(null);
     try {
       const token = await getStoredMercuryToken();
       if (!token) throw new MercuryApiError("invalidCredentials", null, "No stored token.");
-      const summary = await linkMercuryAccount(token, account);
-      trackEvent("bankConnections.account_linked", { imported: summary.imported });
-      setLinkedSummary({ name: account.name, imported: summary.imported });
-      setLinkedIds(
-        getMercuryLinkedAccounts().map((linked) => linked.id),
+      const outcomes = await linkMercuryAccounts(token, selected, windowDays);
+      const isBusy = (outcome: (typeof outcomes)[number]) =>
+        outcome.error instanceof MercuryBatchBusyError;
+      const succeededIds = outcomes
+        .filter((outcome) => outcome.ok)
+        .map((outcome) => outcome.mercuryAccountId);
+      // Busy outcomes mean this call did nothing (a batch is already
+      // running elsewhere): an ordinary state, not an error.
+      const busy = outcomes.filter(isBusy);
+      const failures = outcomes.filter((outcome) => !outcome.ok && !isBusy(outcome));
+      // Only successful links refresh the marker: a failed account keeps its
+      // toggle so the same confirm can retry it. The stale/lastError retry
+      // affordance across screen visits is ticket 06's refresh flow.
+      setLinkedIds((current) => [...current, ...succeededIds]);
+      setLinkedSummaries(
+        outcomes
+          .filter((outcome) => outcome.ok)
+          .map((outcome) => ({
+            id: outcome.mercuryAccountId,
+            name: selected.find(
+              (account) => account.id === outcome.mercuryAccountId,
+            )?.name ?? "",
+            imported: outcome.summary?.imported ?? 0,
+          })),
       );
-    } catch (linkError) {
-      const reason =
-        linkError instanceof MercuryApiError ? linkError.kind : "unexpected";
-      trackEvent("bankConnections.account_link_failed", { reason });
-      setError(errorText(linkError));
-      if (linkError instanceof MercuryApiError && linkError.kind === "invalidCredentials") {
+      for (const outcome of outcomes) {
+        if (outcome.ok) {
+          trackEvent("bankConnections.account_linked", {
+            imported: outcome.summary?.imported ?? 0,
+          });
+        } else if (!isBusy(outcome)) {
+          trackEvent("bankConnections.account_link_failed", {
+            reason: outcome.error instanceof MercuryApiError ? outcome.error.kind : "unexpected",
+          });
+        }
+      }
+      if (failures.length > 0) {
+        // Name each line so the user knows which account to retry.
+        setError(
+          failures
+            .map((outcome) => {
+              const name = selected.find(
+                (account) => account.id === outcome.mercuryAccountId,
+              )?.name ?? outcome.mercuryAccountId;
+              return `${name}: ${errorText(outcome.error)}`;
+            })
+            .join("\n"),
+        );
+      } else if (busy.length > 0) {
+        setNotice(t("mercuryMapping.busy"));
+      }
+      if (
+        failures.some(
+          (outcome) =>
+            outcome.error instanceof MercuryApiError &&
+            outcome.error.kind === "invalidCredentials",
+        )
+      ) {
         await handleRejectedToken();
       }
-      // The linked-account row is already on disk, but linkedIds is only
-      // refreshed on success so the Link action stays available for a
-      // retry. The stale/lastError retry affordance is ticket 06's refresh
-      // flow.
+    } catch (confirmError) {
+      if (
+        confirmError instanceof MercuryApiError &&
+        confirmError.kind === "invalidCredentials"
+      ) {
+        await handleRejectedToken();
+      }
+      setError(errorText(confirmError));
     } finally {
-      setBusyId(null);
+      setConfirming(false);
     }
   };
 
@@ -171,9 +261,17 @@ export default function MercuryMappingScreen() {
   const headingColor = isDark ? "text-cheddar-light" : "text-cheddar-dark";
   const subTextColor = isDark ? "text-gray-400" : "text-gray-500";
 
-  const linkButton = (account: MercuryApiAccount) => {
-    const linked = linkedIds.includes(account.id);
-    if (linked) {
+  const unlinkedAccounts = (accounts ?? []).filter(
+    (account) => !linkedIds.includes(account.id),
+  );
+  const selectedCount = unlinkedAccounts.filter((account) =>
+    selectedIds.includes(account.id),
+  ).length;
+
+  // Linked accounts carry a fixed marker and no control: they cannot be
+  // linked twice. Everything else shows the enable toggle.
+  const rowControl = (account: MercuryApiAccount) => {
+    if (linkedIds.includes(account.id)) {
       return (
         <View className="flex-row items-center">
           <Check size={18} color="#10B981" />
@@ -184,18 +282,14 @@ export default function MercuryMappingScreen() {
       );
     }
     return (
-      <TouchableOpacity
-        testID={`mercury-mapping-link-${account.id}`}
-        className={`rounded-xl px-4 py-2 ${busyId ? "bg-gray-400" : "bg-cheddar-yellow"}`}
-        disabled={!!busyId}
-        onPress={() => handleLink(account)}
-      >
-        <Text className="text-sm font-bold text-cheddar-dark">
-          {busyId === account.id
-            ? t("mercuryMapping.linking")
-            : t("mercuryMapping.link")}
-        </Text>
-      </TouchableOpacity>
+      <View testID={`mercury-mapping-toggle-${account.id}`}>
+        <ToggleSwitch
+          value={selectedIds.includes(account.id)}
+          onValueChange={() => toggleAccount(account.id)}
+          accessibilityLabel={t("mercuryMapping.enableAccount", { name: account.name })}
+          disabled={confirming}
+        />
+      </View>
     );
   };
 
@@ -301,15 +395,24 @@ export default function MercuryMappingScreen() {
                   {t("mercuryMapping.listDesc")}
                 </Text>
               </View>
-              {linkedSummary ? (
-                <Text
-                  testID="mercury-mapping-linked-summary"
-                  className={`mt-3 text-sm ${subTextColor}`}
-                >
-                  {t("mercuryMapping.linkedSummary", {
-                    count: linkedSummary.imported,
-                    name: linkedSummary.name,
-                  })}
+              {linkedSummaries.length > 0 ? (
+                <View testID="mercury-mapping-linked-summary" className="mt-3">
+                  {linkedSummaries.map((summary) => (
+                    <Text
+                      key={summary.id}
+                      className={`mt-1 text-sm ${subTextColor}`}
+                    >
+                      {t("mercuryMapping.linkedSummary", {
+                        count: summary.imported,
+                        name: summary.name,
+                      })}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+              {notice ? (
+                <Text testID="mercury-mapping-notice" className={`mt-3 text-sm ${subTextColor}`}>
+                  {notice}
                 </Text>
               ) : null}
               {error ? (
@@ -343,10 +446,80 @@ export default function MercuryMappingScreen() {
                           })}
                       </Text>
                     </View>
-                    {linkButton(account)}
+                    {rowControl(account)}
                   </View>
                 ))}
               </View>
+              {unlinkedAccounts.length > 0 ? (
+                <View className={`mt-3 ${cardClass}`}>
+                  <Text className={`text-lg font-semibold ${headingColor}`}>
+                    {t("mercuryMapping.windowTitle")}
+                  </Text>
+                  <Text className={`mt-1 text-sm ${subTextColor}`}>
+                    {t("mercuryMapping.windowDesc")}
+                  </Text>
+                  <View className="mt-3 flex-row flex-wrap">
+                    {MERCURY_BACKFILL_WINDOW_CHOICES.map((days) => {
+                      const active = windowDays === days;
+                      return (
+                        <TouchableOpacity
+                          key={`window-${days === null ? "all" : days}`}
+                          testID={`mercury-mapping-window-${days === null ? "all" : days}`}
+                          className={`mr-2 mb-2 rounded-full border px-3 py-2 ${
+                            active
+                              ? "border-cheddar-yellow bg-cheddar-yellow"
+                              : isDark
+                                ? "border-gray-600 bg-[#26282D]"
+                                : "border-gray-200 bg-white"
+                          }`}
+                          disabled={confirming}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          onPress={() => chooseWindow(days)}
+                        >
+                          <Text
+                            className={`text-sm font-medium ${
+                              active
+                                ? "text-cheddar-dark"
+                                : isDark
+                                  ? "text-gray-300"
+                                  : "text-cheddar-gray"
+                            }`}
+                          >
+                            {days === null
+                              ? t("mercuryMapping.windowAll")
+                              : t("mercuryMapping.windowDays", { count: days })}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  {selectedCount > 0 ? (
+                    <TouchableOpacity
+                      testID="mercury-mapping-confirm"
+                      className={`mt-2 items-center justify-center rounded-xl px-4 py-4 ${
+                        confirming ? "bg-gray-400" : "bg-cheddar-yellow"
+                      }`}
+                      activeOpacity={0.8}
+                      disabled={confirming}
+                      onPress={handleConfirm}
+                    >
+                      {confirming ? (
+                        <View className="flex-row items-center">
+                          <ActivityIndicator size="small" color="#212226" />
+                          <Text className="ml-2 text-base font-bold text-cheddar-dark">
+                            {t("mercuryMapping.linking")}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text className="text-base font-bold text-cheddar-dark">
+                          {t("mercuryMapping.confirm", { count: selectedCount })}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           ) : null
         ) : (
