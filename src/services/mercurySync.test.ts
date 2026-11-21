@@ -1017,3 +1017,163 @@ describe('incremental window', () => {
 it('exposes the persisted five-minute debounce constant', () => {
   expect(MERCURY_SYNC_DEBOUNCE_MS).toBe(5 * 60 * 1000);
 });
+
+describe('single-account retry and enable toggle (ticket 07)', () => {
+  const CURSOR = Date.parse('2026-11-20T12:00:00Z');
+
+  beforeEach(() => {
+    jest.useFakeTimers({ now: NOW });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  async function seedSecondLinkedAccount(
+    overrides: Partial<MercuryLinkedAccount> = {},
+  ): Promise<void> {
+    store.setRow('accounts', 'acc-managed-2', {
+      name: 'Mercury Savings',
+      icon: 'landmark',
+      description: null,
+      balance: 0,
+      order: 1,
+      currency: 'USD',
+      source: 'mercury',
+    });
+    await putMercuryLinkedAccount({
+      id: 'acct-2',
+      localAccountId: 'acc-managed-2',
+      enabled: true,
+      currency: 'USD',
+      mixedCurrency: false,
+      cursorWindowDays: 90,
+      lastSyncedAt: null,
+      stale: false,
+      lastError: null,
+      ...overrides,
+    });
+  }
+
+  it('syncs only the requested account and leaves the other one untouched', async () => {
+    await seedLinkedAccount({ lastSyncedAt: CURSOR });
+    await seedSecondLinkedAccount({ lastSyncedAt: CURSOR });
+    fetchAccountsMock.mockResolvedValue([
+      { id: 'acct-1', name: 'Checking', currentBalance: 100 },
+      { id: 'acct-2', name: 'Savings', currentBalance: 200 },
+    ]);
+    fetchMock.mockImplementation(async (_token: string, accountId: string) =>
+      accountId === 'acct-1'
+        ? [mercuryRow({ id: 'mtx-1', accountId: 'acct-1' })]
+        : [mercuryRow({ id: 'mtx-2', accountId: 'acct-2' })],
+    );
+
+    const outcome = await syncMercuryAccounts({
+      force: true,
+      mercuryAccountId: 'acct-2',
+    });
+    expect(outcome.ran).toBe(true);
+    expect(outcome.succeeded).toEqual(['acct-2']);
+    expect(outcome.failed).toEqual([]);
+    // Only the requested account was fetched.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('secret-token:abc', 'acct-2', {
+      start: `${new Date(CURSOR).toISOString().slice(0, 19)}Z`,
+    });
+    // The other account keeps its pristine row: same cursor, no stale marker.
+    expect(getMercuryLinkedAccounts().find((a) => a.id === 'acct-1')).toMatchObject({
+      lastSyncedAt: CURSOR,
+      stale: false,
+      lastError: null,
+    });
+  });
+
+  it('a single-account run never moves the connection-level debounce or backoff', async () => {
+    await seedLinkedAccount();
+    fetchMock.mockResolvedValue([]);
+
+    // A successful retry consumes nothing.
+    await syncMercuryAccounts({ force: true, mercuryAccountId: 'acct-1' });
+    expect(getSyncDebounceTimestamp()).toBeNull();
+    expect(getMercuryBackoff()).toEqual({ nextEligibleAt: null, consecutiveFailures: 0 });
+
+    // Neither does a 429 failure: the retry reports its own result without
+    // putting the other accounts' automatic cycle into backoff.
+    fetchAccountsMock.mockRejectedValue(
+      new MercuryApiError('unexpected', 429, 'Slow down.', { retryAfter: 30 }),
+    );
+    const failed = await syncMercuryAccounts({ force: true, mercuryAccountId: 'acct-1' });
+    expect(failed.failed).toHaveLength(1);
+    expect(getSyncDebounceTimestamp()).toBeNull();
+    expect(getMercuryBackoff()).toEqual({ nextEligibleAt: null, consecutiveFailures: 0 });
+  });
+
+  it('still marks the connection needs_reauth on a 401 single-account retry', async () => {
+    await seedLinkedAccount();
+    fetchAccountsMock.mockRejectedValue(
+      new MercuryApiError('invalidCredentials', 401, 'Mercury rejected the API token.'),
+    );
+
+    const outcome = await syncMercuryAccounts({ force: true, mercuryAccountId: 'acct-1' });
+    expect(outcome.failed).toHaveLength(1);
+    expect(getMercuryConnection()?.tokenStatus).toBe('needs_reauth');
+  });
+
+  it('no-ops for an unknown account and for a disabled one', async () => {
+    await seedLinkedAccount();
+
+    const unknown = await syncMercuryAccounts({ force: true, mercuryAccountId: 'acct-9' });
+    expect(unknown).toEqual({ ran: false, busy: false, succeeded: [], failed: [] });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const current = getMercuryLinkedAccounts().find((a) => a.id === 'acct-1')!;
+    await putMercuryLinkedAccount({ ...current, enabled: false });
+    const disabled = await syncMercuryAccounts({ force: true, mercuryAccountId: 'acct-1' });
+    expect(disabled.ran).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shares the single-flight slot with a running full sync', async () => {
+    await seedLinkedAccount();
+    let entered!: () => void;
+    const enteredPromise = new Promise<void>((resolve) => { entered = resolve; });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    fetchMock.mockImplementation(async () => {
+      entered();
+      await gate;
+      return [];
+    });
+
+    const full = syncMercuryAccounts({ force: true });
+    await enteredPromise;
+    const retry = await syncMercuryAccounts({ force: true, mercuryAccountId: 'acct-1' });
+    expect(retry).toEqual({ ran: false, busy: true, succeeded: [], failed: [] });
+
+    release();
+    expect((await full).succeeded).toEqual(['acct-1']);
+  });
+
+  it('the enable toggle keeps a disabled account out of full syncs, rows untouched', async () => {
+    await seedLinkedAccount({ lastSyncedAt: CURSOR });
+    await seedSecondLinkedAccount();
+    fetchAccountsMock.mockResolvedValue([
+      { id: 'acct-1', name: 'Checking', currentBalance: 100 },
+      { id: 'acct-2', name: 'Savings', currentBalance: 200 },
+    ]);
+    const current = getMercuryLinkedAccounts().find((a) => a.id === 'acct-1')!;
+    await putMercuryLinkedAccount({ ...current, enabled: false });
+    fetchMock.mockResolvedValue([mercuryRow({ id: 'mtx-2', accountId: 'acct-2' })]);
+
+    const outcome = await syncMercuryAccounts({ force: true });
+    expect(outcome.succeeded).toEqual(['acct-2']);
+    // The disabled account's rows, cursor, and error state are untouched.
+    expect(getMercuryLinkedAccounts().find((a) => a.id === 'acct-1')).toMatchObject({
+      enabled: false,
+      lastSyncedAt: CURSOR,
+      stale: false,
+      lastError: null,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

@@ -300,11 +300,17 @@ function logFailedRequestId(error: unknown): void {
 }
 
 /**
- * Sync every enabled linked account once. Never surfaces anything to the
- * UI on its own: triggers decide what (if anything) to show from the outcome.
+ * Sync enabled linked accounts once. Never surfaces anything to the UI on
+ * its own: triggers decide what (if anything) to show from the outcome.
+ *
+ * With `mercuryAccountId` the run covers only that one account (the manage
+ * screen's per-account retry, ticket 07). It is user intent, so callers pass
+ * `force` as well, and the connection-level debounce and backoff stay
+ * untouched either way: a retry must report its own result without shifting
+ * the automatic cycle the other accounts ride on.
  */
 export async function syncMercuryAccounts(
-  { force = false }: { force?: boolean } = {},
+  { force = false, mercuryAccountId }: { force?: boolean; mercuryAccountId?: string } = {},
 ): Promise<MercurySyncOutcome> {
   const idle: MercurySyncOutcome = { ran: false, busy: false, succeeded: [], failed: [] };
 
@@ -313,7 +319,12 @@ export async function syncMercuryAccounts(
   if (!(await getCachedPremium())) return idle;
   const connection = getMercuryConnection();
   if (!connection || connection.tokenStatus !== 'active') return idle;
-  const linked = getMercuryLinkedAccounts().filter((account) => account.enabled);
+  const allLinked = getMercuryLinkedAccounts();
+  const linked = (
+    mercuryAccountId !== undefined
+      ? allLinked.filter((account) => account.id === mercuryAccountId && account.enabled)
+      : allLinked.filter((account) => account.enabled)
+  );
   if (linked.length === 0) return idle;
   const token = await getStoredMercuryToken();
   if (!token) return idle;
@@ -391,7 +402,12 @@ export async function syncMercuryAccounts(
       await markConnectionNeedsReauthentication();
     }
 
-    if (outcome.succeeded.length > 0) {
+    // Connection-level debounce and backoff apply to whole-connection runs
+    // only. A single-account retry is user intent with its own result: it
+    // must neither delay the other accounts' automatic cycle (debounce) nor
+    // block it (backoff) because one account was rate-limited.
+    const wholeConnection = mercuryAccountId === undefined;
+    if (wholeConnection && outcome.succeeded.length > 0) {
       // Interpretation (adjudicated): the debounce and the backoff are
       // connection-level, and the two rules compose as follows. The debounce
       // is consumed by any run with at least one successful account; the
@@ -402,7 +418,7 @@ export async function syncMercuryAccounts(
       // cursor, and its recorded error for the retry affordance.
       await setSyncDebounceTimestamp(now);
       await clearMercuryBackoff();
-    } else if (sawRetryable) {
+    } else if (wholeConnection && sawRetryable) {
       const { consecutiveFailures } = getMercuryBackoff();
       const consecutive = consecutiveFailures + 1;
       const retryAfter = outcome.failed.reduce<number | null>(

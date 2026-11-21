@@ -14,10 +14,18 @@ jest.mock('../db/tinybase', () => ({
   isDatabaseReady: jest.fn(() => true),
 }));
 
+// A stateful secure-store double so token-replacement semantics can be
+// asserted (the reconnect flow overwrites an existing stored token).
+const mockSecureStoreBacking = new Map<string, string>();
+
 jest.mock('expo-secure-store', () => ({
-  setItemAsync: jest.fn(async () => {}),
-  getItemAsync: jest.fn(async () => null),
-  deleteItemAsync: jest.fn(async () => {}),
+  setItemAsync: jest.fn(async (key: string, value: string) => {
+    mockSecureStoreBacking.set(key, value);
+  }),
+  getItemAsync: jest.fn(async (key: string) => mockSecureStoreBacking.get(key) ?? null),
+  deleteItemAsync: jest.fn(async (key: string) => {
+    mockSecureStoreBacking.delete(key);
+  }),
 }));
 
 const originalFetch = global.fetch;
@@ -33,6 +41,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSecureStoreBacking.clear();
   global.fetch = fetchMock as unknown as typeof fetch;
 });
 
@@ -220,6 +229,45 @@ describe('mercury connect flow', () => {
     );
     expect(error).toBeInstanceOf(MercuryApiError);
     expect((error as Error).message).not.toContain('secret-token:leaky');
+  });
+});
+
+describe('reconnect replaces the stored token (ticket 07)', () => {
+  it('stores the new token over the old one and clears the re-authentication state', async () => {
+    mockSecureStoreBacking.set('mercuryApiToken', 'secret-token:old');
+    fetchMock.mockResolvedValue(
+      jsonResponse({ accounts: [{ id: 'acct-1', name: 'Checking' }] }),
+    );
+
+    await expect(connectMercury('secret-token:new')).resolves.toBe(1);
+
+    // The old token is gone and the validated one is what SecureStore holds.
+    expect([...mockSecureStoreBacking.entries()]).toEqual([
+      ['mercuryApiToken', 'secret-token:new'],
+    ]);
+    // The connection row flips back to active, so sync resumes.
+    expect(upsertMercuryConnection).toHaveBeenCalledWith(
+      expect.objectContaining({ tokenStatus: 'active' }),
+    );
+  });
+
+  it('a failed validation keeps the old token and the needs_reauth state', async () => {
+    mockSecureStoreBacking.set('mercuryApiToken', 'secret-token:old');
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { errors: { errorCode: 'noTokenInDB', message: 'No matching token found' } },
+        401,
+      ),
+    );
+
+    await expect(connectMercury('secret-token:new')).rejects.toMatchObject({
+      kind: 'invalidCredentials',
+    });
+
+    // Nothing was written: the old token stays and the row write never ran.
+    expect(mockSecureStoreBacking.get('mercuryApiToken')).toBe('secret-token:old');
+    expect(upsertMercuryConnection).not.toHaveBeenCalled();
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalled();
   });
 });
 

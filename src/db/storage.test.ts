@@ -202,6 +202,46 @@ describe('free-tier create guards', () => {
   });
 });
 
+describe('linked Mercury account guards (ticket 07)', () => {
+  function seedManagedAccount() {
+    store.setRow('accounts', 'acc-managed', {
+      name: 'Mercury Checking',
+      icon: 'landmark',
+      description: null,
+      balance: 999990,
+      order: 0,
+      currency: 'USD',
+      source: 'mercury',
+    });
+  }
+
+  it('refuses to delete a linked account while its Mercury link exists', async () => {
+    seedManagedAccount();
+    await expect(deleteAccount('acc-managed')).rejects.toThrow('cannot be deleted');
+    expect(store.getRow('accounts', 'acc-managed')).toMatchObject({
+      name: 'Mercury Checking',
+    });
+  });
+
+  it('keeps a linked account read-only: name and currency edits are ignored', async () => {
+    seedManagedAccount();
+
+    const updated = await updateAccount('acc-managed', {
+      name: 'Renamed',
+      currency: 'EUR',
+    });
+    expect(updated).toMatchObject({
+      name: 'Mercury Checking',
+      currency: 'USD',
+      source: 'mercury',
+    });
+
+    // Icon and description stay editable while linked.
+    await updateAccount('acc-managed', { description: 'Imported', icon: 'wallet' });
+    expect((await getAccounts())[0]).toMatchObject({ description: 'Imported' });
+  });
+});
+
 describe('reminder prompt state', () => {
   it('offers the prompt once, only while there are no transactions', async () => {
     await expect(shouldOfferReminderPrompt()).resolves.toBe(true);

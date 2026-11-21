@@ -275,3 +275,25 @@ export function getMercuryBackoff(): MercuryBackoff {
 export async function clearMercuryBackoff(): Promise<void> {
   await setMercuryBackoff(null, 0);
 }
+
+/**
+ * Removes every Mercury row — the connection, all linked accounts, all
+ * transaction links (tombstones included), all cursors, and the sync-state
+ * rows — in a single save. This is the unlink/disconnect path (ticket 07);
+ * what happens to the local accounts and transactions themselves is the
+ * caller's row-policy decision, made before this runs.
+ */
+export async function clearMercuryConnectionData(): Promise<void> {
+  if (!isDatabaseReady()) return;
+  const store = getStore();
+  for (const table of [
+    MERCURY_CONNECTION_TABLE,
+    MERCURY_ACCOUNTS_TABLE,
+    MERCURY_TRANSACTION_LINKS_TABLE,
+    MERCURY_CURSORS_TABLE,
+    MERCURY_SYNC_STATE_TABLE,
+  ]) {
+    if (store.hasTable(table)) store.delTable(table);
+  }
+  await saveStore();
+}
