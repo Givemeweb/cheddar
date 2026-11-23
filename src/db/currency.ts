@@ -134,7 +134,7 @@ export async function convertAmountWithRates(
  * Fetches rates once instead of once per item.
  */
 export async function convertToMainCurrencyBatch(
-  items: Array<{ amount: number; currency: string }>,
+  items: { amount: number; currency: string }[],
   target: string,
   rates?: RatesCache | null,
 ): Promise<number[]> {

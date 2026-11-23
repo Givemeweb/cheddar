@@ -215,7 +215,7 @@ describe('PremiumProvider', () => {
         current: { availablePackages: [LIFETIME_PACKAGE] },
       });
 
-    const screen = renderProvider();
+    renderProvider();
 
     await waitFor(() => expect(premium.isLoading).toBe(false));
     expect(premium.lifetimePackage).toBeNull();

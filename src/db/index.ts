@@ -34,6 +34,26 @@ export {
 export { getShowIcons, setShowIcons } from './icons';
 
 export {
+  MERCURY_ACCOUNT_CURRENCY,
+  markConnectionNeedsReauthentication,
+  upsertMercuryConnection,
+  getMercuryConnection,
+  putMercuryLinkedAccount,
+  getMercuryLinkedAccounts,
+  putMercuryTransactionLink,
+  getMercuryTransactionLinks,
+  setMercuryCursor,
+  getMercuryCursor,
+  setSyncDebounceTimestamp,
+  getSyncDebounceTimestamp,
+  type MercuryConnection,
+  type MercuryCursor,
+  type MercuryLinkedAccount,
+  type MercuryTokenStatus,
+  type MercuryTransactionLink,
+} from './mercury';
+
+export {
   getSubcategoriesEnabled,
   setSubcategoriesEnabled,
   getSubcategories,

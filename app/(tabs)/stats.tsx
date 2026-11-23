@@ -25,12 +25,11 @@ import { usePremium } from "../../src/components/PremiumProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
 import {
   canBrowseStatsMonth,
-  statsPaywallHref,
+  paywallHref,
 } from "../../src/utils/premiumAccess";
 import {
   convertWithRates,
   getLatestRates,
-  RatesCache,
 } from "../../src/services/exchangeRates";
 import { trackEvent } from "../../src/lib/analytics";
 
@@ -76,7 +75,6 @@ export default function StatsScreen() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
     null
   );
-  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
@@ -103,7 +101,7 @@ export default function StatsScreen() {
     // The current month is the newest one with data.
     if (target.getTime() > now.getTime()) return;
     if (!canBrowseStatsMonth(target, now, isPremium)) {
-      router.push(statsPaywallHref("statsHistory"));
+      router.push(paywallHref("statsHistory"));
       return;
     }
     trackEvent('stats.month_change', {
@@ -122,7 +120,6 @@ export default function StatsScreen() {
 
           // Load rates before converting amounts to the main currency
           const rates = await getLatestRates();
-          setRatesCache(rates);
           const toMain = (amount: number, currency: string): number => {
             if (!rates || currency === currencyCode) return amount;
             return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
@@ -158,6 +155,10 @@ export default function StatsScreen() {
             const txDate = new Date(tx.date);
             return txDate >= startOfMonth && txDate <= endOfMonth;
           });
+
+          // FX/anomaly rows stay out of every total until OQ-1 resolves
+          // (record rule 4); this screen only computes totals.
+          monthTransactions = monthTransactions.filter((tx) => !tx.anomaly);
 
           // Filter by selected account if not "all"
           if (selectedAccountId) {
@@ -255,7 +256,7 @@ export default function StatsScreen() {
 
       setLoading(true);
       fetchStats();
-    }, [activeTab, currentDate, selectedAccountId])
+    }, [activeTab, currentDate, selectedAccountId, currencyCode, t])
   );
 
   const isAccountSelected = (accountId: string | null) =>

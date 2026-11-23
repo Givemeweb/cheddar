@@ -9,11 +9,10 @@ import { getAccounts, getTransactions } from "../src/db/storage";
 import { useTheme } from "../src/components/ThemeProvider";
 import { usePremium } from "../src/components/PremiumProvider";
 import { formatNumber } from "../src/utils/formatNumber";
-import { statsPaywallHref } from "../src/utils/premiumAccess";
+import { paywallHref } from "../src/utils/premiumAccess";
 import {
   convertWithRates,
   getLatestRates,
-  RatesCache,
 } from "../src/services/exchangeRates";
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
@@ -35,19 +34,17 @@ type IncomeExpenseData = {
 export default function TotalStatsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [totalAssets, setTotalAssets] = useState(0);
   const [selectedMonthBalance, setSelectedMonthBalance] = useState(0);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [incomeExpenseData, setIncomeExpenseData] = useState<IncomeExpenseData[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const [dotChartDimensions, setDotChartDimensions] =
     useState<ChartDimensions>(null);
   const [barChartDimensions, setBarChartDimensions] =
     useState<ChartDimensions>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, currencySymbol, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
+  const { isDark, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
   const { isPremium, isEntitlementLoaded } = usePremium();
   const { t } = useTranslation();
 
@@ -83,7 +80,6 @@ export default function TotalStatsScreen() {
 
           // Load rates before converting amounts to the main currency
           const rates = await getLatestRates();
-          setRatesCache(rates);
           const toMain = (amount: number, currency: string): number => {
             if (!rates || currency === currencyCode) return amount;
             return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
@@ -104,7 +100,10 @@ export default function TotalStatsScreen() {
               ? amount
               : convertWithRates(amount, currencyCode, totalAssetsCurrencyCode, rates.rates, rates.base);
 
-          setTotalAssets(toDisplay(totalInMain));
+          // FX/anomaly rows stay out of every computed total until OQ-1
+          // resolves (record rule 4). The account balances themselves are
+          // the mirrors Mercury reports and are not recomputed here.
+          const countableTransactions = transactions.filter((tx) => !tx.anomaly);
 
           // Calculate monthly asset growth for last 6 months ending at selected month
           const months: MonthlyData[] = [];
@@ -118,8 +117,7 @@ export default function TotalStatsScreen() {
             // Start from current total and subtract transactions that happened after this month
             let monthBalance = totalInMain;
 
-            const now = new Date();
-            for (const tx of transactions) {
+            for (const tx of countableTransactions) {
               const txDate = new Date(tx.date);
               if (txDate > monthEnd) {
                 // This transaction happened after this month, reverse its effect
@@ -158,7 +156,7 @@ export default function TotalStatsScreen() {
             let monthIncome = 0;
             let monthExpense = 0;
 
-            for (const tx of transactions) {
+            for (const tx of countableTransactions) {
               const txDate = new Date(tx.date);
               if (txDate >= monthStart && txDate <= monthEnd) {
                 if (tx.type === 'income') {
@@ -184,7 +182,7 @@ export default function TotalStatsScreen() {
         }
       }
       fetchData();
-    }, [currentDate, isPremium])
+    }, [currentDate, isPremium, currencyCode, totalAssetsCurrencyCode])
   );
 
   if (!isEntitlementLoaded) {
@@ -198,7 +196,7 @@ export default function TotalStatsScreen() {
   // Covers deep links and web history; entry points already gate before
   // navigating here.
   if (!isPremium) {
-    return <Redirect href={statsPaywallHref('totalStats')} />;
+    return <Redirect href={paywallHref('totalStats')} />;
   }
 
   if (loading) {

@@ -101,6 +101,17 @@ module.exports = {
           defaultChannel: 'alarms',
         },
       ],
+      [
+        'expo-secure-store',
+        {
+          // The app's Face ID usage is the passcode unlock screen
+          // (expo-local-authentication), so keep a matching user-facing
+          // string; false would delete NSFaceIDUsageDescription from the
+          // generated Info.plist. The plugin still applies its Android Auto
+          // Backup exclusion so a stored Mercury token never leaves the device.
+          faceIDPermission: 'Face ID is used to unlock Cheddar.',
+        },
+      ],
     ],
     extra: {
       appVariant,

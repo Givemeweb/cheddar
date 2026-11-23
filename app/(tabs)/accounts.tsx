@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { BarChart3 } from "lucide-react-native";
+import { BarChart3, Globe } from "lucide-react-native";
 import { getAccounts, Account } from "../../src/db/storage";
 import { getCurrencySymbol } from "../../src/db/currency";
 import { convertWithRates, getLatestRates, RatesCache } from "../../src/services/exchangeRates";
@@ -20,7 +20,6 @@ import { useTheme } from "../../src/components/ThemeProvider";
 import { usePremium } from "../../src/components/PremiumProvider";
 import { formatNumber } from "../../src/utils/formatNumber";
 import { totalStatsDestination } from "../../src/utils/premiumAccess";
-import { Globe } from "lucide-react-native";
 import { trackEvent } from "../../src/lib/analytics";
 
 export default function AccountsScreen() {
@@ -31,7 +30,7 @@ export default function AccountsScreen() {
   const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, showIcons, currencySymbol, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
+  const { isDark, showIcons, currencyCode, totalAssetsCurrencyCode, totalAssetsCurrencySymbol } = useTheme();
   const { isPremium, isEntitlementLoaded } = usePremium();
   const { t } = useTranslation();
 
@@ -240,11 +239,26 @@ export default function AccountsScreen() {
                 </View>
               )}
               <View className="flex-1">
-                <Text
-                  className={`text-lg font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                >
-                  {item.name}
-                </Text>
+                <View className="flex-row items-center">
+                  <Text
+                    numberOfLines={1}
+                    className={`flex-1 text-lg font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                  >
+                    {item.name}
+                  </Text>
+                  {item.source === "mercury" && (
+                    <View
+                      testID="account-mercury-badge"
+                      className={`ml-2 shrink-0 rounded-md px-2 py-0.5 ${isDark ? "bg-gray-700" : "bg-cheddar-light"}`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                      >
+                        {t("accounts.mercuryBadge")}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 {item.description && (
                   <Text
                     className={`text-sm ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}

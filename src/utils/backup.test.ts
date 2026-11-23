@@ -1,5 +1,13 @@
 import JSZip from 'jszip';
-import { exportDatabaseToZip } from './backup';
+import { exportDatabaseToZip, importDatabaseFromZip } from './backup';
+import {
+  putMercuryLinkedAccount,
+  putMercuryTransactionLink,
+  setMercuryCursor,
+  setSyncDebounceTimestamp,
+  setMercuryBackoff,
+  upsertMercuryConnection,
+} from '../db/mercury';
 import { getStore } from '../db/tinybase';
 
 jest.mock('../db/tinybase', () => ({
@@ -7,6 +15,10 @@ jest.mock('../db/tinybase', () => ({
   getStore: jest.fn(),
   getPersister: jest.fn(async () => ({ save: jest.fn(async () => {}) })),
   saveStore: jest.fn(async () => {}),
+}));
+
+jest.mock('../db/premium', () => ({
+  assertImportWithinFreeCaps: jest.fn(async () => {}),
 }));
 
 jest.mock('expo-sqlite', () => ({
@@ -20,7 +32,7 @@ jest.mock('expo-file-system', () => {
     uri: string;
     exists = true;
 
-    constructor(...parts: Array<string | { uri: string }>) {
+    constructor(...parts: (string | { uri: string })[]) {
       this.uri = parts
         .map((part) => (typeof part === 'string' ? part : part.uri))
         .join('/');
@@ -62,6 +74,22 @@ class FakeStore {
 
   setTables(tables: Tables) {
     this.tables = tables;
+  }
+
+  getTable(table: string) {
+    return this.tables[table];
+  }
+
+  getRow(table: string, id: string) {
+    return this.tables[table]?.[id];
+  }
+
+  setRow(table: string, id: string, row: Row) {
+    (this.tables[table] ??= {})[id] = { ...row };
+  }
+
+  setCell(table: string, id: string, cell: string, value: unknown) {
+    this.setRow(table, id, { ...(this.tables[table]?.[id] ?? {}), [cell]: value });
   }
 
   getValue(key: string) {
@@ -107,4 +135,145 @@ it('exports the finance tables without the license or the premium cache', async 
   expect(sql).not.toContain(LICENSE);
   expect(sql).not.toContain('satsaleLicense');
   expect(sql).not.toContain('isPremium');
+});
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+async function exportBackupToBase64(): Promise<string> {
+  await exportDatabaseToZip();
+  return bytesToBase64(mockWrites[0]);
+}
+
+async function seedMercuryState(store: FakeStore): Promise<void> {
+  store.setTables({
+    categories: { '1': { name: 'Food', icon: 'utensils', type: 'expense' } },
+    accounts: {
+      'acc-1': { name: 'Mercury Checking', icon: 'wallet', description: null, balance: 0, order: 0, currency: 'EUR', source: 'mercury' },
+      'acc-2': { name: 'Manual Savings', icon: 'piggy-bank', description: null, balance: 0, order: 1, currency: 'EUR' },
+    },
+    transactions: {},
+  });
+  getStoreMock.mockReturnValue(store);
+
+  await upsertMercuryConnection({ tokenStatus: 'active', createdAt: 1000, lastSyncedAt: 9000 });
+  await putMercuryLinkedAccount({
+    id: 'acct-abc',
+    localAccountId: 'acc-1',
+    enabled: true,
+    currency: 'USD',
+    mixedCurrency: true,
+    cursorWindowDays: 90,
+    lastSyncedAt: 9000,
+    stale: false,
+    lastError: null,
+  });
+  await putMercuryTransactionLink({
+    id: 'mtx-1',
+    localTransactionId: 'tx-1',
+    mercuryAccountId: 'acct-abc',
+    anomaly: true,
+    mercuryCreatedAtMs: 8000,
+  });
+  // A link written before the mercuryCreatedAtMs cell existed (e.g. restored
+  // from an older backup): the export writes NULL and the restore leaves it
+  // absent, which the sync's deletion pass spares.
+  store.setRow('mercuryTransactionLinks', 'mtx-legacy', {
+    localTransactionId: 'tx-2',
+    mercuryAccountId: 'acct-abc',
+    anomaly: 'false',
+  });
+  await setMercuryCursor('acct-abc', 'start_after:mtx-1');
+  await setSyncDebounceTimestamp(5000);
+  await setMercuryBackoff(6000, 2);
+}
+
+describe('Mercury backup round trip', () => {
+  it('exports connection, linked-account, link, cursor, and debounce data and restores them', async () => {
+    const store = new FakeStore();
+    await seedMercuryState(store);
+    // A rogue cell that bypassed the write helpers must never reach the backup.
+    store.setCell('mercuryConnection', 'default', 'token', 'secret-token-value');
+
+    const zipBase64 = await exportBackupToBase64();
+    const zip = await JSZip.loadAsync(mockWrites[0]);
+    const sql = await zip.file('backup.sql')?.async('string');
+
+    expect(sql).toContain('INSERT INTO mercuryConnection (id, tokenStatus, createdAt, lastSyncedAt)');
+    expect(sql).not.toContain('secret-token-value');
+    // tokenStatus is allowed; a bare token cell is not.
+    expect(sql?.match(/token(?!Status)/gi)).toBeNull();
+    expect(sql).toContain("'mercury'"); // the managed account marker
+    expect(sql).toContain("'manual'"); // existing accounts default to manual
+
+    const restored = new FakeStore();
+    getStoreMock.mockReturnValue(restored);
+    await importDatabaseFromZip(zipBase64);
+
+    const tables = restored.getTables();
+    expect(tables.mercuryConnection.default).toEqual({
+      tokenStatus: 'needs_reauth', // restored connections must re-authenticate
+      createdAt: 1000,
+      lastSyncedAt: 9000,
+    });
+    expect(Object.keys(tables.mercuryConnection.default)).toEqual(['tokenStatus', 'createdAt', 'lastSyncedAt']);
+    expect(tables.mercuryAccounts['acct-abc']).toEqual({
+      localAccountId: 'acc-1',
+      enabled: 'true',
+      currency: 'USD',
+      mixedCurrency: 'true',
+      cursorWindowDays: 90,
+      lastSyncedAt: 9000,
+      stale: 'false',
+      lastError: null,
+    });
+    expect(tables.mercuryTransactionLinks['mtx-1']).toEqual({
+      localTransactionId: 'tx-1',
+      mercuryAccountId: 'acct-abc',
+      anomaly: 'true',
+      mercuryCreatedAtMs: 8000,
+    });
+    // The legacy link (no cell in the store) round-trips as absent.
+    expect(tables.mercuryTransactionLinks['mtx-legacy']).toEqual({
+      localTransactionId: 'tx-2',
+      mercuryAccountId: 'acct-abc',
+      anomaly: 'false',
+      mercuryCreatedAtMs: null,
+    });
+    expect(tables.mercuryCursors['acct-abc']).toEqual({ cursor: 'start_after:mtx-1' });
+    expect(tables.mercurySyncState.debounce).toEqual({
+      lastAttemptAt: 5000,
+      nextEligibleAt: null,
+      consecutiveFailures: null,
+    });
+    expect(tables.mercurySyncState.backoff).toEqual({
+      lastAttemptAt: null,
+      nextEligibleAt: 6000,
+      consecutiveFailures: 2,
+    });
+    expect(tables.accounts['acc-1'].source).toBe('mercury');
+    // An existing account without the marker restores as manual.
+    expect(tables.accounts['acc-2'].source).toBe('manual');
+  });
+
+  it('marks a restored connection as needing re-authentication while links and cursors survive', async () => {
+    const store = new FakeStore();
+    await seedMercuryState(store);
+    const zipBase64 = await exportBackupToBase64();
+
+    const restored = new FakeStore();
+    getStoreMock.mockReturnValue(restored);
+    await importDatabaseFromZip(zipBase64);
+
+    const tables = restored.getTables();
+    expect(tables.mercuryConnection.default.tokenStatus).toBe('needs_reauth');
+    // The dedupe map and cursors survive so reconnecting does not duplicate rows.
+    expect(tables.mercuryTransactionLinks['mtx-1']).toMatchObject({ localTransactionId: 'tx-1', mercuryAccountId: 'acct-abc' });
+    expect(tables.mercuryCursors['acct-abc']).toMatchObject({ cursor: 'start_after:mtx-1' });
+  });
 });

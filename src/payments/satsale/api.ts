@@ -211,7 +211,7 @@ async function request(
         headers: { Accept: 'application/json', ...init.headers },
         signal: controller.signal,
       });
-    } catch (error) {
+    } catch {
       if (controller.signal.aborted) {
         throw new SatSaleApiError(
           'timeout',

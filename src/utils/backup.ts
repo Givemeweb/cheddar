@@ -14,8 +14,6 @@ export interface BackupData {
   data: Tables;
 }
 
-const BACKUP_VERSION = '1.1.0';
-
 /**
  * Collect all image paths from transactions
  * For native: returns relative file paths
@@ -279,6 +277,8 @@ export async function importDatabaseFromZip(zipBase64: string): Promise<ImportRe
       data.transactions = updatedTransactions as typeof data.transactions;
     }
 
+    markRestoredConnectionNeedsReauth(data);
+
     // Now set the data with correct image paths
     store.setTables(data as Parameters<typeof store.setTables>[0]);
 
@@ -395,7 +395,8 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
   description TEXT,
   balance REAL NOTNULL,
   \`order\` INTEGER NOTNULL,
-  currency TEXT
+  currency TEXT,
+  source TEXT
 )`);
 
   statements.push(`CREATE TABLE IF NOT EXISTS transactions (
@@ -449,12 +450,13 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
   // Insert accounts
   if (tables?.accounts) {
     statements.push('-- Insert accounts');
-    Object.entries(tables.accounts as Record<string, { name: string; icon: string; description: string | null; balance: number; order: number; currency?: string }>).forEach(([id, data]) => {
+    Object.entries(tables.accounts as Record<string, { name: string; icon: string; description: string | null; balance: number; order: number; currency?: string; source?: string }>).forEach(([id, data]) => {
       const name = escapeSqlString(data.name);
       const icon = escapeSqlString(data.icon);
       const description = data.description ? `'${escapeSqlString(data.description)}'` : 'NULL';
       const currency = data.currency ? `'${escapeSqlString(data.currency)}'` : 'NULL';
-      statements.push(`INSERT INTO accounts (id, name, icon, description, balance, \`order\`, currency) VALUES ('${id}', '${name}', '${icon}', ${description}, ${data.balance}, ${data.order}, ${currency})`);
+      const source = `'${escapeSqlString(data.source ?? 'manual')}'`;
+      statements.push(`INSERT INTO accounts (id, name, icon, description, balance, \`order\`, currency, source) VALUES ('${id}', '${name}', '${icon}', ${description}, ${data.balance}, ${data.order}, ${currency}, ${source})`);
     });
     statements.push('');
   }
@@ -505,7 +507,82 @@ function generateSqlFromTables(tables: Tables | undefined, imagePathMap?: Record
     statements.push('');
   }
 
+  appendMercuryTableStatements(statements, tables);
+
   return statements;
+}
+
+/**
+ * Mercury persistence tables (src/db/mercury.ts). Columns are enumerated
+ * explicitly, so even a rogue cell in the store (such as a token) can never
+ * reach a backup. Flags are stored as 'true'/'false' strings in the store.
+ */
+const MERCURY_TABLE_SPECS: { table: string; columns: { name: string; type: 'TEXT' | 'INTEGER' }[] }[] = [
+  {
+    table: 'mercuryConnection',
+    columns: [
+      { name: 'tokenStatus', type: 'TEXT' },
+      { name: 'createdAt', type: 'INTEGER' },
+      { name: 'lastSyncedAt', type: 'INTEGER' },
+    ],
+  },
+  {
+    table: 'mercuryAccounts',
+    columns: [
+      { name: 'localAccountId', type: 'TEXT' },
+      { name: 'enabled', type: 'TEXT' },
+      { name: 'currency', type: 'TEXT' },
+      { name: 'mixedCurrency', type: 'TEXT' },
+      { name: 'cursorWindowDays', type: 'INTEGER' },
+      { name: 'lastSyncedAt', type: 'INTEGER' },
+      { name: 'stale', type: 'TEXT' },
+      { name: 'lastError', type: 'TEXT' },
+    ],
+  },
+  {
+    table: 'mercuryTransactionLinks',
+    columns: [
+      { name: 'localTransactionId', type: 'TEXT' },
+      { name: 'mercuryAccountId', type: 'TEXT' },
+      { name: 'anomaly', type: 'TEXT' },
+      { name: 'mercuryCreatedAtMs', type: 'INTEGER' },
+    ],
+  },
+  {
+    table: 'mercuryCursors',
+    columns: [{ name: 'cursor', type: 'TEXT' }],
+  },
+  {
+    table: 'mercurySyncState',
+    columns: [
+      { name: 'lastAttemptAt', type: 'INTEGER' },
+      { name: 'nextEligibleAt', type: 'INTEGER' },
+      { name: 'consecutiveFailures', type: 'INTEGER' },
+    ],
+  },
+];
+
+function sqlCell(value: unknown): string {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'number') return String(value);
+  return `'${escapeSqlString(String(value))}'`;
+}
+
+function appendMercuryTableStatements(statements: string[], tables: Tables | undefined): void {
+  for (const spec of MERCURY_TABLE_SPECS) {
+    const rows = tables?.[spec.table];
+    if (!rows || Object.keys(rows).length === 0) continue;
+
+    const columnNames = ['id', ...spec.columns.map((column) => column.name)];
+    const columnDefs = spec.columns.map((column) => `  ${column.name} ${column.type}`).join(',\n');
+    statements.push(`CREATE TABLE IF NOT EXISTS ${spec.table} (\n  id TEXT PRIMARY KEY,\n${columnDefs}\n)`);
+    statements.push(`-- Insert ${spec.table}`);
+    Object.entries(rows).forEach(([id, row]) => {
+      const values = [sqlCell(id), ...spec.columns.map((column) => sqlCell(row[column.name]))].join(', ');
+      statements.push(`INSERT INTO ${spec.table} (${columnNames.join(', ')}) VALUES (${values})`);
+    });
+    statements.push('');
+  }
 }
 
 /**
@@ -551,6 +628,7 @@ export async function importDatabaseFromJson(jsonContent: string): Promise<Impor
     });
 
     // Clear existing data and set new data
+    markRestoredConnectionNeedsReauth(validatedData.data as Tables);
     store.setTables(validatedData.data as Parameters<typeof store.setTables>[0]);
 
     // Persist changes
@@ -589,6 +667,8 @@ export async function importDatabaseFromSql(sqlContent: string): Promise<ImportR
       categories: Object.keys(data.categories ?? {}).length,
     });
 
+    markRestoredConnectionNeedsReauth(data);
+
     // Set data in store
     store.setTables(data);
 
@@ -604,6 +684,25 @@ export async function importDatabaseFromSql(sqlContent: string): Promise<ImportR
   } catch (error) {
     console.error('SQL Import failed:', error);
     throw error;
+  }
+}
+
+/**
+ * A backup never carries the Mercury API token (it lives only in secure
+ * storage), so a restored connection cannot be assumed authenticated: mark it
+ * for re-authentication. Links and cursors survive untouched, so reconnecting
+ * and syncing does not duplicate imported rows. Connection cells are rebuilt
+ * from the whitelist so a hand-edited file cannot inject a token cell.
+ */
+function markRestoredConnectionNeedsReauth(tables: Tables): void {
+  const connection = tables.mercuryConnection;
+  if (!connection) return;
+  for (const [id, row] of Object.entries(connection)) {
+    connection[id] = {
+      tokenStatus: 'needs_reauth',
+      createdAt: (row.createdAt as number | null) ?? null,
+      lastSyncedAt: (row.lastSyncedAt as number | null) ?? null,
+    };
   }
 }
 
@@ -627,6 +726,8 @@ function parseSqlStatements(sqlContent: string): Tables {
       if (!tableMatch) continue;
 
       const tableName = tableMatch[1].toLowerCase();
+      // Mercury table names are camelCase; keep their raw form for matching.
+      const rawTableName = tableMatch[1];
 
       // Extract values using regex for VALUES clause
       const valuesMatch = statement.match(/VALUES\s*\((.+)\)/is);
@@ -660,6 +761,64 @@ function parseSqlStatements(sqlContent: string): Tables {
             balance: parseFloat(parsed.balance) || 0,
             order: parseInt(parsed.order) || 0,
             currency: parsed.currency || 'EUR',
+            source: parsed.source === 'mercury' ? 'mercury' : 'manual',
+          };
+        }
+      } else if (rawTableName === 'mercuryConnection') {
+        const parsed = parseInsertValues(statement);
+        if (parsed.id) {
+          data.mercuryConnection = data.mercuryConnection || {};
+          data.mercuryConnection[parsed.id] = {
+            tokenStatus: parsed.tokenStatus || 'active',
+            createdAt: parsed.createdAt !== undefined ? Number(parsed.createdAt) : null,
+            lastSyncedAt: parsed.lastSyncedAt !== undefined ? Number(parsed.lastSyncedAt) : null,
+          };
+        }
+      } else if (rawTableName === 'mercuryAccounts') {
+        const parsed = parseInsertValues(statement);
+        if (parsed.id) {
+          data.mercuryAccounts = data.mercuryAccounts || {};
+          data.mercuryAccounts[parsed.id] = {
+            localAccountId: parsed.localAccountId || '',
+            enabled: parsed.enabled === 'true' ? 'true' : 'false',
+            currency: parsed.currency || 'USD',
+            mixedCurrency: parsed.mixedCurrency === 'true' ? 'true' : 'false',
+            cursorWindowDays: parsed.cursorWindowDays !== undefined ? Number(parsed.cursorWindowDays) : null,
+            lastSyncedAt: parsed.lastSyncedAt !== undefined ? Number(parsed.lastSyncedAt) : null,
+            stale: parsed.stale === 'true' ? 'true' : 'false',
+            lastError: parsed.lastError ?? null,
+          };
+        }
+      } else if (rawTableName === 'mercuryTransactionLinks') {
+        const parsed = parseInsertValues(statement);
+        if (parsed.id) {
+          data.mercuryTransactionLinks = data.mercuryTransactionLinks || {};
+          data.mercuryTransactionLinks[parsed.id] = {
+            localTransactionId: parsed.localTransactionId || '',
+            mercuryAccountId: parsed.mercuryAccountId || '',
+            anomaly: parsed.anomaly === 'true' ? 'true' : 'false',
+            // Older backups have no such column: the link restores without a
+            // createdAt, and the sync's deletion pass spares it.
+            mercuryCreatedAtMs:
+              parsed.mercuryCreatedAtMs === undefined || parsed.mercuryCreatedAtMs === null
+                ? null
+                : Number(parsed.mercuryCreatedAtMs),
+          };
+        }
+      } else if (rawTableName === 'mercuryCursors') {
+        const parsed = parseInsertValues(statement);
+        if (parsed.id) {
+          data.mercuryCursors = data.mercuryCursors || {};
+          data.mercuryCursors[parsed.id] = { cursor: parsed.cursor ?? null };
+        }
+      } else if (rawTableName === 'mercurySyncState') {
+        const parsed = parseInsertValues(statement);
+        if (parsed.id) {
+          data.mercurySyncState = data.mercurySyncState || {};
+          data.mercurySyncState[parsed.id] = {
+            lastAttemptAt: parsed.lastAttemptAt !== undefined ? Number(parsed.lastAttemptAt) : null,
+            nextEligibleAt: parsed.nextEligibleAt !== undefined ? Number(parsed.nextEligibleAt) : null,
+            consecutiveFailures: parsed.consecutiveFailures !== undefined ? Number(parsed.consecutiveFailures) : null,
           };
         }
       } else if (tableName === 'transactions') {

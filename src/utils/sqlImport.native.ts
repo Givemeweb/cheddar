@@ -150,7 +150,7 @@ export async function parseSqlFile(uri: string): Promise<{
       subcategories = db.getAllSync<CheddarSubcategory>(
         'SELECT * FROM subcategories'
       );
-    } catch (e) {
+    } catch {
       console.log('[SQLImport] No subcategories table or empty');
     }
 

@@ -10,8 +10,8 @@ import {
   createIndexedDbPersister,
   IndexedDbPersister,
 } from 'tinybase/persisters/persister-indexed-db';
-import i18n from '../i18n';
 import { DEFAULT_CURRENCY_CODE } from './currency';
+import { getDefaultCategories, getDefaultTables } from './defaults';
 
 // Types for our data
 export interface Category {
@@ -29,6 +29,8 @@ export interface Account {
   balance: number;
   order: number;
   currency: string; // per-account currency, defaults to the app main currency
+  /** Managed-source marker: 'mercury' accounts are locked and badged. */
+  source: 'manual' | 'mercury';
 }
 
 export interface Transaction {
@@ -51,7 +53,7 @@ export interface Transaction {
 export interface TablesSchema {
   categories: { [id: string]: { name: string; icon: string; type: string } };
   subcategories: { [id: string]: { name: string; categoryId: string } };
-  accounts: { [id: string]: { name: string; icon: string; description: string | null; balance: number; order: number; currency: string } };
+  accounts: { [id: string]: { name: string; icon: string; description: string | null; balance: number; order: number; currency: string; source: string } };
   transactions: {
     [id: string]: {
       type: string;
@@ -70,6 +72,13 @@ export interface TablesSchema {
       imagePath: string | null;
     };
   };
+  // Mercury persistence tables (src/db/mercury.ts). Flags are stored as
+  // 'true'/'false' strings; absent table means no Mercury data.
+  mercuryConnection?: { [id: string]: { tokenStatus: string; createdAt: number | null; lastSyncedAt: number | null } };
+  mercuryAccounts?: { [id: string]: { localAccountId: string; enabled: string; currency: string; mixedCurrency: string; cursorWindowDays: number | null; lastSyncedAt: number | null; stale: string; lastError: string | null } };
+  mercuryTransactionLinks?: { [id: string]: { localTransactionId: string; mercuryAccountId: string; anomaly: string; mercuryCreatedAtMs: number | null } };
+  mercuryCursors?: { [id: string]: { cursor: string | null } };
+  mercurySyncState?: { [id: string]: { lastAttemptAt: number | null; nextEligibleAt: number | null; consecutiveFailures: number | null } };
 }
 
 export interface ValuesSchema {
@@ -88,26 +97,6 @@ export interface ValuesSchema {
 
 let store: Store | null = null;
 let persister: ExpoSqlitePersister | IndexedDbPersister | null = null;
-
-// Default seed data
-const getDefaultCategories = (): TablesSchema['categories'] => ({
-  '1': { name: i18n.t('defaultData.categories.food'), icon: 'utensils', type: 'expense' },
-  '2': { name: i18n.t('defaultData.categories.transport'), icon: 'car', type: 'expense' },
-  '3': { name: i18n.t('defaultData.categories.shopping'), icon: 'shopping-cart', type: 'expense' },
-  '4': { name: i18n.t('defaultData.categories.entertainment'), icon: 'film', type: 'expense' },
-  '5': { name: i18n.t('defaultData.categories.bills'), icon: 'receipt', type: 'expense' },
-  '6': { name: i18n.t('defaultData.categories.health'), icon: 'heart-pulse', type: 'expense' },
-  '7': { name: i18n.t('defaultData.categories.salary'), icon: 'briefcase', type: 'income' },
-  '8': { name: i18n.t('defaultData.categories.freelance'), icon: 'laptop', type: 'income' },
-  '9': { name: i18n.t('defaultData.categories.investments'), icon: 'trending-up', type: 'income' },
-  '10': { name: i18n.t('defaultData.categories.gift'), icon: 'gift', type: 'income' },
-});
-
-const getDefaultAccounts = (): TablesSchema['accounts'] => ({
-  '1': { name: i18n.t('defaultData.accounts.checking'), icon: 'wallet', description: null, balance: 0.0, order: 0, currency: DEFAULT_CURRENCY_CODE },
-  '2': { name: i18n.t('defaultData.accounts.savings'), icon: 'piggy-bank', description: null, balance: 0.0, order: 1, currency: DEFAULT_CURRENCY_CODE },
-  '3': { name: i18n.t('defaultData.accounts.creditCard'), icon: 'credit-card', description: null, balance: 0.0, order: 2, currency: DEFAULT_CURRENCY_CODE },
-});
 
 export async function initDatabase(forceReinit: boolean = false): Promise<Store> {
   if (store && !forceReinit) return store;
@@ -168,11 +157,7 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
   const categories = store.getTables()?.categories;
   if (!categories || Object.keys(categories).length === 0) {
     // Seed default data
-    store.setTables({
-      categories: getDefaultCategories(),
-      accounts: getDefaultAccounts(),
-      transactions: {},
-    });
+    store.setTables(getDefaultTables());
     await persister.save();
   } else {
     // Update default categories with new icons (check if using old emoji icons)
@@ -203,6 +188,11 @@ export async function initDatabase(forceReinit: boolean = false): Promise<Store>
         // Migrate accounts without currency field (default to app currency)
         if (data.currency === undefined || data.currency === null || (data.currency as string) === '') {
           store!.setCell('accounts', id, 'currency', DEFAULT_CURRENCY_CODE);
+          needsSave = true;
+        }
+        // Migrate accounts without the managed-source marker (default to manual)
+        if (data.source === undefined || data.source === null || (data.source as string) === '') {
+          store!.setCell('accounts', id, 'source', 'manual');
           needsSave = true;
         }
         orderIndex++;

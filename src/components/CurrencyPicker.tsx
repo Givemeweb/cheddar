@@ -7,7 +7,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { CURRENCIES, DEFAULT_CURRENCY_CODE } from '@/src/db/currency';
+import { CURRENCIES } from '@/src/db/currency';
 import { useTheme } from '@/src/components/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 

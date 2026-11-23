@@ -1,6 +1,9 @@
 import {
+  bankConnectionsDestination,
+  bankConnectionsGate,
+  bankConnectionsPress,
   canBrowseStatsMonth,
-  statsPaywallHref,
+  paywallHref,
   totalStatsDestination,
 } from './premiumAccess';
 
@@ -37,7 +40,7 @@ describe('free stats month paging', () => {
 describe('total stats gate', () => {
   it('sends free users to the paywall', () => {
     expect(totalStatsDestination(false)).toEqual(
-      statsPaywallHref('totalStats'),
+      paywallHref('totalStats'),
     );
     expect(totalStatsDestination(false)).toEqual({
       pathname: '/paywall',
@@ -47,5 +50,55 @@ describe('total stats gate', () => {
 
   it('opens total stats for premium users', () => {
     expect(totalStatsDestination(true)).toBe('/total-stats');
+  });
+});
+
+describe('bank connections gate', () => {
+  it('sends free users to the paywall with the bank-connections reason', () => {
+    expect(bankConnectionsDestination(false)).toEqual({
+      pathname: '/paywall',
+      params: { reason: 'bankConnections' },
+    });
+  });
+
+  it('opens the connect screen for premium users', () => {
+    expect(bankConnectionsDestination(true)).toBe(
+      '/configuration/bank-connections',
+    );
+  });
+});
+
+describe('bank connections screen gate', () => {
+  it('makes the screen wait while the cached entitlement has not loaded', () => {
+    expect(bankConnectionsGate(false, false)).toBe('wait');
+    expect(bankConnectionsGate(false, true)).toBe('wait');
+  });
+
+  it('redirects free users to the paywall from the screen itself', () => {
+    expect(bankConnectionsGate(true, false)).toEqual({
+      pathname: '/paywall',
+      params: { reason: 'bankConnections' },
+    });
+  });
+
+  it('lets premium users through the screen gate', () => {
+    expect(bankConnectionsGate(true, true)).toBeNull();
+  });
+});
+
+describe('bank connections row press gate', () => {
+  it('ignores taps while the entitlement is still loading', () => {
+    expect(bankConnectionsPress(false, false)).toBeNull();
+    expect(bankConnectionsPress(false, true)).toBeNull();
+  });
+
+  it('routes loaded taps to the paywall or the connect screen', () => {
+    expect(bankConnectionsPress(true, false)).toEqual({
+      pathname: '/paywall',
+      params: { reason: 'bankConnections' },
+    });
+    expect(bankConnectionsPress(true, true)).toBe(
+      '/configuration/bank-connections',
+    );
   });
 });

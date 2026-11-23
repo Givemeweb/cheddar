@@ -4,6 +4,9 @@
 delete process.env.EXPO_PUBLIC_SATSALE_API_URL;
 delete process.env.EXPO_PUBLIC_SATSALE_STAGING_API_URL;
 
+// Same for the Mercury sandbox override: tests assert the production default.
+delete process.env.EXPO_PUBLIC_MERCURY_SANDBOX_API_URL;
+
 // Analytics must never reach the network from tests. Clearing the config makes
 // every tracking call a no-op; the storage module is mocked below so importing
 // analytics does not pull TinyBase's ESM build into Jest.

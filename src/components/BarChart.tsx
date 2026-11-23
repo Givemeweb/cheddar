@@ -3,11 +3,11 @@
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type BarChartProps = {
-  data: Array<{
+  data: {
     month: string;
     income: number;
     expense: number;
-  }>;
+  }[];
   width?: number;
   height?: number;
   dom?: import('expo/dom').DOMProps;

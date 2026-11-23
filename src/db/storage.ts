@@ -1,5 +1,6 @@
 import { getStore, saveStore, generateId, generateTransactionId, isDatabaseReady } from './tinybase';
 import { DEFAULT_CURRENCY_CODE, convertAmountWithRates } from './currency';
+import { getMercuryAnomalyTransactionIds, hasMercuryImportedTransaction } from './mercury';
 import {
   FREE_LIMITS,
   getCachedPremium,
@@ -9,6 +10,16 @@ import {
 
 // Existing callers import the error from here; keep that path working.
 export { LimitReachedError } from './premium';
+
+/**
+ * Whether an account is managed by Mercury (its rows are imported, its
+ * balance mirrors Mercury's). getCell() reads as undefined for a missing
+ * row, so this cannot trip over the truthy-{} getRow() trap.
+ */
+function accountIsMercuryManaged(accountId: string | null | undefined): boolean {
+  if (!isDatabaseReady() || !accountId) return false;
+  return (getStore().getCell('accounts', accountId, 'source') as string | undefined) === 'mercury';
+}
 
 // Types - IDs are strings for TinyBase
 export interface Category {
@@ -28,6 +39,8 @@ export interface Account {
   balance: number;
   order: number;
   currency: string;
+  /** Managed-source marker; anything but 'mercury' reads as manual. */
+  source: 'manual' | 'mercury';
 }
 
 export interface Transaction {
@@ -51,6 +64,12 @@ export interface Transaction {
   toAmount: number | null; // transfer amount in the destination currency
   date: Date;
   imagePath: string | null;
+  /**
+   * FX/anomaly marker from the Mercury link table (record rule 4): flagged
+   * rows stay out of totals and reconciliation math until OQ-1 resolves.
+   * They remain visible as transactions.
+   */
+  anomaly: boolean;
 }
 
 /**
@@ -124,6 +143,7 @@ export async function getAccounts(): Promise<Account[]> {
       balance: data.balance as number,
       order: (data.order as number) ?? 0,
       currency: (data.currency as string) || DEFAULT_CURRENCY_CODE,
+      source: data.source === 'mercury' ? 'mercury' as const : 'manual' as const,
     }))
     .sort((a, b) => a.order - b.order);
 }
@@ -132,7 +152,10 @@ export async function getAccountById(id: string): Promise<Account | undefined> {
   if (!isDatabaseReady()) return undefined;
   const store = getStore();
   const row = store.getRow('accounts', id);
-  if (!row) return undefined;
+  // TinyBase getRow() returns a truthy {} for a missing row, so a row only
+  // counts as present when it carries a name cell: every account write sets
+  // one. Callers must not fabricate rows against a dangling id.
+  if (!row || row.name === undefined) return undefined;
 
   return {
     id,
@@ -142,6 +165,7 @@ export async function getAccountById(id: string): Promise<Account | undefined> {
     balance: row.balance as number,
     order: (row.order as number) ?? 0,
     currency: (row.currency as string) || DEFAULT_CURRENCY_CODE,
+    source: row.source === 'mercury' ? 'mercury' : 'manual',
   };
 }
 
@@ -159,6 +183,7 @@ export async function getTransactions(): Promise<Transaction[]> {
   const transactions = store.getTable('transactions');
   if (!transactions) return [];
 
+  const anomalyIds = getMercuryAnomalyTransactionIds();
   return Object.entries(transactions)
     .map(([id, data]) => ({
       id,
@@ -181,6 +206,7 @@ export async function getTransactions(): Promise<Transaction[]> {
       toAmount: (data.toAmount as number | null) ?? null,
       date: new Date(data.date as number),
       imagePath: data.imagePath as string | null,
+      anomaly: anomalyIds.has(id),
     }))
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 }
@@ -236,8 +262,13 @@ export async function addTransaction(tx: {
     imagePath: tx.imagePath ?? null,
   });
 
-  // Update account balance(s)
-  if (tx.type === 'transfer' && tx.toAccountId) {
+  // Update account balance(s). Managed (Mercury) accounts mirror Mercury's
+  // own balance: local writes against them must never touch it. Imported
+  // rows and rows created against a managed account stay out of the mirrored
+  // balance entirely, so no to-amount is persisted either.
+  const skipsBalance = accountIsMercuryManaged(tx.accountId)
+    || accountIsMercuryManaged(tx.toAccountId);
+  if (!skipsBalance && tx.type === 'transfer' && tx.toAccountId) {
     // Transfer: debit from account, credit to toAccountId.
     // When the accounts use different currencies, convert the amount at
     // the destination account's currency so the received value is correct.
@@ -254,7 +285,7 @@ export async function addTransaction(tx: {
     const toBalance = store.getCell('accounts', tx.toAccountId, 'balance') as number ?? 0;
     store.setCell('accounts', tx.accountId, 'balance', fromBalance + tx.amount); // amount is negative
     store.setCell('accounts', tx.toAccountId, 'balance', toBalance - toAmount); // positive equivalent converted
-  } else {
+  } else if (!skipsBalance) {
     // Income or expense: update the account balance
     const currentBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
     store.setCell('accounts', tx.accountId, 'balance', currentBalance + tx.amount);
@@ -283,6 +314,9 @@ export async function addTransaction(tx: {
     toAmount: tx.type === 'transfer' && tx.toAccountId ? ((store.getCell('transactions', id, 'toAmount') as number) ?? null) : null,
     date: tx.date,
     imagePath: tx.imagePath ?? null,
+    // A fresh row cannot be linked yet; the read model decorates the flag
+    // once the import has written its link row.
+    anomaly: false,
   };
 }
 
@@ -313,6 +347,7 @@ export async function getTransactionById(id: string): Promise<Transaction | unde
     toAmount: (row.toAmount as number | null) ?? null,
     date: new Date(row.date as number),
     imagePath: row.imagePath as string | null,
+    anomaly: getMercuryAnomalyTransactionIds().has(id),
   };
 }
 
@@ -358,8 +393,20 @@ export async function updateTransaction(id: string, updates: {
   const newCurrency = updates.currency
     || ((store.getCell('accounts', newAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE);
 
+  // Managed (Mercury) accounts mirror Mercury's own balance, and imported
+  // rows are already counted inside it: neither side of the edit may move a
+  // balance. The link check catches rows whose account lost its source
+  // marker, and survives moving an imported row onto a manual account.
+  const isLinked = hasMercuryImportedTransaction(id);
+  const reversesBalance = !isLinked
+    && !accountIsMercuryManaged(oldAccountId)
+    && !accountIsMercuryManaged(oldToAccountId);
+  const appliesBalance = !isLinked
+    && !accountIsMercuryManaged(newAccountId)
+    && !accountIsMercuryManaged(newToAccountId);
+
   // Reverse old balance changes
-  if (oldType === 'transfer' && oldToAccountId) {
+  if (reversesBalance && oldType === 'transfer' && oldToAccountId) {
     const fromBalance = store.getCell('accounts', oldAccountId, 'balance') as number ?? 0;
     const toBalance = store.getCell('accounts', oldToAccountId, 'balance') as number ?? 0;
     // Prefer the stored converted amount from entry time; fall back to a
@@ -369,7 +416,7 @@ export async function updateTransaction(id: string, updates: {
         ((store.getCell('accounts', oldToAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE)));
     store.setCell('accounts', oldAccountId, 'balance', fromBalance - oldAmount); // reverse: was negative, add back
     store.setCell('accounts', oldToAccountId, 'balance', toBalance + oldToAmount); // reverse the converted credit
-  } else {
+  } else if (reversesBalance) {
     const currentBalance = store.getCell('accounts', oldAccountId, 'balance') as number ?? 0;
     store.setCell('accounts', oldAccountId, 'balance', currentBalance - oldAmount);
   }
@@ -398,7 +445,7 @@ export async function updateTransaction(id: string, updates: {
   });
 
   // Apply new balance changes
-  if (newType === 'transfer' && newToAccountId) {
+  if (appliesBalance && newType === 'transfer' && newToAccountId) {
     const fromBalance = store.getCell('accounts', newAccountId, 'balance') as number ?? 0;
     const toBalance = store.getCell('accounts', newToAccountId, 'balance') as number ?? 0;
     const newToCurrency = ((store.getCell('accounts', newToAccountId, 'currency') as string) || DEFAULT_CURRENCY_CODE);
@@ -408,7 +455,7 @@ export async function updateTransaction(id: string, updates: {
     store.setCell('transactions', id, 'toAmount', newToAmount);
     store.setCell('accounts', newAccountId, 'balance', fromBalance + newAmount);
     store.setCell('accounts', newToAccountId, 'balance', toBalance - newToAmount);
-  } else {
+  } else if (appliesBalance) {
     const currentBalance = store.getCell('accounts', newAccountId, 'balance') as number ?? 0;
     store.setCell('accounts', newAccountId, 'balance', currentBalance + newAmount);
   }
@@ -422,9 +469,14 @@ export async function deleteTransaction(id: string): Promise<void> {
   if (!isDatabaseReady()) return;
   const store = getStore();
 
-  // Reverse balance changes before deleting
+  // Reverse balance changes before deleting. Imported rows and rows on
+  // managed (Mercury) accounts are already counted inside the mirrored
+  // balance, so deleting them must not touch it.
   const tx = await getTransactionById(id);
-  if (tx) {
+  const deletesManagedRow = hasMercuryImportedTransaction(id)
+    || accountIsMercuryManaged(tx?.accountId)
+    || accountIsMercuryManaged(tx?.toAccountId);
+  if (tx && !deletesManagedRow) {
     if (tx.type === 'transfer' && tx.toAccountId) {
       const fromBalance = store.getCell('accounts', tx.accountId, 'balance') as number ?? 0;
       const toBalance = store.getCell('accounts', tx.toAccountId, 'balance') as number ?? 0;
@@ -568,13 +620,23 @@ export async function addAccount(account: {
   icon?: string;
   description?: string | null;
   currency?: string;
+  /** Managed-source marker for linked accounts; default manual. */
+  source?: 'manual' | 'mercury';
+  /** Opening balance for accounts created with one (linked accounts). */
+  balance?: number;
 }): Promise<Account> {
   if (!isDatabaseReady()) {
     throw new Error('Database not initialized');
   }
-  await assertCanCreate('accounts');
+  // A linked Mercury account is created through the premium-gated mapping
+  // flow, which never reaches a free user; the free-tier cap applies only
+  // to manual account creation.
+  if (account.source !== 'mercury') {
+    await assertCanCreate('accounts');
+  }
   const store = getStore();
   const id = generateId();
+  const source = account.source ?? 'manual';
 
   // Get the highest order and add 1
   const accounts = await getAccounts();
@@ -582,14 +644,16 @@ export async function addAccount(account: {
 
   const accountIcon = account.icon ?? 'wallet';
   const accountCurrency = account.currency || DEFAULT_CURRENCY_CODE;
+  const accountBalance = account.balance ?? 0;
 
   store.setRow('accounts', id, {
     name: account.name,
     icon: accountIcon,
     description: account.description ?? null,
-    balance: 0,
+    balance: accountBalance,
     order: maxOrder + 1,
     currency: accountCurrency,
+    source,
   });
 
   await saveStore();
@@ -599,15 +663,22 @@ export async function addAccount(account: {
     name: account.name,
     icon: accountIcon,
     description: account.description ?? null,
-    balance: 0,
+    balance: accountBalance,
     order: maxOrder + 1,
     currency: accountCurrency,
+    source,
   };
 }
 
 export async function deleteAccount(id: string): Promise<void> {
   if (!isDatabaseReady()) return;
   const store = getStore();
+  // Linked accounts stay while their Mercury mapping exists; the mapping
+  // screen's unlink flow (ticket 07) is what releases them. The delete screen
+  // hides managed accounts; this guard keeps every other caller out too.
+  if (accountIsMercuryManaged(id)) {
+    throw new Error('A linked Mercury account cannot be deleted.');
+  }
   store.delRow('accounts', id);
   await saveStore();
 }
@@ -630,10 +701,16 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
   const currentAccount = await getAccountById(id);
   if (!currentAccount) return undefined;
 
-  const newName = updates.name ?? currentAccount.name;
+  // A linked Mercury account carries Mercury's name and is always USD while
+  // linked: rename and currency edits are ignored (the edit screen keeps the
+  // fields disabled so this path is only reached by other callers).
+  const managed = currentAccount.source === 'mercury';
+  const newName = managed ? currentAccount.name : (updates.name ?? currentAccount.name);
   const newIcon = updates.icon ?? currentAccount.icon;
   const newDescription = updates.description ?? currentAccount.description;
-  const newCurrency = updates.currency || currentAccount.currency;
+  const newCurrency = managed
+    ? currentAccount.currency
+    : (updates.currency || currentAccount.currency);
 
   // If the currency changes, convert the stored balance at current rates so
   // the account keeps its real-world value across the switch.
@@ -654,6 +731,7 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
     balance: newBalance,
     order: currentAccount.order,
     currency: newCurrency,
+    source: currentAccount.source,
   });
 
   // Update all transactions that reference this account
@@ -685,6 +763,7 @@ export async function updateAccount(id: string, updates: { name?: string; icon?:
     balance: newBalance,
     order: currentAccount.order,
     currency: newCurrency,
+    source: currentAccount.source,
   };
 }
 

@@ -20,10 +20,6 @@ type SqlJsResult = {
   values: (string | number | null | Uint8Array)[][];
 };
 
-type SqlJsModule = {
-  default: (config?: { locateFile?: (file: string) => string }) => Promise<SqlJsStatic>;
-};
-
 // Web File type
 type WebFile = globalThis.File;
 
@@ -164,7 +160,7 @@ async function parseSqlFileWeb(file: WebFile): Promise<{
           subcategories.push(sub as unknown as CheddarSubcategory);
         }
       }
-    } catch (e) {
+    } catch {
       console.log('[SQLImport] No subcategories table or empty');
     }
 

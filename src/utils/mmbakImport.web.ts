@@ -20,26 +20,11 @@ type SqlJsResult = {
   values: (string | number | null | Uint8Array)[][];
 };
 
-type SqlJsModule = {
-  default: (config?: { locateFile?: (file: string) => string }) => Promise<SqlJsStatic>;
-};
-
 // Web File type
 type WebFile = globalThis.File;
 
 // Cached sql.js instance for web
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
-
-/**
- * Load WASM from CDN as ArrayBuffer
- */
-async function loadWasmFromCdn(url: string): Promise<ArrayBuffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch WASM: ${response.status}`);
-  }
-  return response.arrayBuffer();
-}
 
 /**
  * Get or initialize sql.js (web only)

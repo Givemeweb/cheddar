@@ -9,6 +9,7 @@ const resources = {
   en: { translation: en },
 };
 
+// eslint-disable-next-line import/no-named-as-default-member -- i18n.use() is the documented i18next API, not the named `use` export
 i18n
   .use(initReactI18next)
   .init({

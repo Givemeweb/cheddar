@@ -32,9 +32,9 @@ import { formatNumber } from "../../src/utils/formatNumber";
 import {
   convertWithRates,
   getLatestRates,
-  RatesCache,
 } from "../../src/services/exchangeRates";
 import { trackEvent } from "../../src/lib/analytics";
+import { syncMercuryAccounts } from "../../src/services/mercurySync";
 
 export default function TransactionsScreen() {
   const [groupedTransactions, setGroupedTransactions] = useState<
@@ -46,7 +46,6 @@ export default function TransactionsScreen() {
   const [filterCategoryName, setFilterCategoryName] = useState<string | null>(
     null,
   );
-  const [ratesCache, setRatesCache] = useState<RatesCache | null>(null);
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
   const [reminderBusy, setReminderBusy] = useState(false);
   const { width } = useWindowDimensions();
@@ -79,12 +78,11 @@ export default function TransactionsScreen() {
     });
   };
 
-  async function fetchTransactions() {
+  const fetchTransactions = useCallback(async () => {
     try {
       const allTransactions = await getTransactions();
       // Load rates before converting amounts to the main currency
       const rates = await getLatestRates();
-      setRatesCache(rates);
       const toMain = (amount: number, currency: string): number => {
         if (!rates || currency === currencyCode) return amount;
         return convertWithRates(amount, currency, currencyCode, rates.rates, rates.base);
@@ -149,6 +147,7 @@ export default function TransactionsScreen() {
               ? { name: tx.toAccountName, description: null }
               : null,
             imagePath: tx.imagePath,
+            anomaly: tx.anomaly,
           };
         },
       );
@@ -170,12 +169,14 @@ export default function TransactionsScreen() {
         const sortedTxs = txs.sort(
           (a, b) => b.date.getTime() - a.date.getTime(),
         );
+        // FX/anomaly rows stay visible in the list but out of every total
+        // until OQ-1 resolves (record rule 4).
         const totalIncome = sortedTxs
-          .filter((t) => t.type === "income")
+          .filter((t) => t.type === "income" && !t.anomaly)
           .reduce((sum, t) => sum + t.amount, 0);
         const totalExpense = Math.abs(
           sortedTxs
-            .filter((t) => t.type === "expense")
+            .filter((t) => t.type === "expense" && !t.anomaly)
             .reduce((sum, t) => sum + t.amount, 0),
         );
 
@@ -198,13 +199,13 @@ export default function TransactionsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, [currencyCode, currentDate, categoryId]);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       fetchTransactions();
-    }, [currentDate, categoryId]),
+    }, [fetchTransactions]),
   );
 
   // The first-transaction prompt is queued by the add screen and consumed here,
@@ -231,7 +232,12 @@ export default function TransactionsScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchTransactions();
+    // Forced sync first (a user intent: it bypasses the debounce and the
+    // backoff), then the existing re-read. The list still refreshes when the
+    // sync attempt fails or is skipped.
+    syncMercuryAccounts({ force: true })
+      .catch((error) => console.warn("[mercury] Sync on refresh failed", error))
+      .finally(() => fetchTransactions());
   };
 
   const handleReminderAccept = async () => {
