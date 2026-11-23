@@ -58,6 +58,16 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
   const router = useRouter();
   const isTransfer = transaction.type === 'transfer';
   const isExpense = transaction.amount < 0;
+  // Note slot: when the note is absent/empty, fall back to the description
+  // capped at 35 rendered characters (first 32 + "..." when longer).
+  let noteLine: string | null = null;
+  if (transaction.note) {
+    noteLine = transaction.note;
+  } else if (transaction.description) {
+    const chars = Array.from(transaction.description);
+    noteLine =
+      chars.length > 35 ? `${chars.slice(0, 32).join('')}...` : transaction.description;
+  }
 
   const handlePress = () => {
     trackEvent('transactions.open_transaction', { type: transaction.type });
@@ -109,16 +119,16 @@ export function TransactionItem({ transaction, isDark = false }: TransactionItem
 
       {/* Column 2 - Note and Account */}
       <View className="flex-1 flex-col items-start ml-2">
-        {transaction.note && (
+        {noteLine && (
           <Text
             className={`text-sm ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
           >
-            {transaction.note}
+            {noteLine}
           </Text>
         )}
         <View className="flex-row items-center">
           <Text
-            className={`text-sm ${transaction.note ? "mt-0.5" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}
+            className={`text-sm ${noteLine ? "mt-0.5" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`}
           >
             {transaction.account.name}
             {isTransfer &&

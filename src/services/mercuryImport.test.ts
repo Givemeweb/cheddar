@@ -2,7 +2,7 @@ import {
   deriveMercuryTransactionType,
   deriveMercuryTransactionDate,
   parseMercuryTimestamp,
-  composeMercuryNote,
+  composeMercuryDescription,
   isMercuryAnomalyRow,
   isEligibleMercuryTransaction,
   linkMercuryAccount,
@@ -238,30 +238,39 @@ describe('date mapping', () => {
   });
 });
 
-describe('note composition and truncation', () => {
-  it('joins counterparty, bank description, and note in order', () => {
+describe('description composition and truncation', () => {
+  it('joins the bank description and note in order', () => {
     const tx = mercuryRow({
-      counterpartyName: 'Coffee Shop',
       bankDescription: 'BANK DATA 123',
       note: 'Team offsite',
     });
-    expect(composeMercuryNote(tx)).toBe('Coffee Shop · BANK DATA 123 · Team offsite');
+    expect(composeMercuryDescription(tx)).toBe('BANK DATA 123 · Team offsite');
   });
 
-  it('keeps only the parts that exist and stores an empty result as null', () => {
-    expect(composeMercuryNote(mercuryRow({ bankDescription: 'ACH' }))).toBe('Coffee Shop · ACH');
-    expect(composeMercuryNote(mercuryRow({ counterpartyName: null }))).toBeNull();
-    expect(composeMercuryNote(mercuryRow({ counterpartyName: '  ' }))).toBeNull();
-  });
-
-  it('stores long notes verbatim, like hand-entered notes', () => {
-    const longNote = 'x'.repeat(2000);
+  it('trims each part, drops empty parts, and stores an empty result as null', () => {
     expect(
-      composeMercuryNote(mercuryRow({ counterpartyName: null, note: longNote })),
-    ).toBe(longNote);
+      composeMercuryDescription(mercuryRow({ bankDescription: '  ACH  ', note: ' wire ' })),
+    ).toBe('ACH · wire');
+    expect(composeMercuryDescription(mercuryRow({ bankDescription: 'ACH' }))).toBe('ACH');
+    expect(composeMercuryDescription(mercuryRow({ note: 'wire' }))).toBe('wire');
+    expect(composeMercuryDescription(mercuryRow({ bankDescription: '   ' }))).toBeNull();
+    expect(composeMercuryDescription(mercuryRow({}))).toBeNull();
   });
 
-  it('appends nothing to the note for FX rows: the anomaly flag replaces it', () => {
+  it('never joins empty segments into double separators', () => {
+    expect(
+      composeMercuryDescription(mercuryRow({ bankDescription: null, note: '   ' })),
+    ).toBeNull();
+    expect(composeMercuryDescription(mercuryRow({ bankDescription: 'ACH', note: '  ' }))).toBe('ACH');
+    expect(composeMercuryDescription(mercuryRow({ bankDescription: '  ', note: 'wire' }))).toBe('wire');
+  });
+
+  it('stores long text verbatim, like hand-entered notes', () => {
+    const longNote = 'x'.repeat(2000);
+    expect(composeMercuryDescription(mercuryRow({ note: longNote }))).toBe(longNote);
+  });
+
+  it('appends nothing to the description for FX rows: the anomaly flag replaces it', () => {
     const fx = mercuryRow({
       currencyExchangeInfo: {
         convertedFromCurrency: 'USD',
@@ -273,9 +282,9 @@ describe('note composition and truncation', () => {
         feePercentage: 0,
         feeTransactionId: null,
       },
-      note: 'wire',
+      bankDescription: 'wire',
     });
-    expect(composeMercuryNote(fx)).toBe('Coffee Shop · wire');
+    expect(composeMercuryDescription(fx)).toBe('wire');
   });
 });
 
@@ -358,6 +367,8 @@ describe('linking one account and its backfill', () => {
         amount: 500,
         kind: 'checkDeposit',
         counterpartyName: 'Client',
+        bankDescription: 'Mobile deposit',
+        note: 'June retainer',
         mercuryCategory: null,
       }),
     ]);
@@ -395,7 +406,9 @@ describe('linking one account and its backfill', () => {
       source: 'mercury',
     });
 
-    // Debit: negative amount verbatim, expense, composed note.
+    // Debit: negative amount verbatim, expense, composed description with an
+    // empty note (the old composed-note format only lives in rows imported
+    // before this rule).
     const expense = localRow('local-1')!;
     expect(expense).toMatchObject({
       type: 'expense',
@@ -403,22 +416,24 @@ describe('linking one account and its backfill', () => {
       currency: 'USD',
       accountId: accounts[0].id,
       accountName: 'Mercury *** ••***',
-      note: 'Coffee Shop · BANK DATA 123',
+      note: null,
+      description: 'BANK DATA 123',
       categoryId: 'cat-food',
       categoryName: 'Food',
       categoryType: 'expense',
       subcategoryId: null,
-      description: null,
       imagePath: null,
     });
 
     // Credit: positive amount, income, unmatched category lands in the
-    // tagged income category.
+    // tagged income category; both text parts join in the description.
     const income = localRow('local-2')!;
     expect(income).toMatchObject({
       type: 'income',
       amount: 500,
       currency: 'USD',
+      note: null,
+      description: 'Mobile deposit · June retainer',
       categoryName: MERCURY_INCOME_CATEGORY_NAME,
     });
 
@@ -458,6 +473,26 @@ describe('linking one account and its backfill', () => {
     expect(
       Object.values(store.getTable('categories')).filter((c) => c.name === 'Food'),
     ).toHaveLength(1);
+  });
+
+  it('keeps the reported Mercury category driving the match, not the counterparty', async () => {
+    seedCategories();
+    fetchMock.mockResolvedValue([
+      // A counterparty whose name equals an existing category: in this slice
+      // the reported category (absent here) still decides, so the row lands
+      // in the tagged expense category instead of Food.
+      mercuryRow({ id: 'mtx-cp', amount: -5, counterpartyName: 'Food', mercuryCategory: null }),
+    ]);
+
+    await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 1,
+    });
+
+    const row = localRow('local-1')!;
+    expect(row.categoryId).not.toBe('cat-food');
+    expect(row).toMatchObject({ categoryName: MERCURY_EXPENSE_CATEGORY_NAME });
   });
 
   it('creates each tagged category once across unmatched rows', async () => {

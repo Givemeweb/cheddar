@@ -107,24 +107,24 @@ export function deriveMercuryTransactionDate(
     ?? 0;
 }
 
-const NOTE_PART_SEPARATOR = ' · ';
+const DESCRIPTION_PART_SEPARATOR = ' · ';
 
 /**
- * Counterparty name, then bank description, then Mercury's note. Nothing is
- * appended for FX rows (the anomaly flag replaces that, record rule 4). An
- * empty result is stored as null. No truncation: notes are stored verbatim,
- * like notes entered by hand.
+ * Bank description, then Mercury's note, stored in the local description
+ * field. The counterparty name is not part of it, and nothing is appended
+ * for FX rows (the anomaly flag replaces that, record rule 4). An empty
+ * result is stored as null. No truncation: descriptions are stored
+ * verbatim, like notes entered by hand.
  */
-export function composeMercuryNote(
-  tx: Pick<MercuryApiTransaction, 'counterpartyName' | 'bankDescription' | 'note'>,
+export function composeMercuryDescription(
+  tx: Pick<MercuryApiTransaction, 'bankDescription' | 'note'>,
 ): string | null {
   const parts = [
-    tx.counterpartyName,
     tx.bankDescription,
     tx.note,
   ].filter((part): part is string => typeof part === 'string' && part.trim() !== '')
     .map((part) => part.trim());
-  return parts.length > 0 ? parts.join(NOTE_PART_SEPARATOR) : null;
+  return parts.length > 0 ? parts.join(DESCRIPTION_PART_SEPARATOR) : null;
 }
 
 /**
@@ -331,9 +331,11 @@ export async function importFetchedMercuryTransactions(
       categoryType: category?.type ?? null,
       accountId: localAccountId,
       accountName: localAccount.name,
-      note: composeMercuryNote(tx),
-      // Subcategory, description and image path are left empty; the amount
-      // is Mercury's signed value verbatim, never converted.
+      // The note stays empty; the description carries the bank description
+      // and Mercury's note. Subcategory and image path are left empty; the
+      // amount is Mercury's signed value verbatim, never converted.
+      note: null,
+      description: composeMercuryDescription(tx),
       amount,
       currency: MERCURY_ACCOUNT_CURRENCY,
       date: new Date(deriveMercuryTransactionDate(tx)),
