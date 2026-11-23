@@ -155,21 +155,29 @@ export function isEligibleMercuryTransaction(
   return true;
 }
 
-/** The category name Mercury reports: a custom category first, then its enum. */
-function mercuryCategoryName(tx: MercuryApiTransaction): string | null {
-  const custom = tx.categoryData?.name;
-  if (typeof custom === 'string' && custom.trim() !== '') return custom.trim();
-  return tx.mercuryCategory;
+/**
+ * The category candidate is the counterparty name. Mercury's own category
+ * fields (categoryData, mercuryCategory) are ignored entirely (docs section 7,
+ * ticket mercury-categories/02): the same counterparty on an income and an
+ * expense row yields two categories with the same name, one per type.
+ */
+function mercuryCounterpartyName(tx: MercuryApiTransaction): string | null {
+  const name = tx.counterpartyName;
+  return typeof name === 'string' && name.trim() !== '' ? name.trim() : null;
 }
 
 const categoryName = (name: string) => name.trim().toLowerCase();
 
 /**
  * Category matching for one import run: same-type categories match
- * case-insensitively by name; anything unmatched lands in one of the two
- * tagged categories. Results are cached so repeated names hit the database
- * once, and created categories are remembered so one run cannot create a
- * duplicate of its own tagged category.
+ * case-insensitively by name, and an existing same-name category is adopted
+ * whatever created it (defaults, the user, an earlier import). A counterparty
+ * with no same-type match lazily creates its own category; only rows without
+ * a counterparty land in one of the two tagged categories. Results are cached
+ * so repeated names hit the database once, and a creation rejected by the
+ * free cap is remembered as null under its key so that name is never
+ * retried within the run: those rows stay uncategorized rather than failing
+ * the import.
  */
 function createMercuryCategoryResolver() {
   let categories: Category[] | null = null;
@@ -187,40 +195,47 @@ function createMercuryCategoryResolver() {
   ): Promise<Category | null> {
     categories ??= await getCategories();
 
-    const candidate = mercuryCategoryName(tx);
+    const counterparty = mercuryCounterpartyName(tx);
     const fallbackName = type === 'income'
       ? MERCURY_INCOME_CATEGORY_NAME
       : MERCURY_EXPENSE_CATEGORY_NAME;
 
-    if (candidate) {
-      const match = findSameType(type, candidate);
+    if (counterparty) {
+      const match = findSameType(type, counterparty);
       if (match) {
-        cache.set(key(type, candidate), match);
+        cache.set(key(type, counterparty), match);
         return match;
       }
-      if (cache.has(key(type, candidate))) {
-        return cache.get(key(type, candidate)) ?? null;
+      if (cache.has(key(type, counterparty))) {
+        return cache.get(key(type, counterparty)) ?? null;
       }
+      const created = await createMercuryCategory(counterparty, type, categories);
+      cache.set(key(type, counterparty), created);
+      return created;
     }
 
     const fallbackKey = key(type, fallbackName);
     if (cache.has(fallbackKey)) {
       // A cached null means category creation hit the free cap: every
-      // remaining unmatched row stays uncategorized instead of retrying.
-      const cachedFallback = cache.get(fallbackKey);
-      if (cachedFallback && candidate) cache.set(key(type, candidate), cachedFallback);
-      return cachedFallback ?? null;
+      // remaining counterparty-less row stays uncategorized instead of
+      // retrying.
+      return cache.get(fallbackKey) ?? null;
     }
-
     const fallback = findSameType(type, fallbackName)
-      ?? await createMercuryFallbackCategory(fallbackName, type, categories);
-    if (candidate) cache.set(key(type, candidate), fallback);
+      ?? await createMercuryCategory(fallbackName, type, categories);
     cache.set(fallbackKey, fallback);
     return fallback;
   };
 }
 
-async function createMercuryFallbackCategory(
+/**
+ * Lazily create one category: a counterparty-named one, or one of the two
+ * tagged fallbacks. Free users are capped by assertCanCreate; the mapping
+ * flow is premium-gated, so this only bites when the cached entitlement has
+ * not been written yet. The row stays uncategorized rather than failing the
+ * whole import.
+ */
+async function createMercuryCategory(
   name: string,
   type: 'income' | 'expense',
   categories: Category[],
@@ -228,10 +243,6 @@ async function createMercuryFallbackCategory(
   try {
     const created = await addCategory({
       name,
-      // Free users are capped by assertCanCreate; the mapping flow is
-      // premium-gated, so this only bites when the cached entitlement has
-      // not been written yet. The row stays uncategorized rather than
-      // failing the whole import.
       icon: type === 'income' ? 'briefcase' : 'wallet',
       type,
     });
