@@ -33,6 +33,7 @@ import {
 } from "../../src/services/exchangeRates";
 import { trackEvent } from "../../src/lib/analytics";
 import { CALLOUT_FLIPPED_INK, selectPieCallouts } from "../../src/utils/pieCallouts";
+import { DomLoadRetry } from "../../src/components/DomLoadRetry";
 
 type CategoryStat = {
   id: string;
@@ -428,26 +429,28 @@ export default function StatsScreen() {
                   }}
                 >
                   {chartSize && (
-                    <PieChart
-                      data={categoryStats.map((stat) => ({
-                        key: stat.id,
-                        value: stat.total,
-                        color: stat.color,
-                      }))}
-                      callouts={selectPieCallouts(
-                        categoryStats.map((stat) => ({
+                    <DomLoadRetry>
+                      <PieChart
+                        data={categoryStats.map((stat) => ({
                           key: stat.id,
-                          name: stat.name,
                           value: stat.total,
-                        }))
-                      )}
-                      labelColor={isDark ? "#F9FAFB" : "#212226"}
-                      lineColor={isDark ? "#9CA3AF" : "#6B7280"}
-                      flippedLabelColor={CALLOUT_FLIPPED_INK}
-                      innerRadius={20}
-                      width={chartSize.width}
-                      height={chartSize.height}
-                    />
+                          color: stat.color,
+                        }))}
+                        callouts={selectPieCallouts(
+                          categoryStats.map((stat) => ({
+                            key: stat.id,
+                            name: stat.name,
+                            value: stat.total,
+                          }))
+                        )}
+                        labelColor={isDark ? "#F9FAFB" : "#212226"}
+                        lineColor={isDark ? "#9CA3AF" : "#6B7280"}
+                        flippedLabelColor={CALLOUT_FLIPPED_INK}
+                        innerRadius={20}
+                        width={chartSize.width}
+                        height={chartSize.height}
+                      />
+                    </DomLoadRetry>
                   )}
                 </View>
                 <Text

@@ -1,11 +1,13 @@
 'use dom';
 
+import { useEffect } from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 import {
   CALLOUT_FONT_SIZE,
   placeCalloutText,
   type PieCallout,
 } from '../utils/pieCallouts';
+import { signalDomReady } from '../utils/domLoadRetry';
 
 const RADIAN = Math.PI / 180;
 
@@ -40,6 +42,9 @@ export default function PieChart({
   lineColor = '#000000',
   flippedLabelColor,
 }: PieChartProps) {
+  useEffect(() => {
+    signalDomReady();
+  }, []);
   const flippedInk = flippedLabelColor ?? labelColor;
   const calloutByKey = new Map(
     (callouts ?? []).map((callout) => [callout.key, callout])
