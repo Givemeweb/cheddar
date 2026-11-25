@@ -35,6 +35,11 @@ import {
   MERCURY_ACCOUNT_CURRENCY,
   type MercuryLinkedAccount,
 } from '../db/mercury';
+import {
+  addSubcategory,
+  getAllSubcategories,
+  type Subcategory,
+} from '../db/subcategories';
 
 /** Default backfill window for a newly linked account, in days. */
 export const MERCURY_BACKFILL_DAYS = 90;
@@ -234,6 +239,36 @@ function createMercuryCategoryResolver() {
 }
 
 /**
+ * Subcategory resolution for one import run: the row's counterparty becomes a
+ * subcategory of its resolved category (docs section 7, ticket
+ * mercury-sub-categories/02), including the two tagged fallback categories as
+ * parents. Matching is case-insensitive within that one category and adopts
+ * an existing subcategory whatever created it, storing the existing spelling;
+ * the same counterparty under a different category gets its own row.
+ * Subcategory creation is not free-capped, so the resolver never returns
+ * null.
+ */
+function createMercurySubcategoryResolver() {
+  let subcategories: Subcategory[] | null = null;
+
+  return async function resolveSubcategory(
+    categoryId: string,
+    counterparty: string,
+  ): Promise<Subcategory> {
+    subcategories ??= await getAllSubcategories();
+    const existing = subcategories.find(
+      (subcategory) =>
+        subcategory.categoryId === categoryId
+        && categoryName(subcategory.name) === categoryName(counterparty),
+    );
+    if (existing) return existing;
+    const created = await addSubcategory(categoryId, counterparty);
+    subcategories.push(created);
+    return created;
+  };
+}
+
+/**
  * Lazily create one category: a Mercury-category-named one, or one of the
  * two tagged fallbacks. Free users are capped by assertCanCreate; the mapping
  * flow is premium-gated, so this only bites when the cached entitlement has
@@ -325,6 +360,7 @@ export async function importFetchedMercuryTransactions(
     getMercuryTransactionLinks().map((link) => link.id),
   );
   const resolveCategory = createMercuryCategoryResolver();
+  const resolveSubcategory = createMercurySubcategoryResolver();
   const summary: MercuryImportSummary = { imported: 0, skipped: 0, anomalyRows: 0 };
 
   for (const tx of rows) {
@@ -338,6 +374,16 @@ export async function importFetchedMercuryTransactions(
     const type = deriveMercuryTransactionType(amount);
     const anomaly = isMercuryAnomalyRow(tx);
     const category = await resolveCategory(tx, type);
+    // The counterparty (recipient or sender name) becomes the row's
+    // subcategory, hung under the resolved category. A blank counterparty
+    // reads as absent and leaves both subcategory cells empty. A row left
+    // uncategorized by the free cap has no parent to hang a subcategory row
+    // on, so its counterparty is stored as a bare subcategory name with no
+    // subcategory row.
+    const counterparty = tx.counterpartyName?.trim() ?? '';
+    const subcategory = category && counterparty
+      ? await resolveSubcategory(category.id, counterparty)
+      : null;
 
     const local = await addTransaction({
       type,
@@ -348,13 +394,16 @@ export async function importFetchedMercuryTransactions(
       accountId: localAccountId,
       accountName: localAccount.name,
       // The note stays empty; the description carries the bank description
-      // and Mercury's note. Subcategory and image path are left empty; the
-      // amount is Mercury's signed value verbatim, never converted.
+      // and Mercury's note. The image path is left empty; the subcategory
+      // cells carry the counterparty per the rule above. The amount is
+      // Mercury's signed value verbatim, never converted.
       note: null,
       description: composeMercuryDescription(tx),
       amount,
       currency: MERCURY_ACCOUNT_CURRENCY,
       date: new Date(deriveMercuryTransactionDate(tx)),
+      subcategoryId: subcategory?.id ?? null,
+      subcategoryName: subcategory?.name ?? (category ? null : counterparty || null),
     });
 
     try {

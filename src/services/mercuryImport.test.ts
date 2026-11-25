@@ -423,13 +423,15 @@ describe('linking one account and its backfill', () => {
       categoryName: 'Food',
       categoryIcon: 'utensils',
       categoryType: 'expense',
-      subcategoryId: null,
+      // The counterparty becomes a subcategory of the resolved category.
+      subcategoryId: expect.any(String),
+      subcategoryName: 'Coffee Shop',
       imagePath: null,
     });
 
     // Credit: positive amount, income; with no Mercury category signal the
-    // row lands in the tagged income fallback. Both text parts join in the
-    // description.
+    // row lands in the tagged income fallback, which parents the
+    // counterparty subcategory too. Both text parts join in the description.
     const income = localRow('local-2')!;
     expect(income).toMatchObject({
       type: 'income',
@@ -440,6 +442,7 @@ describe('linking one account and its backfill', () => {
       categoryName: MERCURY_INCOME_CATEGORY_NAME,
       categoryIcon: 'briefcase',
       categoryType: 'income',
+      subcategoryName: 'Client',
     });
 
     expect(getMercuryTransactionLinks().map((link) => link.id)).toEqual([
@@ -1268,6 +1271,210 @@ describe('category creation free-cap fallback', () => {
     // One attempt per distinct case-insensitive name.
     expect(addCategorySpy).toHaveBeenCalledTimes(2);
     addCategorySpy.mockRestore();
+  });
+});
+
+describe('counterparty as subcategory', () => {
+  beforeEach(() => {
+    store.setValue('isPremium', 'true');
+  });
+
+  function seedCategories() {
+    store.setRow('categories', 'cat-food', {
+      name: 'Food',
+      icon: 'utensils',
+      type: 'expense',
+      order: 0,
+    });
+    store.setRow('categories', 'cat-salary', {
+      name: 'SALARY',
+      icon: 'briefcase',
+      type: 'income',
+      order: 1,
+    });
+  }
+
+  function subcategoryRows() {
+    return Object.entries(store.getTable('subcategories')).map(([id, data]) => ({
+      id,
+      name: data.name as string,
+      categoryId: data.categoryId as string,
+    }));
+  }
+
+  it('finds or creates one subcategory per counterparty and category, case-insensitively', async () => {
+    seedCategories();
+    fetchMock.mockResolvedValue([
+      // First sight of the counterparty under Food creates the row there.
+      mercuryRow({
+        id: 'mtx-a',
+        amount: -5,
+        categoryData: { name: 'Food' },
+        counterpartyName: 'Acme Corp',
+      }),
+      // Same counterparty under the same category, case and padding aside:
+      // the existing row is reused and its spelling is what gets stored.
+      mercuryRow({
+        id: 'mtx-b',
+        amount: -7,
+        categoryData: { name: 'Food' },
+        counterpartyName: '  ACME CORP  ',
+      }),
+      // The same counterparty under a different category gets its own row.
+      mercuryRow({
+        id: 'mtx-c',
+        amount: -9,
+        mercuryCategory: 'Bank Fees',
+        counterpartyName: 'Acme Corp',
+      }),
+      // A signal-less income row hangs its subcategory off the tagged income
+      // fallback, storing the spelling first seen under that category.
+      mercuryRow({ id: 'mtx-d', amount: 3, counterpartyName: 'acme corp' }),
+      // Its expense twin hangs the counterparty off the tagged expense
+      // fallback, so both fallback parents are exercised and asserted.
+      mercuryRow({ id: 'mtx-e', amount: -11, counterpartyName: 'Fallback Vendor' }),
+    ]);
+
+    await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 1,
+    });
+
+    const subs = subcategoryRows();
+    expect(subs).toHaveLength(4);
+
+    const underFood = subs.filter((sub) => sub.categoryId === 'cat-food');
+    expect(underFood).toHaveLength(1);
+    expect(underFood[0]!.name).toBe('Acme Corp');
+    expect(localRow('local-1')).toMatchObject({
+      categoryId: 'cat-food',
+      subcategoryId: underFood[0]!.id,
+      subcategoryName: 'Acme Corp',
+    });
+    expect(localRow('local-2')).toMatchObject({
+      subcategoryId: underFood[0]!.id,
+      subcategoryName: 'Acme Corp',
+    });
+
+    const bankFeesCategoryId = localRow('local-3')!.categoryId as string;
+    const underBankFees = subs.find((sub) => sub.categoryId === bankFeesCategoryId);
+    expect(localRow('local-3')).toMatchObject({
+      subcategoryId: underBankFees!.id,
+      subcategoryName: 'Acme Corp',
+    });
+
+    // The tagged income fallback parents subcategories too; the table's row
+    // key is the category id.
+    const [incomeFallbackId] = Object.entries(store.getTable('categories')).find(
+      ([, data]) => data.name === MERCURY_INCOME_CATEGORY_NAME,
+    )!;
+    const underFallback = subs.find((sub) => sub.categoryId === incomeFallbackId);
+    expect(underFallback).toMatchObject({ name: 'acme corp' });
+    expect(localRow('local-4')).toMatchObject({
+      categoryId: incomeFallbackId,
+      subcategoryId: underFallback!.id,
+      subcategoryName: 'acme corp',
+    });
+
+    // Same for the tagged expense fallback: the counterparty's subcategory
+    // hangs off it, storing the spelling first seen there.
+    const [expenseFallbackId] = Object.entries(store.getTable('categories')).find(
+      ([, data]) => data.name === MERCURY_EXPENSE_CATEGORY_NAME,
+    )!;
+    const underExpenseFallback = subs.find((sub) => sub.categoryId === expenseFallbackId);
+    expect(underExpenseFallback).toMatchObject({ name: 'Fallback Vendor' });
+    expect(localRow('local-5')).toMatchObject({
+      categoryId: expenseFallbackId,
+      subcategoryId: underExpenseFallback!.id,
+      subcategoryName: 'Fallback Vendor',
+    });
+  });
+
+  it('adopts a user-created subcategory under the resolved category, storing its spelling', async () => {
+    seedCategories();
+    store.setRow('subcategories', 'sub-user', { name: 'Acme Corp', categoryId: 'cat-food' });
+    fetchMock.mockResolvedValue([
+      mercuryRow({
+        id: 'mtx-a',
+        amount: -5,
+        categoryData: { name: 'Food' },
+        counterpartyName: 'acme corp',
+      }),
+    ]);
+
+    await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 1,
+    });
+
+    // Matched, not duplicated: the user's row and its spelling win.
+    expect(Object.keys(store.getTable('subcategories'))).toEqual(['sub-user']);
+    expect(localRow('local-1')).toMatchObject({
+      categoryId: 'cat-food',
+      subcategoryId: 'sub-user',
+      subcategoryName: 'Acme Corp',
+    });
+  });
+
+  it('leaves both subcategory cells empty when the counterparty is blank', async () => {
+    seedCategories();
+    fetchMock.mockResolvedValue([
+      mercuryRow({ id: 'mtx-a', amount: -5, counterpartyName: null }),
+      mercuryRow({ id: 'mtx-b', amount: -6, counterpartyName: '' }),
+      mercuryRow({ id: 'mtx-c', amount: -7, counterpartyName: '   ' }),
+    ]);
+
+    await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 1,
+    });
+
+    for (const id of ['local-1', 'local-2', 'local-3']) {
+      expect(localRow(id)).toMatchObject({ subcategoryId: null, subcategoryName: null });
+    }
+    expect(subcategoryRows()).toHaveLength(0);
+    // The import never touches the subcategoriesEnabled setting.
+    expect(store.getValue('subcategoriesEnabled')).toBeUndefined();
+  });
+
+  it("writes a free-capped row's counterparty as a bare subcategory name with no subcategory row", async () => {
+    for (let i = 0; i < 10; i++) {
+      store.setRow('categories', `cat-${i}`, {
+        name: `Category ${i}`,
+        icon: 'wallet',
+        type: 'expense',
+        order: i,
+      });
+    }
+    store.setValue('isPremium', 'false');
+    fetchMock.mockResolvedValue([
+      mercuryRow({ id: 'mtx-a', amount: -5, counterpartyName: 'Coffee Shop' }),
+      mercuryRow({ id: 'mtx-b', amount: -6, counterpartyName: 'Other Vendor' }),
+    ]);
+
+    const summary = await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 0,
+    });
+
+    // Every row still imports; with no parent category the counterparty
+    // lands as a bare subcategory name and no subcategory row is created.
+    expect(summary).toEqual({ imported: 2, skipped: 0, anomalyRows: 0 });
+    expect(localRow('local-1')).toMatchObject({
+      categoryId: null,
+      subcategoryId: null,
+      subcategoryName: 'Coffee Shop',
+    });
+    expect(localRow('local-2')).toMatchObject({
+      categoryId: null,
+      subcategoryId: null,
+      subcategoryName: 'Other Vendor',
+    });
+    expect(subcategoryRows()).toHaveLength(0);
   });
 });
 
