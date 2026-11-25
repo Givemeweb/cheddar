@@ -156,14 +156,19 @@ export function isEligibleMercuryTransaction(
 }
 
 /**
- * The category candidate is the counterparty name. Mercury's own category
- * fields (categoryData, mercuryCategory) are ignored entirely (docs section 7,
- * ticket mercury-categories/02): the same counterparty on an income and an
- * expense row yields two categories with the same name, one per type.
+ * The category candidate comes from Mercury's own categorization (docs
+ * section 7, ticket mercury-sub-categories/01): the custom `categoryData`
+ * name when the wire carries one, otherwise the built-in `mercuryCategory`
+ * enum value, both trimmed. The counterparty name is not part of it. An
+ * absent or whitespace-only value on both fields reads as "no signal" so
+ * the row falls through to the tagged fallback for its type.
  */
-function mercuryCounterpartyName(tx: MercuryApiTransaction): string | null {
-  const name = tx.counterpartyName;
-  return typeof name === 'string' && name.trim() !== '' ? name.trim() : null;
+function mercuryCategoryName(tx: MercuryApiTransaction): string | null {
+  const custom = tx.categoryData?.name;
+  if (typeof custom === 'string' && custom.trim() !== '') return custom.trim();
+  const builtin = tx.mercuryCategory;
+  if (typeof builtin === 'string' && builtin.trim() !== '') return builtin.trim();
+  return null;
 }
 
 const categoryName = (name: string) => name.trim().toLowerCase();
@@ -171,13 +176,13 @@ const categoryName = (name: string) => name.trim().toLowerCase();
 /**
  * Category matching for one import run: same-type categories match
  * case-insensitively by name, and an existing same-name category is adopted
- * whatever created it (defaults, the user, an earlier import). A counterparty
- * with no same-type match lazily creates its own category; only rows without
- * a counterparty land in one of the two tagged categories. Results are cached
- * so repeated names hit the database once, and a creation rejected by the
- * free cap is remembered as null under its key so that name is never
- * retried within the run: those rows stay uncategorized rather than failing
- * the import.
+ * whatever created it (defaults, the user, an earlier import). A row whose
+ * Mercury category name has no same-type match lazily creates its own
+ * category; only rows without either category signal land in one of the two
+ * tagged categories. Results are cached so repeated names hit the database
+ * once, and a creation rejected by the free cap is remembered as null under
+ * its key so that name is never retried within the run: those rows stay
+ * uncategorized rather than failing the import.
  */
 function createMercuryCategoryResolver() {
   let categories: Category[] | null = null;
@@ -195,30 +200,30 @@ function createMercuryCategoryResolver() {
   ): Promise<Category | null> {
     categories ??= await getCategories();
 
-    const counterparty = mercuryCounterpartyName(tx);
+    const name = mercuryCategoryName(tx);
     const fallbackName = type === 'income'
       ? MERCURY_INCOME_CATEGORY_NAME
       : MERCURY_EXPENSE_CATEGORY_NAME;
 
-    if (counterparty) {
-      const match = findSameType(type, counterparty);
+    if (name) {
+      const match = findSameType(type, name);
       if (match) {
-        cache.set(key(type, counterparty), match);
+        cache.set(key(type, name), match);
         return match;
       }
-      if (cache.has(key(type, counterparty))) {
-        return cache.get(key(type, counterparty)) ?? null;
+      if (cache.has(key(type, name))) {
+        return cache.get(key(type, name)) ?? null;
       }
-      const created = await createMercuryCategory(counterparty, type, categories);
-      cache.set(key(type, counterparty), created);
+      const created = await createMercuryCategory(name, type, categories);
+      cache.set(key(type, name), created);
       return created;
     }
 
     const fallbackKey = key(type, fallbackName);
     if (cache.has(fallbackKey)) {
       // A cached null means category creation hit the free cap: every
-      // remaining counterparty-less row stays uncategorized instead of
-      // retrying.
+      // remaining signal-less row (no categoryData name, no mercuryCategory)
+      // stays uncategorized instead of retrying.
       return cache.get(fallbackKey) ?? null;
     }
     const fallback = findSameType(type, fallbackName)
@@ -229,8 +234,8 @@ function createMercuryCategoryResolver() {
 }
 
 /**
- * Lazily create one category: a counterparty-named one, or one of the two
- * tagged fallbacks. Free users are capped by assertCanCreate; the mapping
+ * Lazily create one category: a Mercury-category-named one, or one of the
+ * two tagged fallbacks. Free users are capped by assertCanCreate; the mapping
  * flow is premium-gated, so this only bites when the cached entitlement has
  * not been written yet. The row stays uncategorized rather than failing the
  * whole import.

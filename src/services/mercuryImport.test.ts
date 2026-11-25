@@ -408,8 +408,8 @@ describe('linking one account and its backfill', () => {
 
     // Debit: negative amount verbatim, expense, composed description with an
     // empty note (the old composed-note format only lives in rows imported
-    // before this rule). The counterparty names the category; Mercury's
-    // reported category is ignored.
+    // before this rule). Mercury's category names it: the seeded expense
+    // category is adopted with its own spelling and icon.
     const expense = localRow('local-1')!;
     expect(expense).toMatchObject({
       type: 'expense',
@@ -419,16 +419,17 @@ describe('linking one account and its backfill', () => {
       accountName: 'Mercury *** ••***',
       note: null,
       description: 'BANK DATA 123',
-      categoryName: 'Coffee Shop',
-      categoryIcon: 'wallet',
+      categoryId: 'cat-food',
+      categoryName: 'Food',
+      categoryIcon: 'utensils',
       categoryType: 'expense',
       subcategoryId: null,
       imagePath: null,
     });
-    expect(expense.categoryId).toBeTruthy();
 
-    // Credit: positive amount, income, its counterparty category lazily
-    // created with the income icon; both text parts join in the description.
+    // Credit: positive amount, income; with no Mercury category signal the
+    // row lands in the tagged income fallback. Both text parts join in the
+    // description.
     const income = localRow('local-2')!;
     expect(income).toMatchObject({
       type: 'income',
@@ -436,7 +437,7 @@ describe('linking one account and its backfill', () => {
       currency: 'USD',
       note: null,
       description: 'Mobile deposit · June retainer',
-      categoryName: 'Client',
+      categoryName: MERCURY_INCOME_CATEGORY_NAME,
       categoryIcon: 'briefcase',
       categoryType: 'income',
     });
@@ -448,15 +449,16 @@ describe('linking one account and its backfill', () => {
     expect(summary).toEqual({ imported: 2, skipped: 0, anomalyRows: 0 });
   });
 
-  it('adopts an existing same-type category by case-insensitive counterparty name', async () => {
+  it('adopts an existing same-type category case-insensitively from Mercury category names', async () => {
     seedCategories();
     fetchMock.mockResolvedValue([
-      // Matches the expense category even though the counterparty is
-      // uppercase: same-type matching is case-insensitive.
-      mercuryRow({ id: 'mtx-a', amount: -5, counterpartyName: 'FOOD' }),
+      // Matches the expense category even though the wire name is uppercase:
+      // same-type matching is case-insensitive, and the stored name is the
+      // existing category's spelling.
+      mercuryRow({ id: 'mtx-a', amount: -5, categoryData: { name: 'FOOD' } }),
       // Matches the income category: adoption does not care who created the
       // category row (default, user, or an earlier import all look alike).
-      mercuryRow({ id: 'mtx-b', amount: 5, counterpartyName: 'salary' }),
+      mercuryRow({ id: 'mtx-b', amount: 5, mercuryCategory: 'salary' }),
     ]);
 
     await linkMercuryAccount('secret-token:abc', {
@@ -465,21 +467,29 @@ describe('linking one account and its backfill', () => {
       currentBalance: 10,
     });
 
-    expect(localRow('local-1')).toMatchObject({ type: 'expense', categoryId: 'cat-food' });
-    expect(localRow('local-2')).toMatchObject({ type: 'income', categoryId: 'cat-salary' });
+    expect(localRow('local-1')).toMatchObject({
+      type: 'expense',
+      categoryId: 'cat-food',
+      categoryName: 'Food',
+    });
+    expect(localRow('local-2')).toMatchObject({
+      type: 'income',
+      categoryId: 'cat-salary',
+      categoryName: 'SALARY',
+    });
 
     // Matched, not duplicated: no new category rows at all.
     expect(Object.keys(store.getTable('categories'))).toHaveLength(2);
   });
 
-  it('gives a counterparty on both income and expense rows one category per type', async () => {
+  it('gives one Mercury category name one category per type', async () => {
     seedCategories();
     fetchMock.mockResolvedValue([
       // 'Food' exists as an expense category: the expense row adopts it.
-      mercuryRow({ id: 'mtx-e', amount: -5, counterpartyName: 'Food' }),
-      // The same counterparty on an income row has no same-type match, so it
-      // lazily creates its own income category; matching never crosses types.
-      mercuryRow({ id: 'mtx-i', amount: 7, counterpartyName: 'Food' }),
+      mercuryRow({ id: 'mtx-e', amount: -5, categoryData: { name: 'Food' } }),
+      // The same name on an income row has no same-type match, so it lazily
+      // creates its own income category; matching never crosses types.
+      mercuryRow({ id: 'mtx-i', amount: 7, mercuryCategory: 'Food' }),
     ]);
 
     await linkMercuryAccount('secret-token:abc', {
@@ -504,27 +514,37 @@ describe('linking one account and its backfill', () => {
     ).toHaveLength(2);
   });
 
-  it('ignores Mercury categoryData and mercuryCategory entirely', async () => {
+  it('categorizes rows by Mercury categoryData, then mercuryCategory, then the type fallback', async () => {
     seedCategories();
     fetchMock.mockResolvedValue([
-      // Both Mercury category signals point at Food, but only the
-      // counterparty decides: this row lands in its counterparty category.
+      // categoryData wins when both signals are present.
       mercuryRow({
-        id: 'mtx-mercury',
+        id: 'mtx-both',
         amount: -5,
-        counterpartyName: 'Coffee Shop',
-        categoryData: { name: 'Food' },
-        mercuryCategory: 'Food',
+        categoryData: { name: 'Custom Expense' },
+        mercuryCategory: 'Bank Fees',
       }),
-      // No counterparty: the Mercury signals do not rescue the row either;
-      // it keeps the tagged fallback.
+      // The enum value is trimmed too. This is the first 'Bank Fees' row, so
+      // dropping the enum's trim would store the padded spelling instead.
+      mercuryRow({ id: 'mtx-pad', amount: -6, mercuryCategory: ' Bank Fees ' }),
+      // Only the enum: its value is the category name verbatim.
+      mercuryRow({ id: 'mtx-enum', amount: -7, mercuryCategory: 'Bank Fees' }),
+      // A categoryData without a usable name carries no signal, so the enum
+      // decides.
+      mercuryRow({ id: 'mtx-blank', amount: -9, categoryData: {}, mercuryCategory: 'Bank Fees' }),
+      // Neither signal, counterparty present or not: the counterparty no
+      // longer decides anything, so the row keeps the tagged expense
+      // fallback. A whitespace-only name reads as absent too.
       mercuryRow({
         id: 'mtx-none',
-        amount: -6,
-        counterpartyName: null,
-        categoryData: { name: 'Food' },
-        mercuryCategory: 'Food',
+        amount: -11,
+        categoryData: { name: '   ' },
+        mercuryCategory: null,
       }),
+      // Wire names are trimmed before matching and creation.
+      mercuryRow({ id: 'mtx-trim', amount: -13, categoryData: { name: '  Padded  ' } }),
+      // The income twin of the no-signal row: tagged income fallback.
+      mercuryRow({ id: 'mtx-income', amount: 3, categoryData: null, mercuryCategory: null }),
     ]);
 
     await linkMercuryAccount('secret-token:abc', {
@@ -533,21 +553,98 @@ describe('linking one account and its backfill', () => {
       currentBalance: 1,
     });
 
-    expect(localRow('local-1')).toMatchObject({ categoryName: 'Coffee Shop' });
-    expect(localRow('local-2')).toMatchObject({
-      categoryName: MERCURY_EXPENSE_CATEGORY_NAME,
+    expect(localRow('local-1')).toMatchObject({
+      categoryName: 'Custom Expense',
+      categoryIcon: 'wallet',
+      categoryType: 'expense',
     });
-    // Food was never matched, adopted, or duplicated.
-    expect(
-      Object.values(store.getTable('categories')).filter((c) => c.name === 'Food'),
-    ).toHaveLength(1);
+    // The 'Bank Fees' rows share one lazily created expense category
+    // (mtx-both carries the enum too, but its categoryData name wins).
+    expect(localRow('local-2')).toMatchObject({
+      categoryName: 'Bank Fees',
+      categoryIcon: 'wallet',
+      categoryType: 'expense',
+    });
+    expect(localRow('local-3')!.categoryId).toBe(localRow('local-2')!.categoryId);
+    expect(localRow('local-4')!.categoryId).toBe(localRow('local-2')!.categoryId);
+    expect(localRow('local-5')).toMatchObject({
+      categoryName: MERCURY_EXPENSE_CATEGORY_NAME,
+      categoryIcon: 'wallet',
+      categoryType: 'expense',
+    });
+    expect(localRow('local-6')).toMatchObject({
+      categoryName: 'Padded',
+      categoryType: 'expense',
+    });
+    expect(localRow('local-7')).toMatchObject({
+      categoryName: MERCURY_INCOME_CATEGORY_NAME,
+      categoryIcon: 'briefcase',
+      categoryType: 'income',
+    });
   });
 
-  it('keeps counterparty-less rows in the tagged fallbacks, created once per type', async () => {
+  it('creates each Mercury category once across repeated rows and case variants', async () => {
     fetchMock.mockResolvedValue([
-      mercuryRow({ id: 'mtx-a', amount: -5, counterpartyName: null }),
-      mercuryRow({ id: 'mtx-b', amount: -7, counterpartyName: '   ' }),
-      mercuryRow({ id: 'mtx-c', amount: 1, counterpartyName: null }),
+      mercuryRow({ id: 'mtx-a', amount: -5, categoryData: { name: 'Vendors' } }),
+      mercuryRow({ id: 'mtx-b', amount: -7, categoryData: { name: 'VENDORS' } }),
+      mercuryRow({ id: 'mtx-c', amount: 1, mercuryCategory: 'Client' }),
+      mercuryRow({ id: 'mtx-d', amount: 2, mercuryCategory: 'client' }),
+    ]);
+
+    await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 1,
+    });
+
+    // One expense and one income category, created once each despite the
+    // case variants, under the first spelling seen; the tagged fallbacks
+    // were never needed.
+    expect(linkedCategoryRows('expense').map((c) => c.name)).toEqual(['Vendors']);
+    expect(linkedCategoryRows('income').map((c) => c.name)).toEqual(['Client']);
+    // Both rows in each type share the category.
+    expect(localRow('local-1')!.categoryId).toBe(localRow('local-2')!.categoryId);
+    expect(localRow('local-3')!.categoryId).toBe(localRow('local-4')!.categoryId);
+  });
+
+  it('categorizes anomaly rows exactly like normal rows', async () => {
+    fetchMock.mockResolvedValue([
+      mercuryRow({
+        id: 'mtx-fx',
+        amount: -190.05,
+        categoryData: { name: 'Foreign Vendor' },
+        currencyExchangeInfo: { exchangeRate: 0.92 },
+      }),
+      mercuryRow({ id: 'mtx-plain', amount: -5, categoryData: { name: 'foreign vendor' } }),
+    ]);
+
+    const summary = await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 1,
+    });
+
+    // The FX row gets the same Mercury category as the plain one, and its
+    // anomaly bookkeeping is untouched.
+    expect(localRow('local-1')!.categoryId).toBe(localRow('local-2')!.categoryId);
+    expect(localRow('local-1')).toMatchObject({
+      categoryName: 'Foreign Vendor',
+      categoryType: 'expense',
+    });
+    expect(summary).toEqual({ imported: 2, skipped: 0, anomalyRows: 1 });
+    expect(getMercuryTransactionLinks().find((l) => l.id === 'mtx-fx')).toMatchObject({
+      anomaly: true,
+    });
+    expect(getMercuryTransactionLinks().find((l) => l.id === 'mtx-plain')).toMatchObject({
+      anomaly: false,
+    });
+  });
+
+  it('keeps rows without a Mercury category signal in the tagged fallbacks, created once per type', async () => {
+    fetchMock.mockResolvedValue([
+      mercuryRow({ id: 'mtx-a', amount: -5 }),
+      mercuryRow({ id: 'mtx-b', amount: -7 }),
+      mercuryRow({ id: 'mtx-c', amount: 1 }),
     ]);
 
     await linkMercuryAccount('secret-token:abc', {
@@ -567,62 +664,6 @@ describe('linking one account and its backfill', () => {
       categoryName: MERCURY_INCOME_CATEGORY_NAME,
       categoryIcon: 'briefcase',
       categoryType: 'income',
-    });
-  });
-
-  it('creates each counterparty category once across repeated rows', async () => {
-    fetchMock.mockResolvedValue([
-      mercuryRow({ id: 'mtx-a', amount: -5, counterpartyName: 'Coffee Shop' }),
-      mercuryRow({ id: 'mtx-b', amount: -7, counterpartyName: 'COFFEE SHOP' }),
-      mercuryRow({ id: 'mtx-c', amount: 1, counterpartyName: 'Client' }),
-      mercuryRow({ id: 'mtx-d', amount: 2, counterpartyName: 'client' }),
-    ]);
-
-    await linkMercuryAccount('secret-token:abc', {
-      id: 'acct-1',
-      name: 'Checking',
-      currentBalance: 1,
-    });
-
-    // One expense and one income category, created once each despite the
-    // case variants; the tagged fallbacks were never needed.
-    expect(linkedCategoryRows('expense').map((c) => c.name)).toEqual(['Coffee Shop']);
-    expect(linkedCategoryRows('income').map((c) => c.name)).toEqual(['Client']);
-    // Both rows in each type share the category.
-    expect(localRow('local-1')!.categoryId).toBe(localRow('local-2')!.categoryId);
-    expect(localRow('local-3')!.categoryId).toBe(localRow('local-4')!.categoryId);
-  });
-
-  it('categorizes anomaly rows exactly like normal rows', async () => {
-    fetchMock.mockResolvedValue([
-      mercuryRow({
-        id: 'mtx-fx',
-        amount: -190.05,
-        counterpartyName: 'Foreign Vendor',
-        currencyExchangeInfo: { exchangeRate: 0.92 },
-      }),
-      mercuryRow({ id: 'mtx-plain', amount: -5, counterpartyName: 'Foreign Vendor' }),
-    ]);
-
-    const summary = await linkMercuryAccount('secret-token:abc', {
-      id: 'acct-1',
-      name: 'Checking',
-      currentBalance: 1,
-    });
-
-    // The FX row gets the same counterparty category as the plain one, and
-    // its anomaly bookkeeping is untouched.
-    expect(localRow('local-1')!.categoryId).toBe(localRow('local-2')!.categoryId);
-    expect(localRow('local-1')).toMatchObject({
-      categoryName: 'Foreign Vendor',
-      categoryType: 'expense',
-    });
-    expect(summary).toEqual({ imported: 2, skipped: 0, anomalyRows: 1 });
-    expect(getMercuryTransactionLinks().find((l) => l.id === 'mtx-fx')).toMatchObject({
-      anomaly: true,
-    });
-    expect(getMercuryTransactionLinks().find((l) => l.id === 'mtx-plain')).toMatchObject({
-      anomaly: false,
     });
   });
 
@@ -1187,7 +1228,44 @@ describe('category creation free-cap fallback', () => {
     expect(localRow('local-1')).toMatchObject({ categoryId: null });
     expect(localRow('local-3')).toMatchObject({ categoryId: null });
     // One attempt per distinct category key (expense, then income), not one
-    // per row: the cached null is honored for the repeated counterparty.
+    // per row: the cached null is honored for the repeated fallback name.
+    expect(addCategorySpy).toHaveBeenCalledTimes(2);
+    addCategorySpy.mockRestore();
+  });
+
+  it('stops retrying a wire-named category after the cap rejects it', async () => {
+    for (let i = 0; i < 10; i++) {
+      store.setRow('categories', `cat-${i}`, {
+        name: `Category ${i}`,
+        icon: 'wallet',
+        type: 'expense',
+        order: i,
+      });
+    }
+    store.setValue('isPremium', 'false');
+    const addCategorySpy = jest.spyOn(storageModule, 'addCategory');
+
+    fetchMock.mockResolvedValue([
+      mercuryRow({ id: 'mtx-a', amount: -5, categoryData: { name: 'Vendor' } }),
+      // Same name in another case: the failed creation is remembered under
+      // the case-insensitive key, so this row does not retry either.
+      mercuryRow({ id: 'mtx-b', amount: -6, categoryData: { name: 'VENDOR' } }),
+      mercuryRow({ id: 'mtx-c', amount: -7, categoryData: { name: 'Other' } }),
+    ]);
+
+    const summary = await linkMercuryAccount('secret-token:abc', {
+      id: 'acct-1',
+      name: 'Checking',
+      currentBalance: 0,
+    });
+
+    // Every row still imports; capped wire names leave their rows
+    // uncategorized.
+    expect(summary).toEqual({ imported: 3, skipped: 0, anomalyRows: 0 });
+    expect(localRow('local-1')).toMatchObject({ categoryId: null });
+    expect(localRow('local-2')).toMatchObject({ categoryId: null });
+    expect(localRow('local-3')).toMatchObject({ categoryId: null });
+    // One attempt per distinct case-insensitive name.
     expect(addCategorySpy).toHaveBeenCalledTimes(2);
     addCategorySpy.mockRestore();
   });
