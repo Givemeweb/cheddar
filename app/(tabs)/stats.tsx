@@ -34,11 +34,17 @@ import {
 import { trackEvent } from "../../src/lib/analytics";
 import { CALLOUT_FLIPPED_INK, selectPieCallouts } from "../../src/utils/pieCallouts";
 import { DomLoadRetry } from "../../src/components/DomLoadRetry";
+import {
+  aggregateSubcategorySlices,
+} from "../../src/utils/subcategorySlices";
 
 type CategoryStat = {
-  id: string;
+  /** Unique slice key (pie data + callouts + legend keys). */
+  key: string;
+  /** Parent category id: the legend-row navigation target; null = transfer. */
+  id: string | null;
   name: string;
-  icon: string;
+  icon: string | null;
   total: number;
   color: string;
   isTransfer?: boolean;
@@ -65,6 +71,7 @@ const COLORS = [
 
 export default function StatsScreen() {
   const [activeTab, setActiveTab] = useState<"income" | "expense">("expense");
+  const [subcategoryMode, setSubcategoryMode] = useState(false);
   const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -79,10 +86,19 @@ export default function StatsScreen() {
   );
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
-  const { isDark, showIcons, currencySymbol, currencyCode } = useTheme();
+  const { isDark, showIcons, currencySymbol, currencyCode, subcategoriesEnabled } = useTheme();
   const { isPremium, isEntitlementLoaded } = usePremium();
   const { t } = useTranslation();
   const router = useRouter();
+
+  // Sub-categories mode resets on every visit to the screen; switching the
+  // income/expense tabs does not reset it (this callback has no deps, so it
+  // only runs on focus, not when the fetch effect's deps change).
+  useFocusEffect(
+    useCallback(() => {
+      setSubcategoryMode(false);
+    }, [])
+  );
 
   const monthYear = currentDate.toLocaleDateString("en-US", {
     month: "short",
@@ -215,24 +231,54 @@ export default function StatsScreen() {
           let totalAmount = 0;
           let colorIndex = 0;
 
-          categoryTotals.forEach((amount, categoryId) => {
-            const cat = categoryMap.get(categoryId);
-            if (cat && amount > 0) {
+          if (subcategoryMode && subcategoriesEnabled) {
+            // Sub-categories mode: a flat swap - slices are sub-categories
+            // grouped by the transaction's denormalized subcategoryName within
+            // its category; transactions without a sub roll into a slice named
+            // after their parent, so the pie still totals 100%.
+            const subSlices = aggregateSubcategorySlices(
+              filteredTransactions.map((tx) => ({
+                categoryId: tx.categoryId as string,
+                subcategoryName: tx.subcategoryName,
+                amount: Math.abs(toMain(tx.amount, tx.currency)),
+              })),
+              new Map(allCategories.map((c) => [c.id, c.name]))
+            );
+            subSlices.forEach((slice) => {
+              if (slice.total <= 0) return;
               stats.push({
-                id: categoryId,
-                name: cat.name,
-                icon: cat.icon,
-                total: amount,
+                key: slice.key,
+                id: slice.categoryId,
+                name: slice.name,
+                icon: null,
+                total: slice.total,
                 color: COLORS[colorIndex % COLORS.length],
               });
-              totalAmount += amount;
+              totalAmount += slice.total;
               colorIndex++;
-            }
-          });
+            });
+          } else {
+            categoryTotals.forEach((amount, categoryId) => {
+              const cat = categoryMap.get(categoryId);
+              if (cat && amount > 0) {
+                stats.push({
+                  key: categoryId,
+                  id: categoryId,
+                  name: cat.name,
+                  icon: cat.icon,
+                  total: amount,
+                  color: COLORS[colorIndex % COLORS.length],
+                });
+                totalAmount += amount;
+                colorIndex++;
+              }
+            });
+          }
 
           if (transferTotal > 0) {
             stats.push({
-              id: `transfer-${activeTab}`,
+              key: `transfer-${activeTab}`,
+              id: null,
               name:
                 activeTab === "expense"
                   ? t("stats.transfersOut")
@@ -258,7 +304,7 @@ export default function StatsScreen() {
 
       setLoading(true);
       fetchStats();
-    }, [activeTab, currentDate, selectedAccountId, currencyCode, t])
+    }, [activeTab, currentDate, selectedAccountId, currencyCode, t, subcategoryMode, subcategoriesEnabled])
   );
 
   const isAccountSelected = (accountId: string | null) =>
@@ -268,6 +314,14 @@ export default function StatsScreen() {
     if (tab === activeTab) return;
     setActiveTab(tab);
     trackEvent('stats.tab_change', { tab });
+  };
+
+  const handleSubcategoryToggle = (mode: boolean) => {
+    if (mode === subcategoryMode) return;
+    setSubcategoryMode(mode);
+    trackEvent('stats.subcategory_toggle', {
+      mode: mode ? 'subcategories' : 'categories',
+    });
   };
 
   return (
@@ -405,6 +459,34 @@ export default function StatsScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {/* Sub-categories toggle: only when the setting is enabled */}
+        {subcategoriesEnabled && (
+          <View
+            className={`flex-row mt-2 ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
+          >
+            <Pressable
+              onPress={() => handleSubcategoryToggle(false)}
+              className={`flex-1 py-2 rounded-lg ${!subcategoryMode ? "bg-cheddar-yellow" : ""}`}
+            >
+              <Text
+                className={`text-center text-sm font-semibold ${!subcategoryMode ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
+              >
+                {t("stats.pillCategories")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => handleSubcategoryToggle(true)}
+              className={`flex-1 py-2 rounded-lg ${subcategoryMode ? "bg-cheddar-yellow" : ""}`}
+            >
+              <Text
+                className={`text-center text-sm font-semibold ${subcategoryMode ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
+              >
+                {t("stats.subcategories")}
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {loading ? (
@@ -432,13 +514,13 @@ export default function StatsScreen() {
                     <DomLoadRetry>
                       <PieChart
                         data={categoryStats.map((stat) => ({
-                          key: stat.id,
+                          key: stat.key,
                           value: stat.total,
                           color: stat.color,
                         }))}
                         callouts={selectPieCallouts(
                           categoryStats.map((stat) => ({
-                            key: stat.id,
+                            key: stat.key,
                             name: stat.name,
                             value: stat.total,
                           }))
@@ -471,7 +553,7 @@ export default function StatsScreen() {
                 </Text>
                 {categoryStats.map((stat) => (
                   <Pressable
-                    key={stat.id}
+                    key={stat.key}
                     className="flex-row items-center py-2"
                     onPress={
                       stat.isTransfer
@@ -479,7 +561,10 @@ export default function StatsScreen() {
                         : () => {
                             trackEvent('stats.category_open', {
                               tab: activeTab,
-                              kind: 'category',
+                              kind:
+                                subcategoryMode && subcategoriesEnabled
+                                  ? 'subcategory'
+                                  : 'category',
                             });
                             router.push(`/?categoryId=${stat.id}` as never);
                           }
@@ -499,14 +584,14 @@ export default function StatsScreen() {
                           size={18}
                           color={isDark ? "#F9FAFB" : "#212226"}
                         />
-                      ) : (
+                      ) : stat.icon ? (
                         renderIcon(
                           stat.icon,
                           18,
                           isDark ? "#F9FAFB" : "#212226",
                           showIcons
                         )
-                      )}
+                      ) : null}
                     </View>
                     <View className="flex-1">
                       <Text
