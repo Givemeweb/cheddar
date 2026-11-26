@@ -17,6 +17,7 @@ import {
 import DotChart from "../src/components/DotChart";
 import BarChart from "../src/components/BarChart";
 import { trackEvent } from "../src/lib/analytics";
+import { DomLoadRetry } from "../src/components/DomLoadRetry";
 
 type ChartDimensions = { width: number; height: number } | null;
 
@@ -281,12 +282,14 @@ export default function TotalStatsScreen() {
               }}
             >
               {dotChartDimensions && (
-                <DotChart
-                  data={monthlyData}
-                  width={dotChartDimensions.width}
-                  height={dotChartDimensions.height}
-                  currencySymbol={totalAssetsCurrencySymbol}
-                />
+                <DomLoadRetry>
+                  <DotChart
+                    data={monthlyData}
+                    width={dotChartDimensions.width}
+                    height={dotChartDimensions.height}
+                    currencySymbol={totalAssetsCurrencySymbol}
+                  />
+                </DomLoadRetry>
               )}
             </View>
           ) : (
@@ -320,12 +323,14 @@ export default function TotalStatsScreen() {
               }}
             >
               {barChartDimensions && (
-                <BarChart
-                  data={incomeExpenseData}
-                  width={barChartDimensions.width}
-                  height={barChartDimensions.height}
-                  currencySymbol={totalAssetsCurrencySymbol}
-                />
+                <DomLoadRetry>
+                  <BarChart
+                    data={incomeExpenseData}
+                    width={barChartDimensions.width}
+                    height={barChartDimensions.height}
+                    currencySymbol={totalAssetsCurrencySymbol}
+                  />
+                </DomLoadRetry>
               )}
             </View>
           ) : (

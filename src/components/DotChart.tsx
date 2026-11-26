@@ -1,6 +1,8 @@
 'use dom';
 
+import { useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { signalDomReady } from '../utils/domLoadRetry';
 
 type DotChartProps = {
   data: {
@@ -9,6 +11,7 @@ type DotChartProps = {
   }[];
   width?: number;
   height?: number;
+  dom?: import('expo/dom').DOMProps;
   currencySymbol?: string;
 };
 
@@ -23,6 +26,10 @@ function formatCurrency(value: number, symbol: string): string {
 }
 
 export default function DotChart({ data, width = 400, height = 300, currencySymbol = '$' }: DotChartProps) {
+  useEffect(() => {
+    signalDomReady();
+  }, []);
+
   if (data.length === 0) {
     return null;
   }

@@ -1,6 +1,8 @@
 'use dom';
 
+import { useEffect } from 'react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { signalDomReady } from '../utils/domLoadRetry';
 
 type BarChartProps = {
   data: {
@@ -35,6 +37,9 @@ function formatShort(value: number): string {
 }
 
 export default function BarChart({ data, width = 400, height = 300, currencySymbol = '$' }: BarChartProps) {
+  useEffect(() => {
+    signalDomReady();
+  }, []);
   if (data.length === 0) {
     return null;
   }
