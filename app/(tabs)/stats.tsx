@@ -329,302 +329,303 @@ export default function StatsScreen() {
       className={`flex-1 ${isDark ? "bg-cheddar-dark" : "bg-cheddar-light"}`}
       edges={isLargeScreen ? ["top", "right", "bottom"] : undefined}
     >
-      <View className="px-4 py-4">
-        {/* Month Navigation */}
-        <View className="flex-row items-center mb-3">
-          <Pressable
-            onPress={() => goToMonth(-1)}
-            className="p-1"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ChevronLeft size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
-          </Pressable>
-          <Text
-            className={`text-base font-semibold mx-2 ${isDark ? "text-white" : "text-cheddar-dark"}`}
-          >
-            {monthYear}
-          </Text>
-          <Pressable
-            onPress={() => goToMonth(1)}
-            className="p-1"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ChevronRight size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
-          </Pressable>
-        </View>
-
-        {/* Account Filter */}
-        {accounts.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mb-3"
-            contentContainerStyle={{ paddingRight: 16 }}
-          >
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 8 }}
+      >
+        <View className="px-4 py-4">
+          {/* Month Navigation */}
+          <View className="flex-row items-center mb-3">
             <Pressable
-              onPress={() => {
-                if (selectedAccountId === null) return;
-                setSelectedAccountId(null);
-                trackEvent('stats.account_filter', { scope: 'all' });
-              }}
-              className={`flex-row items-center mr-2 px-3 py-2 rounded-full border ${
-                isAccountSelected(null)
-                  ? "bg-cheddar-yellow border-cheddar-yellow"
-                  : isDark
-                    ? "bg-[#26282D] border-gray-600"
-                    : "bg-white border-gray-200"
-              }`}
+              onPress={() => goToMonth(-1)}
+              className="p-1"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text
-                className={`text-sm font-medium ${
-                  isAccountSelected(null)
-                    ? "text-cheddar-dark"
-                    : isDark
-                      ? "text-gray-300"
-                      : "text-cheddar-gray"
-                }`}
-              >
-                {t("common.all")}
-              </Text>
+              <ChevronLeft size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
             </Pressable>
-            {accounts.map((account) => (
+            <Text
+              className={`text-base font-semibold mx-2 ${isDark ? "text-white" : "text-cheddar-dark"}`}
+            >
+              {monthYear}
+            </Text>
+            <Pressable
+              onPress={() => goToMonth(1)}
+              className="p-1"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronRight size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            </Pressable>
+          </View>
+
+          {/* Account Filter */}
+          {accounts.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mb-3"
+              contentContainerStyle={{ paddingRight: 16 }}
+            >
               <Pressable
-                key={account.id}
                 onPress={() => {
-                  if (selectedAccountId === account.id) return;
-                  setSelectedAccountId(account.id);
-                  trackEvent('stats.account_filter', { scope: 'account' });
+                  if (selectedAccountId === null) return;
+                  setSelectedAccountId(null);
+                  trackEvent('stats.account_filter', { scope: 'all' });
                 }}
                 className={`flex-row items-center mr-2 px-3 py-2 rounded-full border ${
-                  isAccountSelected(account.id)
+                  isAccountSelected(null)
                     ? "bg-cheddar-yellow border-cheddar-yellow"
                     : isDark
                       ? "bg-[#26282D] border-gray-600"
                       : "bg-white border-gray-200"
                 }`}
               >
-                {showIcons && (
-                  <View className="mr-1.5">
-                    {renderAccountIcon(
-                      account.icon,
-                      14,
-                      isAccountSelected(account.id)
-                        ? "#212226"
-                        : isDark
-                          ? "#9CA3AF"
-                          : "#6B7280",
-                      true
-                    )}
-                  </View>
-                )}
                 <Text
                   className={`text-sm font-medium ${
-                    isAccountSelected(account.id)
+                    isAccountSelected(null)
                       ? "text-cheddar-dark"
                       : isDark
                         ? "text-gray-300"
                         : "text-cheddar-gray"
                   }`}
-                  numberOfLines={1}
                 >
-                  {account.name}
+                  {t("common.all")}
                 </Text>
               </Pressable>
-            ))}
-          </ScrollView>
-        )}
+              {accounts.map((account) => (
+                <Pressable
+                  key={account.id}
+                  onPress={() => {
+                    if (selectedAccountId === account.id) return;
+                    setSelectedAccountId(account.id);
+                    trackEvent('stats.account_filter', { scope: 'account' });
+                  }}
+                  className={`flex-row items-center mr-2 px-3 py-2 rounded-full border ${
+                    isAccountSelected(account.id)
+                      ? "bg-cheddar-yellow border-cheddar-yellow"
+                      : isDark
+                        ? "bg-[#26282D] border-gray-600"
+                        : "bg-white border-gray-200"
+                  }`}
+                >
+                  {showIcons && (
+                    <View className="mr-1.5">
+                      {renderAccountIcon(
+                        account.icon,
+                        14,
+                        isAccountSelected(account.id)
+                          ? "#212226"
+                          : isDark
+                            ? "#9CA3AF"
+                            : "#6B7280",
+                        true
+                      )}
+                    </View>
+                  )}
+                  <Text
+                    className={`text-sm font-medium ${
+                      isAccountSelected(account.id)
+                        ? "text-cheddar-dark"
+                        : isDark
+                          ? "text-gray-300"
+                          : "text-cheddar-gray"
+                    }`}
+                    numberOfLines={1}
+                  >
+                    {account.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
 
-        {/* Tab Buttons */}
-        <View
-          className={`flex-row ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
-        >
-          <Pressable
-            onPress={() => handleTabChange("income")}
-            className={`flex-1 py-3 rounded-lg ${activeTab === "income" ? "bg-cheddar-yellow" : ""}`}
-          >
-            <Text
-              className={`text-center font-semibold ${activeTab === "income" ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
-            >
-              {t("stats.income")}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => handleTabChange("expense")}
-            className={`flex-1 py-3 rounded-lg ${activeTab === "expense" ? "bg-cheddar-yellow" : ""}`}
-          >
-            <Text
-              className={`text-center font-semibold ${activeTab === "expense" ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
-            >
-              {t("stats.expenses")}
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Sub-categories toggle: only when the setting is enabled */}
-        {subcategoriesEnabled && (
+          {/* Tab Buttons */}
           <View
-            className={`flex-row mt-2 ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
+            className={`flex-row ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
           >
             <Pressable
-              onPress={() => handleSubcategoryToggle(false)}
-              className={`flex-1 py-2 rounded-lg ${!subcategoryMode ? "bg-cheddar-yellow" : ""}`}
+              onPress={() => handleTabChange("income")}
+              className={`flex-1 py-3 rounded-lg ${activeTab === "income" ? "bg-cheddar-yellow" : ""}`}
             >
               <Text
-                className={`text-center text-sm font-semibold ${!subcategoryMode ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
+                className={`text-center font-semibold ${activeTab === "income" ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
               >
-                {t("stats.pillCategories")}
+                {t("stats.income")}
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => handleSubcategoryToggle(true)}
-              className={`flex-1 py-2 rounded-lg ${subcategoryMode ? "bg-cheddar-yellow" : ""}`}
+              onPress={() => handleTabChange("expense")}
+              className={`flex-1 py-3 rounded-lg ${activeTab === "expense" ? "bg-cheddar-yellow" : ""}`}
             >
               <Text
-                className={`text-center text-sm font-semibold ${subcategoryMode ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
+                className={`text-center font-semibold ${activeTab === "expense" ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
               >
-                {t("stats.subcategories")}
+                {t("stats.expenses")}
               </Text>
             </Pressable>
           </View>
-        )}
-      </View>
 
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#FFB800" />
-        </View>
-      ) : (
-        <View className="flex-1 px-4">
-          {categoryStats.length > 0 ? (
-            <>
-              {/* Pie Chart */}
-              <View
-                className={`rounded-xl p-4 shadow-sm mb-4 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
-              >
-                <View
-                  className="h-64"
-                  onLayout={(event) => {
-                    const { width, height } = event.nativeEvent.layout;
-                    if (width > 0 && height > 0) {
-                      setChartSize({ width, height });
-                    }
-                  }}
-                >
-                  {chartSize && (
-                    <DomLoadRetry>
-                      <PieChart
-                        data={categoryStats.map((stat) => ({
-                          key: stat.key,
-                          value: stat.total,
-                          color: stat.color,
-                        }))}
-                        callouts={selectPieCallouts(
-                          categoryStats.map((stat) => ({
-                            key: stat.key,
-                            name: stat.name,
-                            value: stat.total,
-                          }))
-                        )}
-                        labelColor={isDark ? "#F9FAFB" : "#212226"}
-                        lineColor={isDark ? "#9CA3AF" : "#6B7280"}
-                        flippedLabelColor={CALLOUT_FLIPPED_INK}
-                        innerRadius={20}
-                        width={chartSize.width}
-                        height={chartSize.height}
-                      />
-                    </DomLoadRetry>
-                  )}
-                </View>
-                <Text
-                  className={`text-center text-2xl font-bold mt-2 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                >
-                  {currencySymbol} {formatNumber(total)}
-                </Text>
-              </View>
-
-              {/* Legend */}
-              <View
-                className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+          {/* Sub-categories toggle: only when the setting is enabled */}
+          {subcategoriesEnabled && (
+            <View
+              className={`flex-row mt-2 ${isDark ? "bg-[#26282D]" : "bg-white"} rounded-xl p-1 shadow-sm`}
+            >
+              <Pressable
+                onPress={() => handleSubcategoryToggle(false)}
+                className={`flex-1 py-2 rounded-lg ${!subcategoryMode ? "bg-cheddar-yellow" : ""}`}
               >
                 <Text
-                  className={`font-semibold mb-3 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                  className={`text-center text-sm font-semibold ${!subcategoryMode ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
                 >
-                  {t("stats.categories")}
+                  {t("stats.pillCategories")}
                 </Text>
-                {categoryStats.map((stat) => (
-                  <Pressable
-                    key={stat.key}
-                    className="flex-row items-center py-2"
-                    onPress={
-                      stat.isTransfer
-                        ? undefined
-                        : () => {
-                            trackEvent('stats.category_open', {
-                              tab: activeTab,
-                              kind:
-                                subcategoryMode && subcategoriesEnabled
-                                  ? 'subcategory'
-                                  : 'category',
-                            });
-                            router.push(`/?categoryId=${stat.id}` as never);
-                          }
-                    }
-                  >
-                    <View
-                      className="px-2 py-0.5 rounded-full mr-3"
-                      style={{ backgroundColor: stat.color }}
-                    >
-                      <Text className="text-xs font-medium text-cheddar-dark">
-                        {formatNumber((stat.total / total) * 100, 0)}%
-                      </Text>
-                    </View>
-                    <View className="mr-2">
-                      {stat.isTransfer ? (
-                        <ArrowLeftRight
-                          size={18}
-                          color={isDark ? "#F9FAFB" : "#212226"}
-                        />
-                      ) : stat.icon ? (
-                        renderIcon(
-                          stat.icon,
-                          18,
-                          isDark ? "#F9FAFB" : "#212226",
-                          showIcons
-                        )
-                      ) : null}
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className={`font-medium ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
-                      >
-                        {stat.name}
-                      </Text>
-                    </View>
-                    <Text
-                      className={`font-medium ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
-                    >
-                      {currencySymbol} {formatNumber(stat.total)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          ) : (
-            <View className="flex-1 items-center justify-center py-20">
-              <Text
-                className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+              </Pressable>
+              <Pressable
+                onPress={() => handleSubcategoryToggle(true)}
+                className={`flex-1 py-2 rounded-lg ${subcategoryMode ? "bg-cheddar-yellow" : ""}`}
               >
-                {t("stats.noTransactions", {
-                  tab:
-                    activeTab === "income"
-                      ? t("stats.income").toLowerCase()
-                      : t("stats.expenses").toLowerCase(),
-                })}
-              </Text>
+                <Text
+                  className={`text-center text-sm font-semibold ${subcategoryMode ? "text-cheddar-dark" : `${isDark ? "text-gray-400" : "text-cheddar-gray"}`}`}
+                >
+                  {t("stats.subcategories")}
+                </Text>
+              </Pressable>
             </View>
           )}
         </View>
-      )}
+
+        {loading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#FFB800" />
+          </View>
+        ) : categoryStats.length > 0 ? (
+          <View className="px-4">
+            {/* Pie Chart */}
+            <View
+              className={`rounded-xl p-4 shadow-sm mb-4 ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+            >
+              <View
+                className="h-64"
+                onLayout={(event) => {
+                  const { width, height } = event.nativeEvent.layout;
+                  if (width > 0 && height > 0) {
+                    setChartSize({ width, height });
+                  }
+                }}
+              >
+                {chartSize && (
+                  <DomLoadRetry>
+                    <PieChart
+                      data={categoryStats.map((stat) => ({
+                        key: stat.key,
+                        value: stat.total,
+                        color: stat.color,
+                      }))}
+                      callouts={selectPieCallouts(
+                        categoryStats.map((stat) => ({
+                          key: stat.key,
+                          name: stat.name,
+                          value: stat.total,
+                        }))
+                      )}
+                      labelColor={isDark ? "#F9FAFB" : "#212226"}
+                      lineColor={isDark ? "#9CA3AF" : "#6B7280"}
+                      flippedLabelColor={CALLOUT_FLIPPED_INK}
+                      innerRadius={20}
+                      width={chartSize.width}
+                      height={chartSize.height}
+                    />
+                  </DomLoadRetry>
+                )}
+              </View>
+              <Text
+                className={`text-center text-2xl font-bold mt-2 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              >
+                {currencySymbol} {formatNumber(total)}
+              </Text>
+            </View>
+
+            {/* Legend */}
+            <View
+              className={`rounded-xl p-4 shadow-sm ${isDark ? "bg-[#26282D]" : "bg-white"}`}
+            >
+              <Text
+                className={`font-semibold mb-3 ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+              >
+                {t("stats.categories")}
+              </Text>
+              {categoryStats.map((stat) => (
+                <Pressable
+                  key={stat.key}
+                  className="flex-row items-center py-2"
+                  onPress={
+                    stat.isTransfer
+                      ? undefined
+                      : () => {
+                          trackEvent('stats.category_open', {
+                            tab: activeTab,
+                            kind:
+                              subcategoryMode && subcategoriesEnabled
+                                ? 'subcategory'
+                                : 'category',
+                          });
+                          router.push(`/?categoryId=${stat.id}` as never);
+                        }
+                  }
+                >
+                  <View
+                    className="px-2 py-0.5 rounded-full mr-3"
+                    style={{ backgroundColor: stat.color }}
+                  >
+                    <Text className="text-xs font-medium text-cheddar-dark">
+                      {formatNumber((stat.total / total) * 100, 0)}%
+                    </Text>
+                  </View>
+                  <View className="mr-2">
+                    {stat.isTransfer ? (
+                      <ArrowLeftRight
+                        size={18}
+                        color={isDark ? "#F9FAFB" : "#212226"}
+                      />
+                    ) : stat.icon ? (
+                      renderIcon(
+                        stat.icon,
+                        18,
+                        isDark ? "#F9FAFB" : "#212226",
+                        showIcons
+                      )
+                    ) : null}
+                  </View>
+                  <View className="flex-1">
+                    <Text
+                      className={`font-medium ${isDark ? "text-cheddar-light" : "text-cheddar-dark"}`}
+                    >
+                      {stat.name}
+                    </Text>
+                  </View>
+                  <Text
+                    className={`font-medium ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+                  >
+                    {currencySymbol} {formatNumber(stat.total)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : (
+          <View className="flex-1 items-center justify-center py-20">
+            <Text
+              className={`text-lg ${isDark ? "text-gray-400" : "text-cheddar-gray"}`}
+            >
+              {t("stats.noTransactions", {
+                tab:
+                  activeTab === "income"
+                    ? t("stats.income").toLowerCase()
+                    : t("stats.expenses").toLowerCase(),
+              })}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
