@@ -121,6 +121,7 @@
     "passcode": "Passcode",
     "alarmSettings": "Alarm Settings",
     "bankConnections": "Bank connections",
+    "profitLossExport": "Profit & Loss export",
     "style": "Style",
     "theme": "Theme",
     "themeSystem": "System",
@@ -335,6 +336,21 @@
     "formatSqlImportDesc": "Import from an SQLite database file (.db, .sqlite).",
     "selectImportFormat": "Select Import Format",
     "importInfoMulti": "Select a backup ZIP file to restore your data. The ZIP should contain a backup.sql file and an images folder with your transaction photos. This will replace all existing data."
+  },
+  "plExport": {
+    "title": "Export Profit & Loss",
+    "description": "Create a yearly income statement workbook (XLSX) for the selected accounts.",
+    "accounts": "Accounts",
+    "year": "Year",
+    "create": "Create",
+    "success": "Profit & Loss {{year}}.xlsx created.",
+    "readyToShare": "Profit & Loss {{year}}.xlsx generated. Share sheet opened.",
+    "error": "The export failed. Please try again.",
+    "ratesUnavailable": "Exchange rates are unavailable right now, so mixed-currency amounts cannot be converted.",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "webUnavailable": "The Profit & Loss export is available in the iOS and Android apps.",
+    "currencyNote": "All figures are shown in your main currency ({{symbol}})."
   },
   "stats": {
     "title": "Stats",

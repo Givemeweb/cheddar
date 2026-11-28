@@ -12,6 +12,7 @@ import {
   Bell,
   Palette,
   ChevronRight,
+  FileSpreadsheet,
 } from "lucide-react-native";
 import { useTheme } from "../src/components/ThemeProvider";
 import { ToggleSwitch } from "../src/components/ToggleSwitch";
@@ -31,7 +32,8 @@ type MenuItem = {
     | "passcode"
     | "alarms"
     | "style"
-    | "bank-connections";
+    | "bank-connections"
+    | "profit-loss-export";
   /** Disabled rows stay visible but cannot be opened (web: native only). */
   disabled?: boolean;
   note?: string;
@@ -153,6 +155,18 @@ export default function ConfigurationScreen() {
           icon: <Palette size={22} color={iconColor} />,
           route: "/configuration/style",
           target: "style",
+        },
+        {
+          label: t('config.profitLossExport'),
+          icon: <FileSpreadsheet size={22} color={iconColor} />,
+          route: "/configuration/profit-loss-export",
+          target: "profit-loss-export" as const,
+          // Web gets its own download path later; the row stays visible but
+          // disabled, mirroring the bank-connections row.
+          ...(Platform.OS === 'web' ? {
+            disabled: true,
+            note: t('plExport.webUnavailable'),
+          } : {}),
         },
       ],
     },
