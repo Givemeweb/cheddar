@@ -119,8 +119,9 @@ export default function ProfitLossExportScreen() {
         year,
         accountIds: [...selected],
       });
-      // Platform split lives behind require so the web bundle never loads
-      // the native SAF/sharing modules (same pattern as backup-mmbak.tsx).
+      // Platform split lives behind require so each bundle loads only its own
+      // delivery: the native SAF/sharing modules vs the web download helper
+      // (same pattern as backup-mmbak.tsx).
       const saver: SaveProfitLossWorkbook =
         Platform.OS === "web"
           ? // eslint-disable-next-line @typescript-eslint/no-require-imports -- runtime platform require keeps the other platform's module out of the Metro bundle

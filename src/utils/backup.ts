@@ -5,6 +5,7 @@ import JSZip from 'jszip';
 import * as SQLite from 'expo-sqlite';
 import { getStore, getPersister } from '../db/tinybase';
 import { assertImportWithinFreeCaps } from '../db/premium';
+import { downloadBytes } from './download';
 import type { Tables } from 'tinybase';
 
 export interface BackupData {
@@ -130,15 +131,7 @@ export async function exportDatabaseToZip(): Promise<string | null> {
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const blob = new Blob([bytes], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBytes(bytes, 'application/zip', fileName);
       return null;
     }
 

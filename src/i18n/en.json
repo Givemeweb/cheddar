@@ -349,7 +349,6 @@
     "ratesUnavailable": "Exchange rates are unavailable right now, so mixed-currency amounts cannot be converted.",
     "previousYear": "Previous year",
     "nextYear": "Next year",
-    "webUnavailable": "The Profit & Loss export is available in the iOS and Android apps.",
     "currencyNote": "All figures are shown in your main currency ({{symbol}})."
   },
   "stats": {

@@ -213,6 +213,42 @@ describe('aggregateProfitAndLoss', () => {
     expect(statement.operatingExpenses.rows.map((r) => r.label)).toEqual(EXPECTED_EXPENSE_ROWS);
   });
 
+  it('sorts rows engine-independently: case-insensitive, accent-sensitive code units', () => {
+    // localeCompare would order these differently per engine collation
+    // (Hermes / Node ICU / V8 disagree), and row order decides workbook
+    // bytes; the comparator is lower-cased UTF-16 code units with a raw
+    // tie-break, so the order is identical everywhere (ticket 03). The
+    // fixture deliberately includes cases that DISTINGUISH the comparator
+    // from en-US localeCompare: en collation sorts 'Äpfel' before 'Zebra'
+    // (diacritic folds to the base letter) and 'apple' before 'Apple'
+    // (lowercase tertiary-first), while code units put z U+007A before
+    // ä U+00E4 and the raw tie-break puts 'Apple' (0x41) before 'apple'
+    // (0x61) - so this test fails if localeCompare ever returns.
+    const names = ['Transfer', 'Café', 'bank fees', 'cafe', 'Äpfel', 'Zebra', 'apple', 'Apple'];
+    const statement = aggregateProfitAndLoss({
+      transactions: names.map((name, i) =>
+        tx({ type: 'income', categoryId: `cat-x${i}`, amount: 1, date: new Date(2026, 0, 1).getTime() }),
+      ),
+      categories: names.map((name, i) => ({ id: `cat-x${i}`, name, type: 'income' as const })),
+      accountIds: ['acc-1'],
+      year: 2026,
+    });
+    // 'cafe' precedes 'Café' (e U+0065 < é U+00E9); 'Apple' and 'apple' sit
+    // adjacent via the raw tie-break.
+    expect(statement.revenue.rows.map((row) => row.label)).toEqual([
+      'Apple',
+      'apple',
+      'bank fees',
+      'cafe',
+      'Café',
+      'Transfer',
+      'Zebra',
+      'Äpfel',
+      TRANSFERS_IN_LABEL,
+      UNCATEGORIZED_LABEL,
+    ]);
+  });
+
   it('keeps the Transfers and Uncategorized rows present even without activity', () => {
     const statement = aggregateProfitAndLoss({
       transactions: [],
@@ -572,5 +608,59 @@ describe('buildProfitLossWorkbook', () => {
       ),
     );
     expect(euroWorkbook.parts['xl/styles.xml']).toContain('&quot;€&quot;#,##0.00');
+  });
+
+  it('stamps every zip entry with the pinned date instead of the current time', async () => {
+    // jszip defaults entry dates to the current time (lib/object.js), which
+    // would make two builds differ byte-for-byte; the writer pins one fixed
+    // UTC instant and keeps the implicit directory entries (which jszip
+    // stamps with the clock) out of the archive entirely.
+    const zip = await JSZip.loadAsync(await buildProfitLossWorkbook(aggregateFixture(), '$'));
+    const entries = Object.values(zip.files);
+    expect(entries.some((file) => file.dir)).toBe(false);
+    // Exactly the seven package parts, nothing implicit.
+    expect(Object.keys(zip.files).sort()).toEqual([
+      '[Content_Types].xml',
+      '_rels/.rels',
+      'xl/_rels/workbook.xml.rels',
+      'xl/sharedStrings.xml',
+      'xl/styles.xml',
+      'xl/workbook.xml',
+      'xl/worksheets/sheet1.xml',
+    ]);
+    for (const entry of entries) {
+      expect(entry.date.getUTCFullYear()).toBe(2000);
+      expect(entry.date.getUTCMonth()).toBe(0);
+      expect(entry.date.getUTCDate()).toBe(1);
+      expect(entry.date.getUTCHours()).toBe(0);
+      expect(entry.date.getUTCMinutes()).toBe(0);
+      expect(entry.date.getUTCSeconds()).toBe(0);
+    }
+  });
+
+  it('produces byte-for-byte identical output for the same model across runs regardless of the clock', async () => {
+    // Two builds at clearly different system times must produce identical
+    // bytes; this is what makes the native and web deliveries (ticket 03)
+    // comparable. Cross-platform byte equality additionally assumes the
+    // same timezone (the aggregation buckets by device-local date) and the
+    // same rates inputs (conversion is the caller's job, so a test hands in
+    // an already-converted model).
+    jest.useFakeTimers({
+      // jszip's generateAsync pumps its stream through real timers; only the
+      // CLOCK must be faked here, so the timer APIs themselves stay live.
+      doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate'],
+    });
+    try {
+      jest.setSystemTime(new Date('2020-06-01T10:00:00Z'));
+      const first = await buildProfitLossWorkbook(aggregateFixture(), '$');
+      jest.setSystemTime(new Date('2030-01-01T23:59:59Z'));
+      const second = await buildProfitLossWorkbook(aggregateFixture(), '$');
+      expect(second.length).toBe(first.length);
+      for (let i = 0; i < first.length; i++) {
+        expect(second[i]).toBe(first[i]);
+      }
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

@@ -1,5 +1,7 @@
 import JSZip from 'jszip';
+import * as Sharing from 'expo-sharing';
 import { exportDatabaseToZip, importDatabaseFromZip } from './backup';
+import { downloadBytes } from './download';
 import {
   putMercuryLinkedAccount,
   putMercuryTransactionLink,
@@ -9,6 +11,10 @@ import {
   upsertMercuryConnection,
 } from '../db/mercury';
 import { getStore } from '../db/tinybase';
+
+jest.mock('./download', () => ({ downloadBytes: jest.fn() }));
+
+const downloadBytesMock = downloadBytes as jest.Mock;
 
 jest.mock('../db/tinybase', () => ({
   isDatabaseReady: jest.fn(() => true),
@@ -103,6 +109,9 @@ class FakeStore {
 
 beforeEach(() => {
   mockWrites.length = 0;
+  // mockReset, not clearAllMocks: implementations survive clearAllMocks, so
+  // one test's stubbing would leak into the next.
+  downloadBytesMock.mockReset();
 });
 
 it('exports the finance tables without the license or the premium cache', async () => {
@@ -275,5 +284,46 @@ describe('Mercury backup round trip', () => {
     // The dedupe map and cursors survive so reconnecting does not duplicate rows.
     expect(tables.mercuryTransactionLinks['mtx-1']).toMatchObject({ localTransactionId: 'tx-1', mercuryAccountId: 'acct-abc' });
     expect(tables.mercuryCursors['acct-abc']).toMatchObject({ cursor: 'start_after:mtx-1' });
+  });
+});
+
+describe('exportDatabaseToZip on web', () => {
+  it('delivers the zip through the shared browser download with the timestamped name', async () => {
+    // The platform is read at call time; stage web and restore afterwards.
+    const { Platform } = require('react-native') as { Platform: { OS: string } };
+    const previousOS = Platform.OS;
+    Platform.OS = 'web';
+    try {
+      const store = new FakeStore();
+      store.setTables({
+        categories: { '1': { name: 'Food', icon: 'utensils', type: 'expense' } },
+        accounts: {
+          '1': { name: 'Checking', icon: 'wallet', description: null, balance: 10, order: 0, currency: 'EUR' },
+        },
+        transactions: {},
+      });
+      store.setValue('satsaleLicense', LICENSE);
+      getStoreMock.mockReturnValue(store);
+
+      // The share-path assertion must cover only this run: earlier tests in
+      // the file legitimately consult Sharing on the native branch.
+      (Sharing.isAvailableAsync as jest.Mock).mockClear();
+      await exportDatabaseToZip();
+
+      expect(downloadBytesMock).toHaveBeenCalledTimes(1);
+      const [bytes, mimeType, fileName] = downloadBytesMock.mock.calls[0];
+      expect(mimeType).toBe('application/zip');
+      expect(fileName).toMatch(/^cheddar-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.zip$/);
+      // The payload is the zip itself, passed through untouched (PK magic).
+      expect(bytes).toBeInstanceOf(Uint8Array);
+      expect(bytes.length).toBeGreaterThan(0);
+      expect(bytes[0]).toBe(0x50); // 'P'
+      expect(bytes[1]).toBe(0x4b); // 'K'
+      // The web branch writes no local file and never opens the share sheet.
+      expect(mockWrites).toHaveLength(0);
+      expect(Sharing.isAvailableAsync).not.toHaveBeenCalled();
+    } finally {
+      Platform.OS = previousOS;
+    }
   });
 });

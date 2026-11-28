@@ -1,12 +1,21 @@
-// Web implementation lands with the web download path (ticket 03,
-// tickets/profit-and-loss-xlsx); the settings row stays disabled on web
-// until then, so this only guards against an accidental call.
+// Web implementation of the delivery: a browser download of the generated
+// workbook, through the same Blob+anchor mechanism as the backup export's
+// web branch (src/utils/download.ts).
 
-import type { SaveProfitLossWorkbook } from './plSave';
+import { downloadBytes } from './download';
+import type { SaveOutcome, SaveProfitLossWorkbook } from './plSave';
 
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/**
+ * A started download is a completed export: the browser delivers the file to
+ * its download destination under the proposed name, so 'saved' is the honest
+ * outcome. No folder picker, no share sheet, no silent save.
+ */
 export const saveProfitLossWorkbook: SaveProfitLossWorkbook = async (
-  _bytes,
-  _fileName,
-) => {
-  throw new Error('Profit & Loss export is not available on web yet');
+  bytes,
+  fileName,
+): Promise<SaveOutcome> => {
+  downloadBytes(bytes, XLSX_MIME, fileName);
+  return { status: 'saved' };
 };

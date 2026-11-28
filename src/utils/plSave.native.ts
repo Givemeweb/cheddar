@@ -8,6 +8,8 @@ import { StorageAccessFramework, EncodingType, deleteAsync } from 'expo-file-sys
 import { File, Paths } from 'expo-file-system';
 import type { SaveOutcome, SaveProfitLossWorkbook } from './plSave';
 
+// Local per-platform constants: a runtime import from './plSave' would hit
+// jest's haste shadowing of the .web sibling and read as undefined.
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const XLSX_UTI = 'org.openxmlformats.spreadsheetml.sheet';
 

@@ -161,12 +161,6 @@ export default function ConfigurationScreen() {
           icon: <FileSpreadsheet size={22} color={iconColor} />,
           route: "/configuration/profit-loss-export",
           target: "profit-loss-export" as const,
-          // Web gets its own download path later; the row stays visible but
-          // disabled, mirroring the bank-connections row.
-          ...(Platform.OS === 'web' ? {
-            disabled: true,
-            note: t('plExport.webUnavailable'),
-          } : {}),
         },
       ],
     },

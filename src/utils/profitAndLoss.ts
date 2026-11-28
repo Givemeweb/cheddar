@@ -81,6 +81,21 @@ const MONTH_COUNT = 12;
 
 const zeroMonths = (): number[] => Array.from({ length: MONTH_COUNT }, () => 0);
 
+/**
+ * Row ordering must be engine-independent: localeCompare consults the
+ * platform collator (Hermes / Node ICU / V8 disagree), and row order decides
+ * workbook bytes. Compare lower-cased labels by UTF-16 code units with a
+ * tie-break on the raw label, which every JS engine evaluates identically
+ * while still reading as alphabetical.
+ */
+function compareLabels(a: string, b: string): number {
+  const aLower = a.toLowerCase();
+  const bLower = b.toLowerCase();
+  if (aLower !== bLower) return aLower < bLower ? -1 : 1;
+  if (a !== b) return a < b ? -1 : 1;
+  return 0;
+}
+
 interface Bucket {
   label: string;
   months: number[];
@@ -185,7 +200,7 @@ export function aggregateProfitAndLoss(input: {
       .filter(([key]) => key !== 'transfers' && key !== 'uncategorized' && !emitted.has(key))
       .map(([, bucket]) => ({ label: bucket.label, months: [...bucket.months] }));
     rows.push(...extras);
-    rows.sort((a, b) => a.label.localeCompare(b.label));
+    rows.sort((a, b) => compareLabels(a.label, b.label));
     // Fixed rows keep the layout stable: transfers row, then Uncategorized
     // anchored at the end of the section.
     const transfers = buckets.get('transfers');
@@ -223,6 +238,26 @@ export function aggregateProfitAndLoss(input: {
 // ---------------------------------------------------------------------------
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * jszip stamps zip entries with the current time unless a date is pinned
+ * (lib/object.js: `o.date = o.date || new Date()`), which would make two
+ * builds of the same statement differ byte-for-byte. The workbook must be
+ * identical across platforms and runs (ticket 03), so every entry carries
+ * this fixed date. The backup export has no byte-equality requirement and
+ * stays unpinned.
+ */
+const ZIP_ENTRY_DATE = new Date(Date.UTC(2000, 0, 1));
+
+/**
+ * Every explicit entry carries the pinned date; createFolders: false keeps
+ * jszip's implicit directory entries out of the archive, because those are
+ * stamped with the current time and would break byte determinism anyway
+ * (spreadsheets never need directory entries in an xlsx).
+ */
+function addZipEntry(zip: JSZip, name: string, content: string): void {
+  zip.file(name, content, { date: ZIP_ENTRY_DATE, createFolders: false });
+}
 
 /** 1-based spreadsheet column index to letter (A..O here, general to ZZ). */
 function columnLetter(index: number): string {
@@ -489,13 +524,13 @@ export async function buildProfitLossWorkbook(
     '</sst>';
 
   const zip = new JSZip();
-  zip.file('[Content_Types].xml', contentTypesXml);
-  zip.file('_rels/.rels', rootRelsXml);
-  zip.file('xl/workbook.xml', workbookXml);
-  zip.file('xl/_rels/workbook.xml.rels', workbookRelsXml);
-  zip.file('xl/worksheets/sheet1.xml', sheetXml);
-  zip.file('xl/styles.xml', stylesXml);
-  zip.file('xl/sharedStrings.xml', sharedStringsXml);
+  addZipEntry(zip, '[Content_Types].xml', contentTypesXml);
+  addZipEntry(zip, '_rels/.rels', rootRelsXml);
+  addZipEntry(zip, 'xl/workbook.xml', workbookXml);
+  addZipEntry(zip, 'xl/_rels/workbook.xml.rels', workbookRelsXml);
+  addZipEntry(zip, 'xl/worksheets/sheet1.xml', sheetXml);
+  addZipEntry(zip, 'xl/styles.xml', stylesXml);
+  addZipEntry(zip, 'xl/sharedStrings.xml', sharedStringsXml);
 
   // Same compression setup as the backup export (src/utils/backup.ts).
   return zip.generateAsync({
